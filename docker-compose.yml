@@ -72,3 +72,6 @@ services:
 volumes:
   static_volume:
   media_volume:
+
+extra_hosts:
+  - "host.docker.internal:host-gateway"
