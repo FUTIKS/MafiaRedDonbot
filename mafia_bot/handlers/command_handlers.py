@@ -157,7 +157,7 @@ async def profile_command(message: Message):
     await message.answer(
         text=(
             f"👤 <code>{message.from_user.first_name}</code>\n\n"
-            f"💶 Pullar: {user.coin}\n"
+            f"💶 olo: {user.coin}\n"
             f"💎 Olmoslar: {user.stones}\n\n"
             f"🛡 Ximoya: {user.protection}\n"
             f"📂 Hujjatlar: {user.docs}\n"
