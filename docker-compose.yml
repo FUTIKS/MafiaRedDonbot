@@ -58,15 +58,17 @@ services:
 
   nginx:
     image: nginx:latest
-    container_name: mafiareddon_nginx
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - static_volume:/app/staticfiles:ro
+      - media_volume:/app/media:ro
     ports:
       - "80:80"
     depends_on:
       - django
-    restart: unless-stopped
+
 
 volumes:
   static_volume:
+  media_volume:
+
