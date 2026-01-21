@@ -821,8 +821,8 @@ def shuffle_roles(game_id) -> bool:
         roles_map[tg_id] = chosen_ur.role_key
         fixed_players.append(tg_id)
 
-        UserRole.objects.filter(id=chosen_ur.id, quantity__gt=0).update(quantity=DF("quantity") - 1)
-        UserRole.objects.filter(id=chosen_ur.id, quantity__lte=0).delete()
+        UserRole.objects.filter(id=chosen_ur.id, role_key=chosen_ur.role_key, quantity__gt=0).update(quantity=DF("quantity") - 1)
+        UserRole.objects.filter(id=chosen_ur.id, role_key=chosen_ur.role_key, quantity__lte=0).delete()
         active_role_used.append(tg_id)
 
         try:
