@@ -267,7 +267,7 @@ def init_game(game_id: int, chat_id: int | None = None):
                 "phase": "lobby",
                 "day": 0,
                 "night": 0,
-                "message_allowed":"no",
+                "message_allowed":"yes",
                 "team_chat_open":"no",
             },
             "runtime": {

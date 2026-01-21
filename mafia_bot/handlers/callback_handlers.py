@@ -2659,14 +2659,14 @@ async def begin_new_instance_callback(callback: CallbackQuery,state: FSMContext)
     chat_id = int(parts[2])
     if action == "instance":
         await state.update_data(action = "instance")
-        await state.set_data(chat_id=chat_id)
+        await state.update_data(chat_id=chat_id)
         await callback.message.edit_text(
             text="🚀 Yangi o'yinni ishtirokchilar to'lganda boshlash uchun sonini kiriting:",
             reply_markup=back_btn()
         )
     elif action == "time":
         await state.update_data(action = "time")
-        await state.set_data(chat_id=chat_id)
+        await state.update_data(chat_id=chat_id)
         await callback.message.edit_text(
             text="🚀 Yangi o'yinni boshlash vaqtini kiriting (soniyalarda):",
             reply_markup=back_btn()
