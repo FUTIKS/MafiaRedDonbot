@@ -65,7 +65,10 @@ async def start(message: Message) -> None:
             result_2 = create_main_messages(game.id)
             bot_message=BotMessages.objects.filter(game_id=game.id,is_main=True,is_deleted=False).first()
             if bot_message:
-                await bot.edit_message_text(chat_id=game.chat_id,message_id=bot_message.message_id,text=result_2,reply_markup=join_game_btn(str(game.uuid)))
+                try:
+                    await bot.edit_message_text(chat_id=game.chat_id,message_id=bot_message.message_id,text=result_2,reply_markup=join_game_btn(str(game.uuid)))
+                except Exception as e:
+                    print(f"Error editing message: {e}")
         if result.get("message") == "full":
             await stop_registration(game_id=game.id)
         return
@@ -923,6 +926,7 @@ async def send_roles(game_id, chat_id):
         role_key = roles_map.get(tg_id)
         if tg_id in active_role_used:
             await bot.send_message(
+                chat_id=tg_id,
                 text="🎭 Faol roldan foydalanildi.")
             active_role_used.remove(tg_id)
 
