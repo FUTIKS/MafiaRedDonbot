@@ -847,8 +847,10 @@ def shuffle_roles(uuid) -> bool:
         UserRole.objects.filter(id=user_role.id, quantity__gt=0).update(quantity=DF("quantity") - 1)
         UserRole.objects.filter(id=user_role.id, quantity__lte=0).delete()
 
-        roles.remove(user_role.role_key)
-
+        try:
+            roles.remove(user_role.role_key)
+        except ValueError:
+            pass
     remaining_players = [p for p in players if p not in fixed_players]
     random.shuffle(remaining_players)
 
