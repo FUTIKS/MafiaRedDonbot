@@ -1592,7 +1592,7 @@ async def stop_game_if_needed(game_id :int):
     except Exception:
         pass
 
-    game = Game.objects.filter(uuid=game_id).first()
+    game = Game.objects.filter(id=game_id).first()
     if game:
         game.is_active = False
         game.is_active_game = False
