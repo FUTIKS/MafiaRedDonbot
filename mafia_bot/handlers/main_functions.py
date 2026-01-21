@@ -840,6 +840,8 @@ def shuffle_roles(uuid) -> bool:
         user_role = UserRole.objects.filter(user_id=user.id, quantity__gt=0).first()
         if not user_role:
             continue
+        if user_role.role_key not in roles:
+            continue
 
         roles_map[tg_id] = user_role.role_key
         fixed_players.append(tg_id)
