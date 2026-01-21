@@ -12,4 +12,5 @@ admin.site.register(CasesOpened)
 admin.site.register(PrizeHistory)
 admin.site.register(GameSettings)
 admin.site.register(GroupTrials)
+admin.site.register(UserRole)
 
