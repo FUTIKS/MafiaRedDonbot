@@ -1,6 +1,7 @@
 services:
   django:
     build: .
+    conatainer_name: django_app
     command: >
       sh -c "
       python manage.py migrate &&
