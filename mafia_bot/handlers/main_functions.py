@@ -1194,7 +1194,7 @@ async def apply_night_actions(game_id: int):
         for mafia in mafia_ids:
             await bot.send_message(
             chat_id=int(mafia),
-            text=f"Mafiyaning ovoz berishi yakunlandi\nMafialar {role_label(roles.get(mafia_target))} 💀 shavqatsizlarcha o'ldirdi."
+            text=f"Mafiyaning ovoz berishi yakunlandi\nMafialar {uname( mafia_target)} 💀 shavqatsizlarcha o'ldirdi."
         )
 
     killer_id = get_alive_role_id(game, "killer")
