@@ -165,6 +165,8 @@ async def start_game(game_id):
 
             for tg_id in alive_after_night:
                 role_key = roles_map.get(tg_id)
+                if tg_id not in games_state[game_id]['alive']:
+                    continue
                 label = ROLE_LABELS.get(role_key, "Unknown")
 
                 if role_key in PEACE_ROLES:
