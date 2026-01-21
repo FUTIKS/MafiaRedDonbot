@@ -1190,7 +1190,7 @@ async def apply_night_actions(game_id: int):
     if mafia_alive:
         mafia_target = get_mafia_kill_target(night_actions)
         add_intent(mafia_target, "don", priority=1)
-        mafia_ids = get_mafia_members(game)
+        mafia_ids = get_mafia_members(game_id)
         for mafia in mafia_ids:
             await bot.send_message(
             chat_id=int(mafia),
@@ -1409,7 +1409,7 @@ async def apply_night_actions(game_id: int):
                 text="Kimdir rolingizga qiziqdi..."
             )
             
-            mafia_members = get_mafia_members(game)
+            mafia_members = get_mafia_members(game_id)
             for member_id in mafia_members:
                 if member_id == int(spy_id):
                     continue
