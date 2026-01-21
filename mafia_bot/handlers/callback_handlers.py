@@ -1623,7 +1623,7 @@ async def confirm_callback(callback: CallbackQuery):
         if voter_id in game["day_actions"]["hang_yes"]:
             game["day_actions"]["hang_yes"].remove(voter_id)
     
-    mark_confirm_done(game, voter_id)
+    mark_confirm_done(game_id, voter_id)
     
     
     await callback.answer(text="👍 Ovozingiz qabul qilindi.")
