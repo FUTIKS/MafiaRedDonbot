@@ -151,9 +151,8 @@ async def start_game(game_id):
             await asyncio.sleep(3)
 
             # ================= ALIVE LIST AFTER NIGHT =================
-            alive_ids_after_night = [tg_id for tg_id in all_players if tg_id in alive_after_night]
-
-            users_after_night_qs = User.objects.filter(telegram_id__in=alive_ids_after_night).only("telegram_id", "first_name")
+            
+            users_after_night_qs = User.objects.filter(telegram_id__in=alive_after_night).only("telegram_id", "first_name")
             users_map_after_night = {u.telegram_id: u for u in users_after_night_qs}
 
             msg += "\nUlardan:\n\n"
@@ -164,7 +163,7 @@ async def start_game(game_id):
             mafia_labels = []
             solo_labels = []
 
-            for tg_id in alive_ids_after_night:
+            for tg_id in alive_after_night:
                 role_key = roles_map.get(tg_id)
                 label = ROLE_LABELS.get(role_key, "Unknown")
 
@@ -214,7 +213,7 @@ async def start_game(game_id):
             )
             game_day = games_state.get(game_id, {}).get("meta", {}).get("day", 0)
             # har bir tirikka osish keyboard yuboramiz
-            for tg_id in alive_ids_after_night:
+            for tg_id in alive_after_night:
                 game_data = games_state.get(game_id, {})
                 night_action = game_data.get("night_actions", {})
                 lover_block_target = night_action.get("lover_block_target")
