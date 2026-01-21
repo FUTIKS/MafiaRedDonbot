@@ -13,9 +13,11 @@ from core.constants import DESCRIPTIONS,ROLES_CHOICES
 from mafia_bot.handlers.game_handler import run_game_in_background
 from mafia_bot.handlers.callback_handlers import begin_instance_callback
 from mafia_bot.models import Game, GroupTrials, MostActiveUser,User,BotMessages,GameSettings, UserRole,default_end_date
-from mafia_bot.utils import last_wishes,team_chat_sessions,game_tasks,group_users,stones_taken,gsend_taken,games_state,giveaways,notify_users
-from mafia_bot.handlers.main_functions import MAFIA_ROLES, find_game,create_main_messages, get_game_uuid_by_chat, kill,  shuffle_roles ,check_bot_rights,games_state,role_label,clean_name,is_group_admin,mute_user,has_link,parse_amount
-from mafia_bot.buttons.inline import admin_inline_btn, giveaway_join_btn, group_profile_inline_btn, join_game_btn, main_inline_btn, go_to_bot_inline_btn, cart_inline_btn, start_inline_btn, take_gsend_stone_btn, take_stone_btn,stones_to_premium_inline_btn
+from mafia_bot.utils import last_wishes,team_chat_sessions,game_tasks,group_users,stones_taken,gsend_taken,games_state,giveaways,notify_users,active_role_used
+from mafia_bot.handlers.main_functions import MAFIA_ROLES, find_game,create_main_messages, kill,  shuffle_roles ,check_bot_rights,role_label,is_group_admin,mute_user,has_link,parse_amount
+from mafia_bot.buttons.inline import (admin_inline_btn, giveaway_join_btn, group_profile_inline_btn, join_game_btn, 
+                                      main_inline_btn, go_to_bot_inline_btn, cart_inline_btn, start_inline_btn, take_gsend_stone_btn,
+                                      take_stone_btn,stones_to_premium_inline_btn)
 
 
 @dp.message(Command("start"), StateFilter(None))
@@ -54,17 +56,16 @@ async def start(message: Message) -> None:
         if not game or game.is_started:
             await message.reply(text="Kechirasiz, o'yin allaqachon boshlandi.")
             return
-        result = find_game(args,tg_id,game.chat_id)
-        uuid = str(game.uuid)
+        result = find_game(game.id,tg_id,game.chat_id)
         if result.get("message") == "already_in":
             await message.reply(text="Sabr qiling siz o'yindasiz! Tushunyapsizmi? O'yinda! :)")
         elif result.get("message") in ("joined","full"):
             trial = GroupTrials.objects.filter(group_id=game.chat_id).first()
             await message.reply(text=f"Tabriklaymiz! Siz <b> {trial.group_name if trial else ''} </b>guruhda o'yinga qo'shildingiz.")
-            result_2 = create_main_messages(uuid)
+            result_2 = create_main_messages(game.id)
             bot_message=BotMessages.objects.filter(game_id=game.id,is_main=True,is_deleted=False).first()
             if bot_message:
-                await bot.edit_message_text(chat_id=game.chat_id,message_id=bot_message.message_id,text=result_2,reply_markup=join_game_btn(uuid))
+                await bot.edit_message_text(chat_id=game.chat_id,message_id=bot_message.message_id,text=result_2,reply_markup=join_game_btn(str(game.uuid)))
         if result.get("message") == "full":
             await stop_registration(game_id=game.id)
         return
@@ -80,7 +81,7 @@ async def start(message: Message) -> None:
     text=f"Salom! <code>{message.from_user.first_name}</code>\nMen 🤵🏻Mafia o'yinini rasmiy botiman.",
     parse_mode="HTML",
     reply_markup=start_inline_btn()
-)
+        )
     elif message.chat.type in ("group", "supergroup"):
         await message.delete()
         if " " in message.text and message.text.split(' ')[1] == "true":
@@ -240,10 +241,12 @@ async def gsend_command(message: Message) -> None:
     amount = parse_amount(message.text)
     if amount is None or amount <= 0:
         return
-
     chat_id = message.chat.id
-    uuid = get_game_uuid_by_chat(chat_id)
-    game = games_state.get(uuid)
+    game = Game.objects.filter(chat_id=message.chat.id, is_active_game=True).first()
+    if not game:
+        await message.answer("❌ O'yin boshlanmagan.")
+        return
+    game = games_state.get(game.id)
     if not game or not game.get("players"):
         await message.answer("❌ O'yin boshlanmagan yoki o'yinchilar yo'q.")
         return
@@ -397,13 +400,13 @@ async def change_command(message: Message) -> None:
 async def leave(message: Message) -> None:
     await message.delete()
     tg_id = message.from_user.id
-    uuid = get_game_uuid_by_chat(message.chat.id)
-    if not uuid:
-        return
-    game = games_state.get(uuid)
+    game = Game.objects.filter(chat_id=message.chat.id, is_active_game=True).first()
     if not game:
         return
-    game = games_state.get(str(uuid))
+    
+    game = games_state.get(game.id)
+    if not game:
+        return
     kill(game,tg_id)
     user = User.objects.filter(telegram_id=tg_id).first()
     if user:
@@ -494,7 +497,7 @@ async def stop_registration(game_id=None, chat_id=None, instant=False):
     else:
         game = Game.objects.filter(chat_id=chat_id, is_active_game=True, is_started=False).first()
 
-    all_players = games_state.get(str(game.uuid), {}).get("players", [])
+    all_players = games_state.get(game.id, {}).get("players", [])
     players_count = len(all_players)
 
     timer = registration_timers.pop(game.id, None)
@@ -533,8 +536,8 @@ async def stop_registration(game_id=None, chat_id=None, instant=False):
             text="O'yin boshlandi!\nBir necha soniya ichida bot sizga rol va uning tavsifi bilan shaxsiy xabar yuboradi.",
             reply_markup=go_to_bot_inline_btn()
         )
-        shuffle_roles(str(game.uuid))
-        await send_roles(uuid=str(game.uuid),chat_id=game.chat_id)
+        shuffle_roles(game.id)
+        await send_roles(game_id=game.id, chat_id=game.chat_id)
         return
     
 
@@ -582,7 +585,7 @@ async def game_command(message: Message) -> None:
             )
         game , created = Game.objects.get_or_create(chat_id=chat_id,is_active_game=True) 
         if not created: 
-            text_begining = create_main_messages(str(game.uuid))
+            text_begining = create_main_messages(game.id)
             bot_message=BotMessages.objects.filter(game_id=game.id,is_main=True,is_deleted=False)
             if bot_message:
                 message_ids = [m.message_id for m in bot_message if m]
@@ -702,10 +705,9 @@ async def stop_command(message: Message) -> None:
         await bot.send_message(chat_id=chat_id, text="🛑 Ro'yxatdan o'tish to'xtatildi.")
         return
 
-    # 2) START bo'lgan o'yinni to'xtatish
-    uuid = get_game_uuid_by_chat(chat_id)
-    game_db = Game.objects.filter(uuid=uuid).first()
-    if not uuid:
+    # 2) START bo'lgan o'yinni to'xtatis
+    game_db = Game.objects.filter(chat_id=chat_id).first()
+    if not game_db or not game_db.is_active_game:
         await bot.send_message(chat_id=chat_id, text="❗ Hozir bu chatda active o'yin yo'q.")
         return
 
@@ -726,8 +728,8 @@ async def stop_command(message: Message) -> None:
         game_db.save()
 
     # RAM dan o'chiramiz
-    games_state.pop(uuid, None)
-    task = game_tasks.get(uuid)
+    games_state.pop(game_db.id, None)
+    task = game_tasks.get(game_db.id)
     if task and not task.done():
         task.cancel()
 
@@ -746,13 +748,19 @@ async def admin_moderation_commands(message: Message) -> None:
     if not is_admin:
         return
     if  message.reply_to_message or  message.reply_to_message.from_user:
-        game = get_game_uuid_by_chat(chat_id)
+        game_db = Game.objects.filter(chat_id=chat_id, is_active_game=True).first()
+        if not game_db:
+            return
+        game = games_state.get(game_db.id)
         if game is not None:
             kill(game,message.reply_to_message.from_user.id)
             await bot.send_message(chat_id=message.reply_to_message.from_user.id,text="🔇 Siz o'yindan chetlatildingiz!")
         return
     tg_id = message.text.split(' ')[1]
-    game = get_game_uuid_by_chat(chat_id)
+    game_db = Game.objects.filter(chat_id=chat_id, is_active_game=True).first()
+    if not game_db:
+        return
+    game = games_state.get(game_db.id)
     if game is not None:
         kill(game,int(tg_id))
         await bot.send_message(chat_id=message.reply_to_message.from_user.id,text="🔇 Siz o'yindan chetlatildingiz!")
@@ -814,7 +822,7 @@ async def send_top(message: Message, days: int, title: str):
         if not user:
             continue
 
-        mention = f"<a href='tg://user?id={user.telegram_id}'>{clean_name(user.first_name)}</a>"
+        mention = f"<a href='tg://user?id={user.telegram_id}'>{user.first_name}</a>"
         win = row["wins"] or 0
 
         if idx <= 3:
@@ -846,8 +854,8 @@ async def share_command(message: Message) -> None:
     await message.delete()
     await message.answer("Do'stlarni chaqirish uchun /share buyrug'idan foydalaning.")
     
-async def send_mafia_companions(uuid, chat_id):
-    game = games_state.get(uuid, {})
+async def send_mafia_companions(game_id, chat_id):
+    game = games_state.get(game_id, {})
     players = game.get("players", [])
     roles_map = game.get("roles", {})
 
@@ -866,7 +874,7 @@ async def send_mafia_companions(uuid, chat_id):
         lines = []
         for mate in user_qs:
             mate_role = roles_map.get(mate.telegram_id)
-            lines.append(f"{clean_name(mate.first_name)} - {role_label(mate_role)}")
+            lines.append(f"{mate.first_name} - {role_label(mate_role)}")
 
         text = "Sheriklaringizni eslab qoling:\n" + ("\n".join(lines) if lines else "Yo'q")
 
@@ -876,8 +884,8 @@ async def send_mafia_companions(uuid, chat_id):
             pass
 
 
-async def sergant_send_companions(uuid, chat_id):
-    game = games_state.get(uuid, {})
+async def sergant_send_companions(game_id, chat_id):
+    game = games_state.get(game_id, {})
     players = game.get("players", [])
     roles_map = game.get("roles", {})
 
@@ -896,7 +904,7 @@ async def sergant_send_companions(uuid, chat_id):
         lines = []
         for mate in user_qs:
             mate_role = roles_map.get(mate.telegram_id)
-            lines.append(f"{clean_name(mate.first_name)} - {role_label(mate_role)}")
+            lines.append(f"{mate.first_name} - {role_label(mate_role)}")
 
         text = "Sheriklaringizni eslab qoling:\n" + ("\n".join(lines) if lines else "Yo'q")
 
@@ -906,13 +914,17 @@ async def sergant_send_companions(uuid, chat_id):
             pass
 
 
-async def send_roles(uuid, chat_id):
-    game = games_state.get(uuid, {})
+async def send_roles(game_id, chat_id):
+    game = games_state.get(game_id, {})
     game_players = game.get("players", [])
     roles_map = game.get("roles", {})  
 
     for tg_id in game_players:
         role_key = roles_map.get(tg_id)
+        if tg_id in active_role_used:
+            await bot.send_message(
+                text="🎭 Faol roldan foydalanildi.")
+            active_role_used.remove(tg_id)
 
         role_text = DESCRIPTIONS.get(role_key, "Rol topilmadi.")
 
@@ -924,9 +936,10 @@ async def send_roles(uuid, chat_id):
             )
         except Exception as e:
             print(f"Xatolik yuz berdi: {e}")
-    await send_mafia_companions(uuid, chat_id)
-    await sergant_send_companions(uuid, chat_id)
-    run_game_in_background(uuid)
+            
+    await send_mafia_companions(game_id, chat_id)
+    await sergant_send_companions(game_id, chat_id)
+    run_game_in_background(game_id)
     
     
 
@@ -939,11 +952,11 @@ async def delete_not_alive_messages(message: Message):
 
     group_users[chat_id].add(tg_id)
 
-    uuid = get_game_uuid_by_chat(chat_id)
-    if not uuid:
+    game_db = Game.objects.filter(chat_id=chat_id, is_active_game=True).first()
+    if not game_db:
         return  
 
-    game = games_state.get(uuid)
+    game = games_state.get(game_db.id)
     if not game:
         return
     if message and message.text and message.text.startswith('!'):
@@ -952,7 +965,7 @@ async def delete_not_alive_messages(message: Message):
             return
     
     alive = set(game.get("alive", []))
-    game_data = games_state.get(uuid, {})
+    game_data = games_state.get(game_db.id, {})
     night_action = game_data.get("night_actions", {})
     lover_block_target = night_action.get("lover_block_target")
     if lover_block_target == tg_id:
@@ -1007,14 +1020,20 @@ async def private_router(message: Message):
     # =========================================
     # 1) LAST WISH (o'lganlar xabari)
     # =========================================
-    chat_id = last_wishes.get(tg_id)
+    data = last_wishes.get(tg_id)
+    if not data:
+        return
+    chat_id, day = data
     if chat_id:
-        uuid = get_game_uuid_by_chat(chat_id)
-        if not uuid:
+        game_db = Game.objects.filter(chat_id=chat_id, is_active_game=True).first()
+        if not game_db:
             return
 
-        game = games_state.get(uuid)
+        game = games_state.get(game_db.id)
         if not game:
+            return
+        game_day = game.get("day", 0)
+        if not (day <= game_day <= day + 2):
             return
 
         dead = set(game.get("dead", []))
@@ -1032,7 +1051,7 @@ async def private_router(message: Message):
                 await bot.send_message(
                     chat_id=int(chat_id),
                     text=(
-                        f"{role_label_text} <a href='tg://user?id={user.telegram_id}'>{clean_name(user.first_name)}</a> "
+                        f"{role_label_text} <a href='tg://user?id={user.telegram_id}'>{user.first_name}</a> "
                         f"ning so'ngi so'zlari quyidagicha edi:\n\n{text}"
                     ),
                     parse_mode="HTML"
@@ -1051,11 +1070,11 @@ async def private_router(message: Message):
     if not team_chat_id:
         return
 
-    uuid = get_game_uuid_by_chat(team_chat_id)
-    if not uuid:
+    game_db = Game.objects.filter(chat_id=team_chat_id, is_active_game=True).first()
+    if not game_db:
         return
 
-    game = games_state.get(uuid)
+    game = games_state.get(game_db.id)
     if not game:
         return
 
@@ -1081,7 +1100,7 @@ async def private_router(message: Message):
     ]
 
     sender_user = User.objects.filter(telegram_id=tg_id).only("telegram_id", "first_name").first()
-    sender_name = clean_name(sender_user.first_name) if sender_user else str(tg_id)
+    sender_name = sender_user.first_name if sender_user else str(tg_id)
 
     relay_text = (
         f"🕶 <b>Mafiya chat</b>\n"
@@ -1211,7 +1230,7 @@ async def refresh_registration_main_message(game_id: int, chat_id: int):
                 old_main.is_deleted = True
                 old_main.save()
 
-            result_2 = create_main_messages(uuid)
+            result_2 = create_main_messages(game_id)
            
             msg = await bot.send_message(
                 chat_id=chat_id,

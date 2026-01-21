@@ -14,11 +14,10 @@ from mafia_bot.utils import stones_taken,gsend_taken,giveaways,games_state
 from aiogram.types import Message, LabeledPrice, PreCheckoutQuery,CallbackQuery
 from mafia_bot.models import Game, MoneySendHistory, User,PremiumGroup,MostActiveUser,CasesOpened,GameSettings,GroupTrials,PriceStones, UserRole
 from mafia_bot.state import AddGroupState, BeginInstanceState,SendMoneyState,ChangeStoneCostState,ChangeMoneyCostState,ExtendGroupState,QuestionState,Register
-from mafia_bot.handlers.main_functions import (add_visit, get_mafia_members,get_first_name_from_players,get_game,clean_name,
-                                               mark_confirm_done, mark_hang_done,mark_night_action_done,get_week_range,get_month_range,
-                                               get_game_uuid_by_chat)
+from mafia_bot.handlers.main_functions import (add_visit, get_mafia_members,get_first_name_from_players,
+                                               mark_confirm_done, mark_hang_done,mark_night_action_done,get_week_range,get_month_range)
 from mafia_bot.buttons.inline import (
-    admin_inline_btn, answer_admin, back_btn, cart_inline_btn, change_money_cost, change_stones_cost, end_talk_keyboard,  giveaway_join_btn, group_profile_inline_btn,
+    admin_inline_btn, answer_admin, back_btn, cart_inline_btn, change_money_cost, change_stones_cost, com_inline_btn, end_talk_keyboard,  giveaway_join_btn, group_profile_inline_btn,
     groupes_keyboard, groups_buy_stars, history_groupes_keyboard, money_case, pay_for_money_inline_btn, pay_using_stars_inline_btn, role_shop_inline_keyboard,
     shop_inline_btn, main_inline_btn, roles_inline_btn, com_inline_action_btn,pirate_steal_inline_btn,
     professor_gift_inline_btn,confirm_hang_inline_btn,groups_inline_btn,group_manage_btn,back_admin_btn,case_inline_btn,
@@ -39,10 +38,6 @@ async def profile_callback(callback: CallbackQuery):
             username=callback.from_user.username
         )
         
-    group = GameSettings.objects.filter(user_id=user.id).first()
-    is_admin = False
-    if group:
-        is_admin = True
     user_role = UserRole.objects.filter(user_id=user.id)
     text =""
     for user_r in user_role:
@@ -137,7 +132,6 @@ async def back_callback(callback: CallbackQuery, state: FSMContext):
             )
         is_active = group_trial.end_date > timezone.now()
         has_stone = group_trial.stones >= 20
-        is_public = callback.message.chat.username is not None
         await callback.message.edit_text(text=(
             f"Guruh hisobi: 🪙 {group_trial.coins if group_trial else 0}\n"
             f"Guruh holati: {'✅ Aktiv' if is_active else '❌ Aktiv emas'}\n\n"
@@ -240,6 +234,13 @@ async def buy_role_callback(call: CallbackQuery, state: FSMContext):
         currency = "money"
 
     user = User.objects.filter(telegram_id=call.from_user.id).first()
+    if not user:
+        user = User.objects.create(
+            telegram_id=call.from_user.id,
+            lang ='uz',
+            first_name=call.from_user.first_name,
+            username=call.from_user.username
+        )
     if currency == "stones":
         if user.stones < price:
             return await call.answer("💎 Olmos yetarli emas!", show_alert=True)
@@ -346,11 +347,12 @@ async def doc_heal_callback(callback: CallbackQuery):
     day = parts[4]
     doctor_id = callback.from_user.id
 
-    game = get_game(int(parts[2]))
+    game = games_state.get(int(parts[2]))
     if not game:
         return
     game_day = game['meta']['day']
     if not day == str(game_day):
+        await callback.message.edit_text(text=f"{ACTIONS.get('doc_heal')}\n\nSiz kechikdingiz.", parse_mode="HTML")
         return
     if not doctor_id in game["alive"]:
         return
@@ -384,7 +386,7 @@ async def doc_heal_callback(callback: CallbackQuery):
     # username olish (players object bo'lsa)
     target_name = get_first_name_from_players(target_id)
 
-    text = f"{ACTIONS.get('doc_heal')}\n\nSiz <a href='tg://user?id={target_id}'>{clean_name(target_name)}</a> ni davoladingiz."
+    text = f"{ACTIONS.get('doc_heal')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni davoladingiz."
 
     await callback.message.edit_text(text=text, parse_mode="HTML")
     
@@ -406,11 +408,12 @@ async def daydi_callback(callback: CallbackQuery):
 
     daydi_id = callback.from_user.id
 
-    game = get_game(int(parts[2]))
+    game = games_state.get(int(parts[2]))
     if not game:
         return
     game_day = game['meta']['day']
     if not day == str(game_day):
+        await callback.message.edit_text(text=f"{ACTIONS.get('daydi_watch')}\n\nSiz kechikdingiz.", parse_mode="HTML")
         return
     if not daydi_id in game["alive"]:
         return
@@ -435,7 +438,7 @@ async def daydi_callback(callback: CallbackQuery):
     # username topish (players object list bo‘lsa)
     target_name = get_first_name_from_players(house_id)
     await callback.message.edit_text(
-        text=f"{ACTIONS.get('daydi_watch')}\n\nSiz <a href='tg://user?id={house_id}'>{clean_name(target_name)}</a> uyiga shisha olgani bordingiz.",
+        text=f"{ACTIONS.get('daydi_watch')}\n\nSiz <a href='tg://user?id={house_id}'>{target_name}</a> uyiga shisha olgani bordingiz.",
         parse_mode="HTML"
     )
 
@@ -454,13 +457,14 @@ async def com_callback(callback: CallbackQuery):
     chat_id = int(parts[3])
     day = parts[4]
     com_id = callback.from_user.id
-    game = get_game(int(parts[2]))
+    game = games_state.get(int(parts[2]))
     if not game:
         return
     if not com_id in game["alive"]:
         return
     game_day = game['meta']['day']
     if not day == str(game_day):
+        await callback.message.edit_text(text=f"{ACTIONS.get('com_deside')}\n\nSiz kechikdingiz.", parse_mode="HTML")
         return
     mark_night_action_done(game, callback.from_user.id)
     if action == "no":
@@ -472,6 +476,12 @@ async def com_callback(callback: CallbackQuery):
         await bot.send_message(
             chat_id=chat_id,
             text="🚷 🕵️‍ Komissar bugun dam olishni xohladi."
+        )
+        return
+    elif action == "back":
+        await callback.message.edit_text(
+            text=ACTIONS.get("com_deside"),
+            reply_markup=com_inline_btn(game.id, game.chat_id,day=day)
         )
         return
     
@@ -500,15 +510,13 @@ async def com_shoot_callback(callback: CallbackQuery):
 
     com_id = callback.from_user.id
 
-    game = get_game(int(parts[2]))
+    game = games_state.get(int(parts[2]))
     day = parts[3]
     if not game:
-        print("no game")
         return
     game_day = game['meta']['day']
     if not day == str(game_day):
-        print("day mismatch")
-        print(game_day, day)
+        await callback.message.edit_text(text=f"{ACTIONS.get('com_shoot')}\n\nSiz kechikdingiz.", parse_mode="HTML")
         return
     if not com_id in game["alive"]:
         print("com not alive")
@@ -525,7 +533,7 @@ async def com_shoot_callback(callback: CallbackQuery):
     print("got target name")
 
     await callback.message.edit_text(
-        text=f"{ACTIONS.get('com_shoot')}\n\nSiz <a href='tg://user?id={target_id}'>{clean_name(target_name)}</a> ni otdingiz.",
+        text=f"{ACTIONS.get('com_shoot')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni otdingiz.",
         parse_mode="HTML"
     )
 
@@ -539,17 +547,14 @@ async def com_protect_callback(callback: CallbackQuery):
     day = parts[3]
     com_id = callback.from_user.id
 
-    game = get_game(int(parts[2]))
+    game = games_state.get(int(parts[2]))
     if not game:
-        print("no game")
         return
     game_day = game['meta']['day']
     if not day == str(game_day):
-        print("day mismatch")
-        print(game_day, day)
+        await callback.message.edit_text(text=f"{ACTIONS.get('com_check')}\n\nSiz kechikdingiz.", parse_mode="HTML")
         return
     if not com_id in game["alive"]:
-        print("com not alive")
         return
    
 
@@ -564,7 +569,7 @@ async def com_protect_callback(callback: CallbackQuery):
     print("got target name")
 
     await callback.message.edit_text(
-        text=f"{ACTIONS.get('com_check')}\n\nSiz <a href='tg://user?id={target_id}'>{clean_name(target_name)}</a> ni tekshirdingiz.",
+        text=f"{ACTIONS.get('com_check')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni tekshirdingiz.",
         parse_mode="HTML"
     )
 
@@ -577,11 +582,12 @@ async def kamikaze_callback(callback: CallbackQuery):
     target_id = int(parts[1])  
     day = parts[4]
 
-    game = get_game(int(parts[2]))
+    game = games_state.get(int(parts[2]))
     if not game:
         return
     game_day = game['meta']['day']
     if not day == str(game_day):
+        await callback.message.edit_text(text=f"{ACTIONS.get('kamikaze_blow')}\n\nSiz kechikdingiz.", parse_mode="HTML")
         return
     
     game["day_actions"]["kamikaze_trigger"] = target_id
@@ -592,7 +598,7 @@ async def kamikaze_callback(callback: CallbackQuery):
     # username olish (players object bo'lsa)
     target_name = get_first_name_from_players(target_id)
 
-    text = f"{ACTIONS.get('kamikaze_blow')}\n\nSiz <a href='tg://user?id={target_id}'>{clean_name(target_name)}</a> ni portlatdingiz."
+    text = f"{ACTIONS.get('kamikaze_blow')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni portlatdingiz."
 
     await callback.message.edit_text(text=text, parse_mode="HTML")
 
@@ -609,11 +615,12 @@ async def lover_callback(callback: CallbackQuery):
     day = parts[4]
     lover_id = callback.from_user.id
 
-    game = get_game(int(parts[2]))
+    game = games_state.get(int(parts[2]))
     if not game:
         return
     game_day = game['meta']['day']
     if not day == str(game_day):
+        await callback.message.edit_text(text=f"{ACTIONS.get('lover_block')}\n\nSiz kechikdingiz.", parse_mode="HTML")
         return
     if not lover_id in game["alive"]:
         return
@@ -636,7 +643,7 @@ async def lover_callback(callback: CallbackQuery):
 
     target_name = get_first_name_from_players(target_id)
 
-    text = f"{ACTIONS.get('lover_block')}\n\nSiz <a href='tg://user?id={target_id}'>{clean_name(target_name)}</a>ni tanladingiz."
+    text = f"{ACTIONS.get('lover_block')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a>ni tanladingiz."
 
     await callback.message.edit_text(text=text, parse_mode="HTML")
 
@@ -657,11 +664,12 @@ async def killer_callback(callback: CallbackQuery):
     day = parts[4]
     killer_id = callback.from_user.id
 
-    game = get_game(int(parts[2]))
+    game = games_state.get(int(parts[2]))
     if not game:
         return
     game_day = game['meta']['day']
     if not day == str(game_day):
+        await callback.message.edit_text(text=f"{ACTIONS.get('killer_kill')}\n\nSiz kechikdingiz.", parse_mode="HTML")
         return
     if not killer_id in game["alive"]:
         return
@@ -684,7 +692,7 @@ async def killer_callback(callback: CallbackQuery):
     target_name = get_first_name_from_players(target_id)
     add_visit(game=game, visitor_id=killer_id, house_id=target_id, invisible=False)
 
-    text = f"{ACTIONS.get('killer_kill')}\n\nSiz <a href='tg://user?id={target_id}'>{clean_name(target_name)}</a> ni o'ldirdingiz."
+    text = f"{ACTIONS.get('killer_kill')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni o'ldirdingiz."
 
     await callback.message.edit_text(text=text, parse_mode="HTML")
 
@@ -705,11 +713,12 @@ async def santa_callback(callback: CallbackQuery):
     day = parts[4]
     santa_id = callback.from_user.id
 
-    game = get_game(int(parts[2]))
+    game = games_state.get(int(parts[2]))
     if not game:
         return
     game_day = game['meta']['day']
     if not day == str(game_day):
+        await callback.message.edit_text(text=f"{ACTIONS.get('santa')}\n\nSiz kechikdingiz.", parse_mode="HTML")
         return
     if not santa_id in game["alive"]:
         return
@@ -727,13 +736,20 @@ async def santa_callback(callback: CallbackQuery):
         return
     target_id = int(target_id)
     # ✅ killer action saqlash
-    user = User .objects.get(telegram_id=target_id)
+    user = User.objects.filter(telegram_id=target_id).first()
+    if not user:
+        user = User.objects.create(
+            telegram_id=target_id,
+            lang ='uz',
+            first_name=callback.from_user.first_name,
+            username=callback.from_user.username
+        )
     user.coin += 20
     user.save()
     target_name = get_first_name_from_players(target_id)
     add_visit(game=game, visitor_id=santa_id, house_id=target_id, invisible=False)
 
-    text = f"{ACTIONS.get('santa')}\n\nSiz <a href='tg://user?id={target_id}'>{clean_name(target_name)}</a> ga sovg'a berdingiz."
+    text = f"{ACTIONS.get('santa')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ga sovg'a berdingiz."
 
     await callback.message.edit_text(text=text, parse_mode="HTML")
     await bot.send_message(
@@ -757,11 +773,12 @@ async def kaldun_callback(callback: CallbackQuery):
     day = parts[4]
     kaldun_id = callback.from_user.id
 
-    game = get_game(int(parts[2]))
+    game = games_state.get(int(parts[2]))
     if not game:
         return
     game_day = game['meta']['day']
     if not day == str(game_day):
+        await callback.message.edit_text(text=f"{ACTIONS.get('kaldun_spell')}\n\nSiz kechikdingiz.", parse_mode="HTML")
         return
     if not kaldun_id in game["alive"]:
         return
@@ -786,7 +803,7 @@ async def kaldun_callback(callback: CallbackQuery):
     add_visit(game=game, visitor_id=kaldun_id, house_id=target_id, invisible=False)
     target_name = get_first_name_from_players(target_id)
 
-    text = f"{ACTIONS.get('kaldun_spell')}\n\nSiz <a href='tg://user?id={target_id}'>{clean_name(target_name)}</a> ni sehrladingiz."
+    text = f"{ACTIONS.get('kaldun_spell')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni sehrladingiz."
 
     await callback.message.edit_text(text=text, parse_mode="HTML")
 
@@ -809,12 +826,13 @@ async def don_callback(callback: CallbackQuery):
     
     don_id = callback.from_user.id
     
-    game = get_game(int(game_id))
+    game = games_state.get(int(game_id))
     
     if not game:
         return
     game_day = game['meta']['day']
     if not day == str(game_day):
+        await callback.message.edit_text(text=f"{ACTIONS.get('don_kill')}\n\nSiz kechikdingiz.", parse_mode="HTML")
         return
     
     if not don_id in game["alive"]:
@@ -844,7 +862,7 @@ async def don_callback(callback: CallbackQuery):
     
 
     text_for_mafia = (
-        f"🤵🏻 Don <a href='tg://user?id={don_id}'>{clean_name(mafia_name)}</a> - <a href='tg://user?id={target_id}'>{clean_name(target_name)}</a> uchun ovoz berdi"
+        f"🤵🏻 Don <a href='tg://user?id={don_id}'>{mafia_name}</a> - <a href='tg://user?id={target_id}'>{target_name}</a> uchun ovoz berdi"
     )
 
     for member_id in mafia_members:
@@ -872,11 +890,12 @@ async def mafia_callback(callback: CallbackQuery):
     
     mafia_id = callback.from_user.id
     
-    game = get_game(int(game_id))
+    game = games_state.get(int(game_id))
     if not game:
         return
     game_day = game['meta']['day']
     if not day == str(game_day):
+        await callback.message.edit_text(text=f"{ACTIONS.get('mafia_vote')}\n\nSiz kechikdingiz.", parse_mode="HTML")
         return
     
     if not mafia_id in game["alive"]:
@@ -900,7 +919,7 @@ async def mafia_callback(callback: CallbackQuery):
     
 
     text_for_mafia = (
-        f"🤵🏼 Mafiya a'zosi <a href='tg://user?id={mafia_id}'>{clean_name(mafia_name)}</a> - <a href='tg://user?id={target_id}'>{clean_name(target_name)}</a> uchun ovoz berdi"
+        f"🤵🏼 Mafiya a'zosi <a href='tg://user?id={mafia_id}'>{mafia_name}</a> - <a href='tg://user?id={target_id}'>{target_name}</a> uchun ovoz berdi"
     )
 
     for member_id in mafia_members:
@@ -929,11 +948,12 @@ async def adv_callback(callback: CallbackQuery):
     day = callback.data.split("_")[4]
     adv_id = callback.from_user.id
     
-    game = get_game(int(game_id))
+    game = games_state.get(int(game_id))
     if not game:
         return
     game_day = game['meta']['day']
     if not day == str(game_day):
+        await callback.message.edit_text(text=f"{ACTIONS.get('adv_mask')}\n\nSiz kechikdingiz.", parse_mode="HTML")
         return
     
     if not adv_id in game["alive"]:
@@ -965,7 +985,7 @@ async def adv_callback(callback: CallbackQuery):
     
 
     text_for_mafia = (
-        f"👨🏼‍💼 Advokat {adv_name} tanlovi: <a href='tg://user?id={target_id}'>{clean_name(target_name)}</a>"
+        f"👨🏼‍💼 Advokat {adv_name} tanlovi: <a href='tg://user?id={target_id}'>{target_name}</a>"
     )
 
     for member_id in mafia_members:
@@ -995,11 +1015,12 @@ async def spy_callback(callback: CallbackQuery):
     day = callback.data.split("_")[4]
     spy_id = callback.from_user.id
     
-    game = get_game(int(game_id))
+    game = games_state.get(int(game_id))
     if not game:
         return
     game_day = game['meta']['day']
     if not day == str(game_day):
+        await callback.message.edit_text(text=f"{ACTIONS.get('spy_check')}\n\nSiz kechikdingiz.", parse_mode="HTML")
         return
     
     if not spy_id in game["alive"]:
@@ -1027,6 +1048,24 @@ async def spy_callback(callback: CallbackQuery):
     )
     
     target_name = get_first_name_from_players(int(target_id))
+    spy_name = get_first_name_from_players(spy_id)
+    mafia_members = get_mafia_members(game_id)
+    text_for_mafia = (
+        f"🦇 Ayg'oqchi {spy_name} tanlovi: <a href='tg://user?id={target_id}'>{target_name}</a>"
+    )
+    for member_id in mafia_members:
+        if member_id == spy_id:
+            continue
+
+        try:
+            await bot.send_message(
+                chat_id=member_id,
+                text=text_for_mafia,
+                parse_mode="HTML"
+            )
+        except Exception as e:
+            print(e)
+    
     
     await callback.message.edit_text(text=f"{ACTIONS.get('spy_check')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni tanladingiz")
 
@@ -1042,11 +1081,12 @@ async def lab_callback(callback: CallbackQuery):
     
     lab_id = callback.from_user.id
     
-    game = get_game(int(game_id))
+    game = games_state.get(int(game_id))
     if not game:
         return
     game_day = game['meta']['day']
     if not day == str(game_day):
+        await callback.message.edit_text(text=f"{ACTIONS.get('lab_action')}\n\nSiz kechikdingiz.", parse_mode="HTML")
         return
     
     if not lab_id in game["alive"]:
@@ -1089,11 +1129,12 @@ async def arrow_callback(callback: CallbackQuery):
     
     arrow_id = callback.from_user.id
     
-    game = get_game(int(game_id))
+    game = games_state.get(int(game_id))
     if not game:
         return
     game_day = game['meta']['day']
     if not day == str(game_day):
+        await callback.message.edit_text(text=f"{ACTIONS.get('arrow_kill')}\n\nSiz kechikdingiz.", parse_mode="HTML")
         return
     
     if not arrow_id in game["alive"]:
@@ -1136,11 +1177,12 @@ async def trap_callback(callback: CallbackQuery):
     
     trap_id = callback.from_user.id
     
-    game = get_game(int(game_id))
+    game = games_state.get(int(game_id))
     if not game:
         return
     game_day = game['meta']['day']
     if not day == str(game_day):
+        await callback.message.edit_text(text=f"{ACTIONS.get('trap_action')}\n\nSiz kechikdingiz.", parse_mode="HTML")
         return
     
     if not trap_id in game["alive"]:
@@ -1182,11 +1224,12 @@ async def snyper_callback(callback: CallbackQuery):
     
     snyper_id = callback.from_user.id
     
-    game = get_game(int(game_id))
+    game = games_state.get(int(game_id))
     if not game:
         return
     game_day = game['meta']['day']
     if not day == str(game_day):
+        await callback.message.edit_text(text=f"{ACTIONS.get('snyper_kill')}\n\nSiz kechikdingiz.", parse_mode="HTML")
         return
     
     if not snyper_id in game["alive"]:
@@ -1230,11 +1273,12 @@ async def spy_callback(callback: CallbackQuery):
     day = callback.data.split("_")[4]
     
     traitor_id = callback.from_user.id
-    game = get_game(int(game_id))
+    game = games_state.get(int(game_id))
     if not game:
         return
     game_day = game['meta']['day']
     if not day == str(game_day):
+        await callback.message.edit_text(text=f"{ACTIONS.get('traitor_choose')}\n\nSiz kechikdingiz.", parse_mode="HTML")
         return
     if not traitor_id in game["alive"]:
         return
@@ -1274,11 +1318,12 @@ async def snowball_callback(callback: CallbackQuery):
     day = callback.data.split("_")[4]
     
     snowball_id = callback.from_user.id
-    game = get_game(int(game_id))
+    game = games_state.get(int(game_id))
     if not game:
         return
     game_day = game['meta']['day']
     if not day == str(game_day):
+        await callback.message.edit_text(text=f"{ACTIONS.get('snowball_kill')}\n\nSiz kechikdingiz.", parse_mode="HTML")
         return
     if not snowball_id in game["alive"]:
         return
@@ -1316,11 +1361,12 @@ async def pirate_callback(callback: CallbackQuery):
     chat_id = callback.data.split("_")[3]
     pirate_id = callback.from_user.id
     day = callback.data.split("_")[4]
-    game = get_game(int(game_id))
+    game = games_state.get(int(game_id))
     if not game:
         return
     game_day = game['meta']['day']
     if not day == str(game_day):
+        await callback.message.edit_text(text=f"{ACTIONS.get('pirate_steal')}\n\nSiz kechikdingiz.", parse_mode="HTML")
         return
     if not pirate_id in game["alive"]:
         return
@@ -1365,11 +1411,12 @@ async def pirpay_callback(callback: CallbackQuery):
     pirate_id = int(parts[2])
     game_id = int(parts[3])
     day = parts[4]
-    game = get_game(int(game_id))
+    game = games_state.get(int(game_id))
     if not game:
         return
     game_day = game['meta']['day']
     if not day == str(game_day):
+        await callback.message.edit_text(text="👺 Siz kechikdingiz.", parse_mode="HTML")
         return
     if not pirate_id in game["alive"]:
         return
@@ -1386,6 +1433,13 @@ async def pirpay_callback(callback: CallbackQuery):
         game['night_actions']['pirate']['result'] = "no"
         return
     target_player = User.objects.filter(telegram_id=int(target_id)).first()
+    if not target_player:
+        target_player = User.objects.create(
+            telegram_id=target_id,
+            lang ='uz',
+            first_name=callback.from_user.first_name,
+            username=callback.from_user.username
+        )
     if target_player.coin < 10:
         await callback.message.edit_text(text="👺 Sizda Qaroqchiga berish uchun 10💶 pulingiz yetarli emas va u endi sizni o'ldirishi mumkin!!!")
         await bot.send_message(
@@ -1414,11 +1468,12 @@ async def professor_callback(callback: CallbackQuery):
     
     professor_id = callback.from_user.id
     
-    game = get_game(int(game_id))
+    game = games_state.get(int(game_id))
     if not game:
         return
     game_day = game['meta']['day']
     if not day == str(game_day):
+        await callback.message.edit_text(text=f"{ACTIONS.get('professor_action')}\n\nSiz kechikdingiz.", parse_mode="HTML")
         return
     
     if not professor_id in game["alive"]:
@@ -1464,11 +1519,12 @@ async def prof_callback(callback: CallbackQuery):
     game_id = int(parts[2])
     day = parts[3]
     professor_id = callback.from_user.id
-    game = get_game(int(game_id))
+    game = games_state.get(int(game_id))
     if not game:
         return
     game_day = game['meta']['day']
     if not day == str(game_day):
+        await callback.message.edit_text(text="🎩 Siz kechikdingiz.", parse_mode="HTML")
         return
     if not professor_id in game["alive"]:
         return
@@ -1498,11 +1554,12 @@ async def hang_callback(callback: CallbackQuery):
     day = callback.data.split("_")[4]
     shooter_id = callback.from_user.id
     shooter_name = callback.from_user.first_name
-    game = get_game(int(game_id))
+    game = games_state.get(int(game_id))
     if not game:
         return
     game_day = game['meta']['day']
     if not day == str(game_day):
+        await callback.message.edit_text(text=f"Aybdorlarni izlash vaqti keldi!\nKimni osishni xohlaysiz?\n\nSiz kechikdingiz.", parse_mode="HTML")
         return
     if target_id == "no":
         await callback.message.edit_text(text=f"Aybdorlarni izlash vaqti keldi!\nKimni osishni xohlaysiz?\n\nSiz hech kimni osmadingiz.")
@@ -1512,7 +1569,7 @@ async def hang_callback(callback: CallbackQuery):
         )
         return
     game["day_actions"]['votes'].append(int(target_id))
-    mark_hang_done(game, callback.from_user.id)
+    mark_hang_done(game_id, callback.from_user.id)
     
     
     target_player = User.objects.filter(telegram_id=int(target_id)).first()
@@ -1531,7 +1588,7 @@ async def confirm_callback(callback: CallbackQuery):
     game_id = int(parts[3])
     chat_id = int(parts[4])
     voter_id = callback.from_user.id
-    game = get_game(int(game_id))
+    game = games_state.get(int(game_id))
     if not game:
         return
     if not voter_id in game["alive"]:
@@ -1577,7 +1634,7 @@ async def confirm_callback(callback: CallbackQuery):
     
     
 async def update_hang_votes(voter_id,game_id: int, chat_id: int, yes: int, no: int):
-    game = get_game(int(game_id))
+    game = games_state.get(int(game_id))
     if not game:
         return
     msg_id = game['day_actions']['hang_confirm_msg_id']
@@ -1662,7 +1719,7 @@ async def successful_payment_handler(message: Message):
         return
     
     if int(user_id)<0:
-        group_trials = GroupTrials.objects.filter(telegram_id=int(user_id)).first()
+        group_trials = GroupTrials.objects.filter(group_id=int(user_id)).first()
         if group_trials:
             group_trials.stones += item_amount
             group_trials.save()
@@ -1938,9 +1995,6 @@ async def process_send_money(message: Message, state: FSMContext) -> None:
         )
         return
 
-    user.coin -= amount
-    user.save()
-    sender = User.objects.filter(telegram_id=message.from_user.id).first()
     sender = User.objects.filter(telegram_id=message.from_user.id).first()
     if not sender:
         sender = User.objects.create(
@@ -1949,6 +2003,8 @@ async def process_send_money(message: Message, state: FSMContext) -> None:
             username=message.from_user.username or "",
             role="admin"
         )
+    user.coin -= amount
+    user.save()
     MoneySendHistory.objects.create(
         sender_id = sender.id,
         receiver_id = user.id,
@@ -2059,8 +2115,6 @@ async def process_send_money(message: Message, state: FSMContext) -> None:
         )
         return
 
-    user.coin += amount
-    user.save()
     sender = User.objects.filter(telegram_id=message.from_user.id).first()
     if not sender:
         sender = User.objects.create(
@@ -2069,6 +2123,8 @@ async def process_send_money(message: Message, state: FSMContext) -> None:
             username=message.from_user.username or "",
             role="admin"
         )
+    user.coin += amount
+    user.save()
     MoneySendHistory.objects.create(
         sender_id = sender.id,
         receiver_id = user.id,
@@ -2199,7 +2255,7 @@ async def statistics_callback(callback: CallbackQuery):
         if u:
             active = (
                 f"\n🏅 Eng faol o'yinchi: "
-                f"<a href='tg://user?id={u.telegram_id}'>{clean_name(u.first_name)}</a>"
+                f"<a href='tg://user?id={u.telegram_id}'>{u.first_name}</a>"
                 f" ({active_player_row['total_played']} o'yin)"
             )
 
@@ -2209,7 +2265,7 @@ async def statistics_callback(callback: CallbackQuery):
         if u:
             most_wins_text = (
                 f"🏆 Eng ko'p g'alaba (umumiy): "
-                f"<a href='tg://user?id={u.telegram_id}'>{clean_name(u.first_name)}</a>"
+                f"<a href='tg://user?id={u.telegram_id}'>{u.first_name}</a>"
                 f" ({most_wins_all_time_row['total_win']} g'alaba)\n"
             )
 
@@ -2219,7 +2275,7 @@ async def statistics_callback(callback: CallbackQuery):
         if u:
             daily_text = (
                 f"📅 Kunlik top: "
-                f"<a href='tg://user?id={u.telegram_id}'>{clean_name(u.first_name)}</a>"
+                f"<a href='tg://user?id={u.telegram_id}'>{u.first_name}</a>"
                 f" ({daily_top_row['total_win']} g'alaba)\n"
             )
 
@@ -2229,7 +2285,7 @@ async def statistics_callback(callback: CallbackQuery):
         if u:
             weekly_text = (
                 f"🗓 Haftalik top: "
-                f"<a href='tg://user?id={u.telegram_id}'>{clean_name(u.first_name)}</a>"
+                f"<a href='tg://user?id={u.telegram_id}'>{u.first_name}</a>"
                 f" ({weekly_top_row['total_win']} g'alaba)\n"
             )
 
@@ -2239,7 +2295,7 @@ async def statistics_callback(callback: CallbackQuery):
         if u:
             monthly_text = (
                 f"🗓 Oylik top: "
-                f"<a href='tg://user?id={u.telegram_id}'>{clean_name(u.first_name)}</a>"
+                f"<a href='tg://user?id={u.telegram_id}'>{u.first_name}</a>"
                 f" ({monthly_top_row['total_win']} g'alaba)\n"
             )
 
@@ -2505,8 +2561,12 @@ async def case_buy_callback(callback: CallbackQuery):
     case_type = callback.data.split("_")[1]
     user = User.objects.filter(telegram_id=callback.from_user.id).first()
     if not user:
-        await callback.answer("❌ Foydalanuvchi topilmadi.")
-        return
+        user = User.objects.create(
+            telegram_id=callback.from_user.id,
+            first_name=callback.from_user.first_name or "NoName",
+            username=callback.from_user.username or "",
+            role="user"
+        )
     case_opened = CasesOpened.objects.filter(user_id=user.id).first()
     if case_type == "money":
         await callback.message.edit_text(
@@ -2555,8 +2615,12 @@ async def open_case_callback(callback: CallbackQuery):
     user_id = callback.from_user.id
     user = User.objects.filter(telegram_id=user_id).first()
     if not user:
-        await callback.message.edit_text("❌ Foydalanuvchi topilmadi.")
-        return
+        user = User.objects.create(
+            telegram_id=user_id,
+            first_name=callback.from_user.first_name or "NoName",
+            username=callback.from_user.username or "",
+            role="user"
+        )
     if case_type == "money":
         if user.stones < 1:
             await callback.answer("❌ Sizda yetarli olmos yo'q.")
@@ -2913,7 +2977,7 @@ async def take_stone(callback: CallbackQuery):
     
     taken_text = ""
     for i, user in enumerate(users_qs, start=1):
-        taken_text += f"\n{i}. 💎 <a href='tg://user?id={user.telegram_id}'>{clean_name(user.first_name)}</a>"
+        taken_text += f"\n{i}. 💎 <a href='tg://user?id={user.telegram_id}'>{user.first_name}</a>"
 
     text = (
          f"💎 <a href='tg://user?id={sender.telegram_id}'>{sender.first_name}</a> tomonidan {limit} ta olmos guruhga jo'natildi!\n"
@@ -2940,11 +3004,11 @@ async def take_gsend_stone(callback: CallbackQuery):
         await callback.answer("❌ Hozir tarqatish yo'q.", show_alert=True)
         return
     
-    uuid = get_game_uuid_by_chat(chat_id)
-    if not uuid:
+    game_db = Game.objects.filter(group_id=chat_id, is_active=True).first()
+    if not game_db:
         return
     
-    game = games_state.get(uuid)
+    game = games_state.get(game_db.id)
     players = game.get("players") if game else None
 
     if not players:
@@ -2981,7 +3045,7 @@ async def take_gsend_stone(callback: CallbackQuery):
     users_qs = User.objects.filter(telegram_id__in=taken)
     taken_text = ""
     for i, user in enumerate(users_qs, start=1):
-        taken_text += f"\n {i}. 💎 <a href='tg://user?id={user.telegram_id}'>{clean_name(user.first_name)}</a>"
+        taken_text += f"\n {i}. 💎 <a href='tg://user?id={user.telegram_id}'>{user.first_name}</a>"
 
     text = (
         f"💎 <a href='tg://user?id={sender.telegram_id}'>{sender.first_name}</a> tomonidan {limit} ta olmos o‘yindagilarga jo'natildi!\n"
@@ -3034,7 +3098,7 @@ async def giveaway_join(callback: CallbackQuery):
         f"⏳ Tugash vaqti: <b>{minut} minut {second} sekund</b>\n\n"
         f"✅ <b>Qatnashchilar:</b>\n\n"
         + "\n".join([
-            f"{i + 1}. <a href='tg://user?id={user.telegram_id}'>{clean_name(user.first_name)}</a>"
+            f"{i + 1}. <a href='tg://user?id={user.telegram_id}'>{user.first_name}</a>"
             for i, user in enumerate(users_qs)
         ]
     )

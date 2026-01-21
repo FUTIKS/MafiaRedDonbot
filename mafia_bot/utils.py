@@ -11,6 +11,7 @@ group_users = {}
 stones_taken = {}
 gsend_taken = {}
 giveaways = {}
+active_role_used = []
 
 
 async def set_bot_commands(bot: Bot):
@@ -22,18 +23,17 @@ async def set_bot_commands(bot: Bot):
         BotCommand(command="stop", description="Registratsiyani to'xtatish"),
         BotCommand(command="next", description="Keyingi o'yin haqida eslatish"),
         BotCommand(command="top", description="Rating jadvalini ko'rish"),
+        BotCommand(command="top7", description="Rating jadvalini ko'rish"),
+        BotCommand(command="top30", description="Rating jadvalini ko'rish"),
+        BotCommand(command="leave", description="oyindan chiqish"),
         BotCommand(command="share", description="Do'stlarni chaqirish"),
         BotCommand(command="help", description="Yordam"),
     ]
     
-    # admin_commands = [
-    #     BotCommand(command="settings", description="Bot sozlamalari"),
-    #     BotCommand(command="cancel", description="O'yinni bekor qilish"),
-    # ]
+   
     private_commands = [
         BotCommand(command="profile", description="Profil ma'lumotlarini ko'rish"),
         BotCommand(command="start", description="Botni ishga tushirish"),
-        BotCommand(command="leave", description="oyindan chiqish"),
         BotCommand(command="language", description="Tilni o'zgartirish"),
         BotCommand(command="help", description="Yordam"),
     ]

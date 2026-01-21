@@ -8,8 +8,7 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from core.constants import ROLES_CHOICES,ROLE_PRICES_IN_MONEY,ROLE_PRICES_IN_STONES
 
 
-def clean_name(name: str) -> str:
-    return ''.join(c for c in name if c.isalnum() or c.isspace())
+
 
 def remove_prefix(text):
     return text.lstrip('@')
@@ -316,12 +315,12 @@ def roles_inline_btn():
     return keyboard   
         
 # Join game button
-def join_game_btn(chat_id):
+def join_game_btn(uuid):
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(
                 text="🤵🏻 Qo'shilish",
-                url=f"https://t.me/{remove_prefix(config('BOT_USERNAME'))}?start={chat_id}"  # game.code yoki game.uuid
+                url=f"https://t.me/{remove_prefix(config('BOT_USERNAME'))}?start={uuid}"  # game.code yoki game.uuid
             )]
         ]
     )
@@ -345,9 +344,9 @@ def go_to_bot_inline_btn(number=1):
     return keyboard
 
 # Doctor inline button
-def doc_btn(players,doctor_id=None,game_id=None,chat_id=None,uuid=None,day=None):
+def doc_btn(players,doctor_id=None,game_id=None,chat_id=None,day=None):
     builder = InlineKeyboardBuilder()
-    game = games_state.get(uuid, {})
+    game = games_state.get(int(game_id), {})
     used_self = game.get("limits", {}).get("doc_self_heal_used", set())
     for player in players:
         if player.telegram_id == doctor_id and doctor_id in used_self:
@@ -387,20 +386,25 @@ def com_inline_btn(game_id,chat_id,day=None):
     return builder.as_markup()
 
 # Com inline action button
-def com_inline_action_btn(action,game_id,day=None,com_id=None):
+def com_inline_action_btn(action,game_id,chat_id,day=None,com_id=None):
     builder = InlineKeyboardBuilder()
-    game_obj = Game.objects.filter(id=game_id).first()
-    game = games_state.get(str(game_obj.uuid), {})
+    game = games_state.get(int(game_id), {})
     alive_players = game.get("alive", [])
     users_qs = User.objects.filter(telegram_id__in=alive_players).only("telegram_id", "first_name")
     for user in users_qs:
         if user.telegram_id == com_id:
             continue
         button = InlineKeyboardButton(
-            text=f"{clean_name(user.first_name)}",
+            text=f"{user.first_name}",
             callback_data=f"{action}_{user.telegram_id}_{game_id}_{day}"
         )
         builder.add(button)
+    builder.add(
+        InlineKeyboardButton(
+            text="🔙",
+            callback_data=f"com_back_{game_id}_{chat_id}_{day}"
+        )
+    )
     builder.adjust(1)
     return builder.as_markup()
 
@@ -444,17 +448,13 @@ def confirm_hang_inline_btn(voted_user_id,game_id,chat_id,yes=0, no=0):
     return builder.as_markup()
 
 
-
-
-
-
     
 
 
-def don_inline_btn(players, uuid, game_id, chat_id, don_id,day=None):
+def don_inline_btn(players,  game_id, chat_id, don_id,day=None):
     builder = InlineKeyboardBuilder()
 
-    roles_map = games_state.get(uuid, {}).get("roles", {})
+    roles_map = games_state.get(int(game_id), {}).get("roles", {})
 
     for user in players:
         tg_id = user.telegram_id
@@ -464,7 +464,11 @@ def don_inline_btn(players, uuid, game_id, chat_id, don_id,day=None):
             continue
         
         if role == "mafia":
-            text = f"🤵🏼 {user.first_name}"
+            continue
+        elif role == "spy":
+            text = f"🦇 {user.first_name}"
+        elif role == "adv":
+            text = f"👨🏻‍💻 {user.first_name}"
         else:
             text = user.first_name
 
@@ -484,10 +488,10 @@ def don_inline_btn(players, uuid, game_id, chat_id, don_id,day=None):
     return builder.as_markup()
 
 
-def mafia_inline_btn(players, uuid, game_id,day=None):
+def mafia_inline_btn(players, game_id,day=None):
     builder = InlineKeyboardBuilder()
 
-    roles_map = games_state.get(uuid, {}).get("roles", {})
+    roles_map = games_state.get(int(game_id), {}).get("roles", {})
 
     for user in players:
         tg_id = user.telegram_id
@@ -499,6 +503,10 @@ def mafia_inline_btn(players, uuid, game_id,day=None):
             text = f"🤵🏼 {user.first_name}"
         elif role == "don":
             continue
+        elif role == "spy":
+            text = f"🦇 {user.first_name}"
+        elif role == "adv":
+            text = f"👨🏻‍💻 {user.first_name}"
         else:
             text = user.first_name
 
@@ -517,9 +525,9 @@ def mafia_inline_btn(players, uuid, game_id,day=None):
     return builder.as_markup()
 
 
-def adv_inline_btn(players, uuid, game_id, chat_id,day=None):
+def adv_inline_btn(players,  game_id, chat_id,day=None):
     builder = InlineKeyboardBuilder()
-    roles_map = games_state.get(uuid, {}).get("roles", {})
+    roles_map = games_state.get(int(game_id), {}).get("roles", {})
     for user in players:
         tg_id = user.telegram_id
         role = roles_map.get(tg_id)
@@ -545,9 +553,9 @@ def adv_inline_btn(players, uuid, game_id, chat_id,day=None):
     return builder.as_markup()
 
 
-def spy_inline_btn(players, uuid, game_id, chat_id,day=None,spy_id=None):
+def spy_inline_btn(players,  game_id, chat_id,day=None,spy_id=None):
     builder = InlineKeyboardBuilder()
-    roles_map = games_state.get(uuid, {}).get("roles", {})
+    roles_map = games_state.get(int(game_id), {}).get("roles", {})
     for user in players:
         tg_id = user.telegram_id
         role = roles_map.get(tg_id)

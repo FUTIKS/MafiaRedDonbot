@@ -8,31 +8,32 @@ from aiogram.types import FSInputFile
 from mafia_bot.utils import game_tasks
 from mafia_bot.models import Game,User
 from mafia_bot.buttons.inline import confirm_hang_inline_btn, go_to_bot_inline_btn,action_inline_btn
-from mafia_bot.handlers.main_functions import (can_hang, clean_name,games_state, get_most_voted_id,night_reset,day_reset, prepare_confirm_pending,
+from mafia_bot.handlers.main_functions import (can_hang, games_state, get_most_voted_id,night_reset,day_reset, prepare_confirm_pending,
                                                prepare_hang_pending, prepare_night_pending, punish_afk_night_players,send_night_actions_to_all,
                                                apply_night_actions,ROLE_LABELS, stop_game_if_needed,PEACE_ROLES,MAFIA_ROLES_LAB,SOLO_ROLES)
 
 
 
-def run_game_in_background(uuid: str):
-    if uuid in game_tasks and not game_tasks[uuid].done():
+def run_game_in_background(game_id: int):
+    if game_id in game_tasks and not game_tasks[game_id].done():
         return False
 
-    task = asyncio.create_task(start_game(uuid))
-    game_tasks[uuid] = task
+    task = asyncio.create_task(start_game(game_id))
+    game_tasks[game_id] = task
     return True
 
 
 
-async def start_game(uuid):
+async def start_game(game_id):
+    game_id = int(game_id)
     try:
-        game = Game.objects.filter(uuid=uuid).first()
+        game = Game.objects.filter(id=game_id).first()
         if not game:
             return
 
         game.is_started = True
         game.save()
-        game_data_bg = games_state.get(uuid)
+        game_data_bg = games_state.get(game_id)
         if not game_data_bg:
             return
         game_data_bg['meta']["chat_id"] = game.chat_id
@@ -43,11 +44,10 @@ async def start_game(uuid):
         sunrise = FSInputFile("mafia_bot/gifs/sunrise.mp4")
         while True:
             # ================= NIGHT START =================
-            uuid = str(game.uuid)
-            night_reset(uuid)
+            night_reset(game_id)
             
 
-            game_data = games_state.get(uuid, {})
+            game_data = games_state.get(game_id, {})
             all_players = game_data.get("players", [])   # tg_id list
             alive_players = game_data.get("alive", [])   # tg_id list
             game_data['meta']['message_allowed'] = "no"
@@ -63,11 +63,11 @@ async def start_game(uuid):
 
             # night action buttonlar
 
-            games_state[uuid]['meta']['day'] +=1
-            games_state[uuid]["meta"]["team_chat_open"] = "yes"
-            game_day = games_state[uuid].get("meta", {}).get("day", 0) 
+            games_state[game_id]['meta']['day'] +=1
+            games_state[game_id]["meta"]["team_chat_open"] = "yes"
+            game_day = games_state[game_id].get("meta", {}).get("day", 0) 
             
-            asyncio.create_task(send_night_actions_to_all( uuid, game, users_after_night,game_day))
+            asyncio.create_task(send_night_actions_to_all( game_id, game, users_after_night,game_day))
 
             await bot.send_video(
                     chat_id=game.chat_id,
@@ -78,7 +78,7 @@ async def start_game(uuid):
 
             await asyncio.sleep(2)
 
-            msg = "Tirik o'yinchilar:\n\n"
+            msg = "<b>Tirik o'yinchilar:</b>\n\n"
 
             for idx, tg_id in enumerate(all_players, 1):
                 if tg_id not in alive_players:
@@ -86,9 +86,9 @@ async def start_game(uuid):
                 user = users_map.get(tg_id)
                 if not user:
                     continue
-                msg += f'{idx}. <a href="tg://user?id={user.telegram_id}">{clean_name(user.first_name)}</a>\n'
+                msg += f'<b>{idx}. <a href="tg://user?id={user.telegram_id}">{user.first_name}</a></b>\n'
 
-            msg += "\nTonggacha 1 daqiqa qoldii!"
+            msg += "\n<b>Tonggacha 1 daqiqa qoldii!</b>"
 
             await bot.send_message(
                 chat_id=game.chat_id,
@@ -97,9 +97,9 @@ async def start_game(uuid):
                 parse_mode="HTML"
             )
 
-            prepare_night_pending(uuid)
+            prepare_night_pending(game_id)
     
-            event = games_state[uuid]["runtime"]["night_event"]
+            event = games_state[game_id]["runtime"]["night_event"]
 
             try:
                 await asyncio.wait_for(event.wait(), timeout=60)
@@ -108,15 +108,15 @@ async def start_game(uuid):
             
             await asyncio.sleep(3)
             
-            if games_state[uuid]['night_actions']['don_kill_target'] is not None:
+            if games_state[game_id]['night_actions']['don_kill_target'] is not None:
                 await bot.send_message(
                     chat_id=game.chat_id,
                     text="🤵🏻 Mafia navbatdagi o'ljasini tanladi..."
                 )
-            ended = await stop_game_if_needed(uuid)
+            ended = await stop_game_if_needed(game_id)
             if ended:
                 return
-            games_state[uuid]["meta"]["team_chat_open"] = "no"
+            games_state[game_id]["meta"]["team_chat_open"] = "no"
 
 
             # ================= MORNING =================
@@ -129,20 +129,19 @@ async def start_game(uuid):
             day += 1
             await asyncio.sleep(3)
             
-            games_state[uuid]['meta']['day'] +=1
-            await apply_night_actions(uuid)
-            await punish_afk_night_players(uuid)
-            ended = await stop_game_if_needed(uuid)
+            games_state[game_id]['meta']['day'] +=1
+            await apply_night_actions(game_id)
+            await punish_afk_night_players(game_id)
+            ended = await stop_game_if_needed(game_id)
             if ended:
                 return
             await asyncio.sleep(3)
             # ================= DAY RESET =================
-            day_reset(uuid)
+            day_reset(game_id)
 
         
 
-            alive_after_night = games_state.get(uuid, {}).get("alive", [])
-
+            alive_after_night = games_state.get(game_id, {}).get("alive", [])
             if len(alive_before_night) == len(alive_after_night):
                 await bot.send_message(
                     chat_id=game.chat_id,
@@ -159,7 +158,7 @@ async def start_game(uuid):
 
             msg += "\nUlardan:\n\n"
 
-            roles_map = games_state.get(uuid, {}).get("roles", {})
+            roles_map = games_state.get(game_id, {}).get("roles", {})
 
             peace_labels = []
             mafia_labels = []
@@ -189,11 +188,11 @@ async def start_game(uuid):
                 random.shuffle(result)
                 return ", ".join(result) if result else "—"
 
-            msg += f"Tinch axolilar - {len(peace_labels)}\n {format_role_list(peace_labels)}\n\n"
-            msg += f"Mafialar - {len(mafia_labels)}\n {format_role_list(mafia_labels)}\n\n"
-            msg += f"Yakka rollar - {len(solo_labels)}\n {format_role_list(solo_labels)}\n"
+            msg += f"<b>Tinch axolilar - {len(peace_labels)}\n {format_role_list(peace_labels)}</b>\n\n"
+            msg += f"<b>Mafialar - {len(mafia_labels)}\n {format_role_list(mafia_labels)}</b>\n\n"
+            msg += f"<b>Yakka rollar - {len(solo_labels)}\n {format_role_list(solo_labels)}</b>"
 
-            msg += "\n\nTunda bo'lgan xodisalarni muxokama qilishning ayni vaqti..."
+            msg += "\n\n<b>Tunda bo'lgan xodisalarni muxokama qilishning ayni vaqti...</b>"
 
 
             await bot.send_message(
@@ -201,10 +200,10 @@ async def start_game(uuid):
                 text=msg,
                 parse_mode="HTML"
             )
-            games_state[uuid]['meta']['message_allowed'] = "yes"
+            games_state[game_id]['meta']['message_allowed'] = "yes"
             # ================= DISCUSSION =================
             await asyncio.sleep(45)
-            ended = await stop_game_if_needed(uuid)
+            ended = await stop_game_if_needed(game_id)
             if ended:
                 return
             # ================= START VOTING =================
@@ -213,10 +212,10 @@ async def start_game(uuid):
                 text="Aybdorlarni aniqlash va jazolash vaqti keldi.\nOvoz berish uchun 45 sekund",
                 reply_markup=go_to_bot_inline_btn(3)
             )
-            game_day = games_state.get(uuid, {}).get("meta", {}).get("day", 0)
+            game_day = games_state.get(game_id, {}).get("meta", {}).get("day", 0)
             # har bir tirikka osish keyboard yuboramiz
             for tg_id in alive_ids_after_night:
-                game_data = games_state.get(uuid, {})
+                game_data = games_state.get(game_id, {})
                 night_action = game_data.get("night_actions", {})
                 lover_block_target = night_action.get("lover_block_target")
                 if lover_block_target == tg_id:
@@ -237,23 +236,23 @@ async def start_game(uuid):
                 except Exception:
                     pass
 
-            prepare_hang_pending(uuid)
+            prepare_hang_pending(game_id)
 
-            games_state[uuid]['meta']['message_allowed'] = "no"
-            event = games_state[uuid]["runtime"]["hang_event"]
+            event = games_state[game_id]["runtime"]["hang_event"]
             try:
                 await asyncio.wait_for(event.wait(), timeout=45)
             except asyncio.TimeoutError:
                 pass
             await asyncio.sleep(2)
-            games_state[uuid]["meta"]["day"] +=1
+            games_state[game_id]["meta"]["day"] +=1
 
-            ended = await stop_game_if_needed(uuid)
+            ended = await stop_game_if_needed(game_id)
             if ended:
                 return
 
             # ================= MOST VOTED =================
-            top_voted = get_most_voted_id(uuid)  # siz yozgan function: tie bo'lsa False
+            games_state[game_id]['meta']['message_allowed'] = "no"
+            top_voted = get_most_voted_id(game_id)  # siz yozgan function: tie bo'lsa False
             if not top_voted:
                 await bot.send_message(
                     chat_id=game.chat_id,
@@ -269,7 +268,7 @@ async def start_game(uuid):
             # ================= CONFIRM HANG =================
             msg_obj = await bot.send_message(
                 chat_id=game.chat_id,
-                text=f"Rostandan ham <a href='tg://user?id={voted_user.telegram_id}'>{clean_name(voted_user.first_name)}</a> ni osmoqchimisiz?",
+                text=f"Rostandan ham <a href='tg://user?id={voted_user.telegram_id}'>{voted_user.first_name}</a> ni osmoqchimisiz?",
                 reply_markup=confirm_hang_inline_btn(
                     voted_user_id=voted_user.telegram_id,
                     game_id=game.id,
@@ -280,26 +279,26 @@ async def start_game(uuid):
                 parse_mode="HTML"
             )
 
-            games_state[uuid]["day_actions"]["hang_confirm_msg_id"] = msg_obj.message_id
-            games_state[uuid]["day_actions"]["hang_target_id"] = voted_user.telegram_id
+            games_state[game_id]["day_actions"]["hang_confirm_msg_id"] = msg_obj.message_id
+            games_state[game_id]["day_actions"]["hang_target_id"] = voted_user.telegram_id
 
-            prepare_confirm_pending(uuid,voted_user.telegram_id)
+            prepare_confirm_pending(game_id,voted_user.telegram_id)
 
-            event = games_state[uuid]["runtime"]["confirm_event"]
+            event = games_state[game_id]["runtime"]["confirm_event"]
             try:
                 await asyncio.wait_for(event.wait(), timeout=45)
             except asyncio.TimeoutError:
                 pass
             await asyncio.sleep(2)
 
-            ended = await stop_game_if_needed(uuid)
+            ended = await stop_game_if_needed(game_id)
             if ended:
                 return
 
             try:
                 await msg_obj.edit_text(
                     text=(
-                        f"Rostandan ham <a href='tg://user?id={voted_user.telegram_id}'>{clean_name(voted_user.first_name)}</a> ni osmoqchimisiz?\n\n"
+                        f"Rostandan ham <a href='tg://user?id={voted_user.telegram_id}'>{voted_user.first_name}</a> ni osmoqchimisiz?\n\n"
                         "Ovoz berish tugadi."
                     ),
                     reply_markup=None,
@@ -311,7 +310,7 @@ async def start_game(uuid):
             await asyncio.sleep(3)
 
             # ================= FINAL CONFIRM RESULT =================
-            final_vote, yes, no = can_hang(uuid)
+            final_vote, yes, no = can_hang(game_id)
 
             if final_vote == "no":
                 await bot.send_message(
@@ -325,7 +324,7 @@ async def start_game(uuid):
                 text=(
                     f"Ovoz berish natijalari:\n\n"
                     f"{yes} 👍  |  {no} 👎\n\n"
-                    f"<a href='tg://user?id={voted_user.telegram_id}'>{clean_name(voted_user.first_name)}</a> - ni osamiz! :)"
+                    f"<a href='tg://user?id={voted_user.telegram_id}'>{voted_user.first_name}</a> - ni osamiz! :)"
                 ),
                 parse_mode="HTML"
             )
@@ -333,23 +332,22 @@ async def start_game(uuid):
             # ================= HANG PLAYER =================
             target_id = voted_user.telegram_id
 
-            if target_id in games_state[uuid]["alive"]:
-                games_state[uuid]["alive"].remove(target_id)
+            if target_id in games_state[game_id]["alive"]:
+                games_state[game_id]["alive"].remove(target_id)
 
-            if target_id not in games_state[uuid]["dead"]:
-                games_state[uuid]["dead"].append(target_id)
-
-            games_state[uuid]["day_actions"]["last_hanged"] = target_id
+            if target_id not in games_state[game_id]["dead"]:
+                games_state[game_id]["dead"].append(target_id)
+            games_state[game_id]["day_actions"]["last_hanged"] = target_id
             
 
             await asyncio.sleep(2)
             await bot.send_message(
                 chat_id=game.chat_id,
-                text = f"<a href='tg://user?id={voted_user.telegram_id}'>{clean_name(voted_user.first_name)}</a> - {ROLE_LABELS.get(roles_map.get(voted_user.telegram_id))} edi!!"
+                text = f"<a href='tg://user?id={voted_user.telegram_id}'>{voted_user.first_name}</a> - {ROLE_LABELS.get(roles_map.get(voted_user.telegram_id))} edi!!"
             )
             
             await asyncio.sleep(2)
-            ended = await stop_game_if_needed(uuid)
+            ended = await stop_game_if_needed(game_id)
             if ended:
                 return
 
@@ -358,7 +356,7 @@ async def start_game(uuid):
 
             
     except asyncio.CancelledError:
-        print(f"Game {uuid} cancelled.")
+        print(f"Game {game_id} cancelled.")
         return
     except Exception as e:
         traceback.print_exc()
