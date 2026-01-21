@@ -489,14 +489,14 @@ async def com_callback(callback: CallbackQuery):
         await bot.send_message(chat_id=chat_id, text="🕵️‍ Komissar Katani pistoletini o'qladi...")
         await callback.message.edit_text(
             text=ACTIONS.get("com_shoot"),
-            reply_markup=com_inline_action_btn(action="shoot", game_id=parts[2],com_id=com_id,day=day)
+            reply_markup=com_inline_action_btn(action="shoot",chat_id=chat_id, game_id=parts[2],com_id=com_id,day=day)
         )
         return
 
     await bot.send_message(chat_id=chat_id, text="🕵️‍ Komissar Katani yovuzlarni qidirishga ketdi...")
     await callback.message.edit_text(
         text=ACTIONS.get("com_check"),
-        reply_markup=com_inline_action_btn(action="search", game_id=parts[2],com_id=com_id,day=day)
+        reply_markup=com_inline_action_btn(action="search",chat_id=chat_id, game_id=parts[2],com_id=com_id,day=day)
     )
 
 
