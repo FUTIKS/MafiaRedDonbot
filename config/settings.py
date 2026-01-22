@@ -37,6 +37,7 @@ ALLOWED_HOSTS = ['*']
 # Application definition
 
 INSTALLED_APPS = [
+    'jazzmin',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -76,6 +77,72 @@ TEMPLATES = [
         },
     },
 ]
+
+
+JAZZMIN_SETTINGS = {
+    "site_title": "Rivoq Admin",
+    "site_header": "Rivoq Admin",
+    "site_brand": "EduTech",
+    "site_logo": "images/logo.jpg",
+    "site_logo_classes": "img-circle",
+    "welcome_sign": "EduTech boshqaruv tizimiga xush kelibsiz 🎠",
+    "copyright": "© 2025 Rivoq",
+
+    "show_sidebar": True,
+    "navigation_expanded": True,
+    "hide_apps": [],
+    "hide_models": [],
+    "order_with_respect_to": [],
+    "default_icon_parents": "fas fa-chevron-circle-right",
+    "default_icon_children": "fas fa-circle",
+    "use_google_fonts_cdn": True,
+
+    "icons": {
+        "auth": "fas fa-users-cog",
+        "auth.user": "fas fa-user",
+        "auth.Group": "fas fa-users",
+        "mafia_bot.User": "fas fa-user-astronaut",
+        "mafia_bot.Game": "fas fa-gamepad",
+        "mafia_bot.PrizeHistory": "fas fa-trophy",
+        'mafia_bot.BotCredentials':"fas fa-key",
+        'mafia_bot.LoginAttempts':"fas fa-user-shield",
+        'mafia_bot.MostActiveUser':"fas fa-star",
+        'mafia_bot.CasesOpened':"fas fa-gift",
+        'mafia_bot.GameSettings':"fas fa-cogs",
+        'mafia_bot.PriceStones':"fas fa-gem",
+        'mafia_bot.MoneySendHistory':"fas fa-money-bill-transfer",
+        'mafia_bot.PremiumGroup':"fas fa-user-shield",
+        'mafia_bot.GroupTrials':"fas fa-users",
+        'mafia_bot.UserRole':"fas fa-id-badge",
+    },
+   
+    "topmenu_links": [
+        {"name": "Asosiy sayt", "url": "https://t.me/MafiaRedDonbot", "new_window": True},
+        {"app": "users"},
+    ],
+
+    
+}
+
+
+JAZZMIN_UI_TWEAKS = {
+    "theme": "lumen",
+    "footer_small_text": False,
+    "body_small_text": False,
+    "theme_switcher": True,
+
+     "brand_colour": "navbar-dark",
+    "accent": "accent-lightblue",
+    "navbar": "navbar-dark",
+    "no_navbar_border": True,
+    "sidebar": "sidebar-dark-primary",
+    "sidebar_nav_small_text": False,
+    "sidebar_disable_expand": False,
+    "sidebar_nav_child_indent": True,
+    "sidebar_nav_compact_style": True,
+    "actions_sticky_top": True,
+}
+
 
 WSGI_APPLICATION = 'config.wsgi.application'
 

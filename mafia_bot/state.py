@@ -42,3 +42,7 @@ class Register(StatesGroup):
     answer = State()
     every_one = State()
     
+class CredentialsState(StatesGroup):
+    waiting_for_new_password = State()
+    waiting_for_new_username = State()
+    login = State()

@@ -8,8 +8,8 @@ from aiogram.types import FSInputFile
 from mafia_bot.utils import game_tasks
 from mafia_bot.models import Game,User
 from mafia_bot.buttons.inline import confirm_hang_inline_btn, go_to_bot_inline_btn,action_inline_btn
-from mafia_bot.handlers.main_functions import (can_hang, games_state, get_most_voted_id,night_reset,day_reset, prepare_confirm_pending,
-                                               prepare_hang_pending, prepare_night_pending, punish_afk_night_players,send_night_actions_to_all,
+from mafia_bot.handlers.main_functions import (can_hang, games_state, get_most_voted_id,night_reset,day_reset, notify_new_com, notify_new_don, prepare_confirm_pending,
+                                               prepare_hang_pending, prepare_night_pending, promote_new_com_if_needed, promote_new_don_if_needed, punish_afk_night_players,send_night_actions_to_all,
                                                apply_night_actions,ROLE_LABELS, stop_game_if_needed,PEACE_ROLES,MAFIA_ROLES_LAB,SOLO_ROLES)
 
 
@@ -346,6 +346,25 @@ async def start_game(game_id):
                 chat_id=game.chat_id,
                 text = f"<a href='tg://user?id={voted_user.telegram_id}'>{voted_user.first_name}</a> - {ROLE_LABELS.get(roles_map.get(voted_user.telegram_id))} edi!!"
             )
+            if roles_map.get(voted_user.telegram_id) == "don":
+                new_don_id = promote_new_don_if_needed(game)
+                if new_don_id:
+                    await notify_new_don( game, new_don_id )
+                    await bot.send_message(
+                        chat_id=game.chat_id,
+                        text=f"🤵🏻 Don vafot etdi.\nMafialardan biri endi yangi Don "
+                    )
+            if roles_map.get(voted_user.telegram_id) == "com":
+                new_com_id = promote_new_com_if_needed(game)
+                if new_com_id:
+                    await notify_new_com( game, new_com_id)
+                    await bot.send_message(
+                        chat_id=game.chat_id,
+                        text=f"🕵🏻‍♂ Komissar vafot etdi.\nYangi Komissar tayinlandi."
+                    )
+                ended = await stop_game_if_needed(game_id)
+                if ended:
+                    return
             
             await asyncio.sleep(2)
             ended = await stop_game_if_needed(game_id)

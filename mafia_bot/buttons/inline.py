@@ -1029,10 +1029,12 @@ def stones_to_premium_inline_btn(stones: int, chat_id: int):
 
 
 def privacy_inline_btn():
-    keyboard1 = InlineKeyboardButton(text=" 🔑 Parolni o'zgartirish", callback_data="change_password")
+    keyboard1 = InlineKeyboardButton(text=" 🔑 Parolni o'zgartirish", callback_data="credentials_password")
+    keyboard2 = InlineKeyboardButton(text=" 👤 Username o'zgartirish", callback_data="credentials_username")
     keyboard3 = InlineKeyboardButton(text="⬅️ Orqaga", callback_data="back_admin")
     design = [
         [keyboard1],
+        [keyboard2],
         [keyboard3],
     ]
     keyboard = InlineKeyboardMarkup(inline_keyboard=design)

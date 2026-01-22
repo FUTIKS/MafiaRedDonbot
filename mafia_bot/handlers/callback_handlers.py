@@ -10,10 +10,11 @@ from django.utils import timezone
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext 
 from core.constants import DESCRIPTIONS,ACTIONS, ROLES_CHOICES
+from django.contrib.auth.hashers import make_password
 from mafia_bot.utils import stones_taken,gsend_taken,giveaways,games_state
 from aiogram.types import Message, LabeledPrice, PreCheckoutQuery,CallbackQuery
-from mafia_bot.models import Game, MoneySendHistory, User,PremiumGroup,MostActiveUser,CasesOpened,GameSettings,GroupTrials,PriceStones, UserRole
-from mafia_bot.state import AddGroupState, BeginInstanceState,SendMoneyState,ChangeStoneCostState,ChangeMoneyCostState,ExtendGroupState,QuestionState,Register
+from mafia_bot.models import Game, MoneySendHistory, User,PremiumGroup,MostActiveUser,CasesOpened,GameSettings,GroupTrials,PriceStones, UserRole,BotCredentials
+from mafia_bot.state import AddGroupState, BeginInstanceState,SendMoneyState,ChangeStoneCostState,ChangeMoneyCostState,ExtendGroupState,QuestionState,Register,CredentialsState
 from mafia_bot.handlers.main_functions import (add_visit, get_mafia_members,get_first_name_from_players,
                                                mark_confirm_done, mark_hang_done,mark_night_action_done,get_week_range,get_month_range)
 from mafia_bot.buttons.inline import (
@@ -21,7 +22,7 @@ from mafia_bot.buttons.inline import (
     groupes_keyboard, groups_buy_stars, history_groupes_keyboard, money_case, pay_for_money_inline_btn, pay_using_stars_inline_btn, role_shop_inline_keyboard,
     shop_inline_btn, main_inline_btn, roles_inline_btn, com_inline_action_btn,pirate_steal_inline_btn,
     professor_gift_inline_btn,confirm_hang_inline_btn,groups_inline_btn,group_manage_btn,back_admin_btn,case_inline_btn,
-    stone_case,begin_instance_inline_btn, take_gsend_stone_btn, take_gsend_stone_btn, take_stone_btn,trial_groupes_keyboard,trial_group_manage_btn
+    stone_case,begin_instance_inline_btn, take_gsend_stone_btn, take_gsend_stone_btn, take_stone_btn,trial_groupes_keyboard,trial_group_manage_btn,privacy_inline_btn
 )
 
 
@@ -3255,10 +3256,76 @@ async def premium_manage_callback(callback: CallbackQuery):
         
     
 
-# @dp.callback_query(F.data == "privacy")
-# async def privacy_callback(callback: CallbackQuery):
-#     await callback.answer()
-#     await callback.message.edit_text(
-#         text=(
-#             ""
-#         )
+@dp.callback_query(F.data == "privacy")
+async def privacy_callback(callback: CallbackQuery):
+    await callback.answer()
+    await callback.message.edit_text(
+        text="Kirish so'zlarni o'zgartirish uchun quyidagi tugmalardan foydalaning:",
+        reply_markup=privacy_inline_btn()
+    )
+    
+@dp.callback_query(F.data.startswith("credentials_"))
+async def credentials_callback(callback: CallbackQuery,state: FSMContext) -> None:
+    await callback.answer()
+    action = callback.data.split("_")[1]
+    await state.update_data(action=action)
+    if action == "password":
+        await callback.message.edit_text(
+            text="🔐 Iltimos, yangi parolini so'zlarni yuboring:",
+            reply_markup=back_admin_btn()
+        )
+        await state.set_state(CredentialsState.waiting_for_new_password)
+    elif action == "username":
+        await callback.message.edit_text(
+            text="🔐 Iltimos, yangi foydalanuvchi nomini yuboring:",
+            reply_markup=back_btn()
+        )
+        await state.set_state(CredentialsState.waiting_for_new_username)
+        
+        
+@dp.message(CredentialsState.waiting_for_new_password)
+async def process_new_password(message: Message, state: FSMContext) -> None:
+    new_password = message.text.strip() if message.text else None
+    if not new_password:
+        await message.answer(
+            text="❌ Iltimos, yangi parolini so'zlarni yuboring:",
+            reply_markup=back_admin_btn()
+        )
+        return
+
+    cred = BotCredentials.objects.first()
+    if not cred:
+        cred = BotCredentials.objects.create()
+
+    new_pass = make_password(new_password)
+    cred.password = new_pass
+    cred.save()
+
+    await message.answer(
+        text="✅ Bot paroli muvaffaqiyatli o'zgartirildi.",
+        reply_markup=admin_inline_btn()
+    )
+    await state.clear()
+    
+@dp.message(CredentialsState.waiting_for_new_username)
+async def process_new_username(message: Message, state: FSMContext) -> None:
+    new_username = message.text.strip() if message.text else None
+    if not new_username:
+        await message.answer(
+            text="❌ Iltimos, yangi foydalanuvchi nomini yuboring:",
+            reply_markup=back_btn()
+        )
+        return
+
+    cred = BotCredentials.objects.first()
+    if not cred:
+        cred = BotCredentials.objects.create()
+
+    cred.username = new_username
+    cred.save()
+
+    await message.answer(
+        text="✅ Bot foydalanuvchi nomi muvaffaqiyatli o'zgartirildi.",
+        reply_markup=admin_inline_btn()
+    )
+    await state.clear()

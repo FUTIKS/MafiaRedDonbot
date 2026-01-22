@@ -191,3 +191,40 @@ class GameSettings(SafeBaseModel):
     begin_instance_time=models.IntegerField(default=300)  
     number_of_players = models.IntegerField(default=30)
     begin_after_end = models.BooleanField(default=True)
+    
+    
+class BotCredentials(SafeBaseModel):
+    admin = models.ForeignKey(User,on_delete=models.CASCADE)
+    login = models.CharField(max_length=255,default="admin")
+    password = models.CharField(max_length=255,default="1234")
+    
+    def __str__(self):
+        return f"BotCredentials Admin {self.admin.username}"
+    
+class LoginAttempts(SafeBaseModel):
+    admin = models.OneToOneField(User, on_delete=models.CASCADE, related_name="login_attempts")
+    attempts = models.IntegerField(default=0)
+    last_attempt = models.DateTimeField(null=True, blank=True)
+
+    ban_until = models.DateTimeField(null=True, blank=True)
+    permanent_ban = models.BooleanField(default=False)
+    def __str__(self):
+        return f"LoginAttempts tg_id={self.admin.telegram_id} attempts={self.attempts}"
+
+    def is_banned(self):
+        if self.permanent_ban:
+            return True
+        if self.ban_until and self.ban_until > timezone.now():
+            return True
+        return False
+
+    def ban_for_1_day(self):
+        self.ban_until = timezone.now() + timedelta(days=1)
+        self.last_attempt = timezone.now()
+        self.save(update_fields=["ban_until", "last_attempt"])
+
+    def ban_forever(self):
+        self.permanent_ban = True
+        self.ban_until = None
+        self.last_attempt = timezone.now()
+        self.save(update_fields=["permanent_ban", "ban_until", "last_attempt"])

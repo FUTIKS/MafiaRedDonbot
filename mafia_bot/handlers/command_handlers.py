@@ -7,12 +7,15 @@ from datetime import  timedelta
 from django.db.models import Sum  
 from django.utils import timezone
 from aiogram.filters import StateFilter
+from aiogram.fsm.context import FSMContext
 from aiogram.filters.command import Command
 from aiogram.types import Message,LabeledPrice
 from core.constants import DESCRIPTIONS,ROLES_CHOICES
+from django.contrib.auth.hashers import check_password
+from mafia_bot.state import CredentialsState
 from mafia_bot.handlers.game_handler import run_game_in_background
 from mafia_bot.handlers.callback_handlers import begin_instance_callback
-from mafia_bot.models import Game, GroupTrials, MostActiveUser,User,BotMessages,GameSettings, UserRole,default_end_date
+from mafia_bot.models import Game, GroupTrials, MostActiveUser,User,BotMessages,GameSettings, UserRole,default_end_date,BotCredentials,LoginAttempts
 from mafia_bot.utils import last_wishes,team_chat_sessions,game_tasks,group_users,stones_taken,gsend_taken,games_state,giveaways,notify_users,active_role_used
 from mafia_bot.handlers.main_functions import MAFIA_ROLES, find_game,create_main_messages, kill,  shuffle_roles ,check_bot_rights,role_label,is_group_admin,mute_user,has_link,parse_amount
 from mafia_bot.buttons.inline import (admin_inline_btn, giveaway_join_btn, group_profile_inline_btn, join_game_btn, 
@@ -1003,11 +1006,12 @@ async def delete_not_alive_messages(message: Message):
 
 
 @dp.message(F.chat.type.in_({"private"}),StateFilter(None))
-async def private_router(message: Message):
+async def private_router(message: Message,state: FSMContext) -> None:
     tg_id = message.from_user.id
 
     if message.text == "admin_parol":
-        await admin_login(message)
+        await message.answer("Iltimos, login va parolni bitta qatorda yuboring:\n\nlogin password")
+        await state.set_state(CredentialsState.login)
         return
     elif message.text == "logout_admin":
         await admin_logout(message)
@@ -1125,26 +1129,66 @@ async def private_router(message: Message):
             pass
 
 
+@dp.message(StateFilter(CredentialsState.login))
+async def process_admin_password(message: Message, state: FSMContext) -> None:
+    text = (message.text or "").strip()
 
-
-async def admin_login(message: Message) -> None:
-    user = User.objects.filter(telegram_id=message.from_user.id).first()
-    if user and user.role == 'admin':
-        await message.answer(text="Siz allaqachon adminsiz!",reply_markup=admin_inline_btn())
+    parts = text.split(maxsplit=1)
+    if len(parts) != 2:
+        await message.answer("Login va parolni bitta qatorda yuboring:\n\nlogin password")
         return
+
+    login, password = parts[0], parts[1]
+
+    user = User.objects.filter(telegram_id=message.from_user.id).first()
     if not user:
-        user = User.objects.create(
-            telegram_id=message.from_user.id,
-            username=message.from_user.username,
-            first_name=message.from_user.first_name,
-            lang ="uz",
-            role='admin'
-        )
-    else:
+        await message.answer("Siz botda ro‘yxatdan o‘tmagansiz ❌")
+        return
+
+    attempts_obj, _ = LoginAttempts.objects.get_or_create(admin=user)
+
+    if attempts_obj.permanent_ban:
+        await message.answer("Siz adminkaga kirishdan bloklangansiz 🚫")
+        return
+
+    if attempts_obj.ban_until and attempts_obj.ban_until > timezone.now():
+        left = attempts_obj.ban_until - timezone.now()
+        hours = int(left.total_seconds() // 3600)
+        await message.answer(f"Siz adminkaga kirishdan vaqtincha bloklangansiz 🚫\nQolgan vaqt: {hours} soat")
+        return
+
+    admin = BotCredentials.objects.filter(username=login).first()
+    if not admin:
+        await message.answer("Login noto‘g‘ri ❌")
+        return
+
+    if not check_password(password, admin.password):
+        # Agar oldin 1 kun ban olgan bo‘lsa (demak ikkinchi xato) => umrbod ban
+        if attempts_obj.ban_until is not None:
+            attempts_obj.ban_forever()
+            await message.answer("Parol noto‘g‘ri ❌\nSiz umrbod bloklandingiz 🚫")
+            return
+
+        # Birinchi xato => 1 kun ban
+        attempts_obj.ban_for_1_day()
+        await message.answer("Parol noto‘g‘ri ❌\nSiz 1 kunga bloklandingiz 🚫")
+        return
+
+    # login success => banlar va attempts reset
+    attempts_obj.attempts = 0
+    attempts_obj.last_attempt = timezone.now()
+    attempts_obj.ban_until = None
+    attempts_obj.permanent_ban = False
+    attempts_obj.save()
+
+    if user.role != 'admin':
         user.role = 'admin'
-        user.save()
-    await message.answer(text="Siz endi adminsiz!",reply_markup=admin_inline_btn())
+        user.save(update_fields=["role"])
+
+    await message.answer("Muvaffaqiyatli kirdingiz ✅", reply_markup=admin_inline_btn())
+    await state.clear()
     
+
     
 
 async def admin_logout(message: Message) -> None:

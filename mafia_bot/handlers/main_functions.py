@@ -1035,7 +1035,7 @@ def promote_new_don_if_needed(game: dict):
     return new_don_id
 
 
-async def notify_new_don(game: dict, new_don_id: int, uname):
+async def notify_new_don(game: dict, new_don_id: int):
     roles = game.get("roles", {})
     alive = set(game.get("alive", []))
 
@@ -1053,9 +1053,10 @@ async def notify_new_don(game: dict, new_don_id: int, uname):
         if member_id == int(new_don_id):
             continue
         try:
+            user = User.objects.filter(telegram_id=member_id).only("telegram_id", "first_name").first()
             await bot.send_message(
                 chat_id=int(member_id),
-                text=f"🤵🏻 Sizning yangi Don: <a href='tg://user?id={new_don_id}'>{uname(new_don_id)}</a>",
+                text=f"🤵🏻 Sizning yangi Don: <a href='tg://user?id={new_don_id}'>{user.first_name}</a>",
                 parse_mode="HTML"
             )
         except Exception:
@@ -1081,7 +1082,7 @@ def promote_new_com_if_needed(game: dict):
     game["roles"] = roles
     return int(serg_id)
 
-async def notify_new_com(game: dict, new_com_id: int, uname):
+async def notify_new_com(game: dict, new_com_id: int):
     chat_id = game.get("meta", {}).get("chat_id")
 
     # serjantning o'ziga
@@ -1096,9 +1097,10 @@ async def notify_new_com(game: dict, new_com_id: int, uname):
     # guruhga ham xabar (xohlasangiz)
     if chat_id:
         try:
+            user = User.objects.filter(telegram_id=new_com_id).only("telegram_id", "first_name").first()
             await bot.send_message(
                 chat_id=int(chat_id),
-                text=f"🕵🏻‍♂ Komissar vafot etdi.\nEndi yangi Komissar: <a href='tg://user?id={new_com_id}'>{uname(new_com_id)}</a>",
+                text=f"🕵🏻‍♂ Komissar vafot etdi.\nEndi yangi Komissar: <a href='tg://user?id={new_com_id}'>{user.first_name}</a>",
                 parse_mode="HTML"
             )
         except Exception:
@@ -1310,7 +1312,7 @@ async def apply_night_actions(game_id: int):
         if target_role == "don":
             new_don_id = promote_new_don_if_needed(game)
             if new_don_id:
-                await notify_new_don( game, new_don_id, uname)
+                await notify_new_don( game, new_don_id)
                 await bot.send_message(
                     chat_id=chat_id,
                     text=f"🤵🏻 Don vafot etdi.\nMafialardan biri endi yangi Don "
