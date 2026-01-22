@@ -581,7 +581,7 @@ def can_hang(game_id: int) -> bool:
         return "no" , yes, no
     
 def get_mafia_members(game_id):
-    game = games_state.get(game_id, {})
+    game = games_state.get(int(game_id), {})
     roles_map = game.get("roles", {})
     alive = set(game.get("alive", []))
 
@@ -744,7 +744,6 @@ def night_reset(game_id: int):
         rt["pending_night"].clear()
 
         # message allowed default
-        game["meta"]["message_allowed"] = "no"
 
     return True
 
@@ -1572,6 +1571,7 @@ def check_game_over(game_id: int) -> str | None:
 
 
 async def stop_game_if_needed(game_id :int):
+    game_id = int(game_id)
     game_state = games_state.get(int(game_id))
     if not game_state:
         return False

@@ -15,11 +15,11 @@ from mafia_bot.handlers.main_functions import (can_hang, games_state, get_most_v
 
 
 def run_game_in_background(game_id: int):
-    if game_id in game_tasks and not game_tasks[game_id].done():
+    if game_id in game_tasks and not game_tasks[int(game_id)].done():
         return False
 
-    task = asyncio.create_task(start_game(game_id))
-    game_tasks[game_id] = task
+    task = asyncio.create_task(start_game(int(game_id)))
+    game_tasks[int(game_id)] = task
     return True
 
 

@@ -18,7 +18,7 @@ from mafia_bot.handlers.callback_handlers import begin_instance_callback
 from mafia_bot.models import Game, GroupTrials, MostActiveUser,User,BotMessages,GameSettings, UserRole,default_end_date,BotCredentials,LoginAttempts
 from mafia_bot.utils import last_wishes,team_chat_sessions,game_tasks,group_users,stones_taken,gsend_taken,games_state,giveaways,notify_users,active_role_used
 from mafia_bot.handlers.main_functions import MAFIA_ROLES, find_game,create_main_messages, kill,  shuffle_roles ,check_bot_rights,role_label,is_group_admin,mute_user,has_link,parse_amount
-from mafia_bot.buttons.inline import (admin_inline_btn, giveaway_join_btn, group_profile_inline_btn, join_game_btn, 
+from mafia_bot.buttons.inline import (admin_inline_btn, back_btn, giveaway_join_btn, group_profile_inline_btn, join_game_btn, 
                                       main_inline_btn, go_to_bot_inline_btn, cart_inline_btn, start_inline_btn, take_gsend_stone_btn,
                                       take_stone_btn,stones_to_premium_inline_btn)
 
@@ -449,7 +449,7 @@ async def registration_timer(game_id, chat_id):
 
     try:
         while True:
-            data = registration_timers.get(game_id)
+            data = registration_timers.get(int(game_id))
             if not data:
                 return
 
@@ -468,10 +468,10 @@ async def registration_timer(game_id, chat_id):
                     "⏳ Ro'yxatdan o'tishga 59 soniya qoldi!",
                     reply_markup=join_game_btn(uuid)
                 )
-                BotMessages.objects.create(game_id=game_id, message_id=msg.message_id, is_main=False)
+                BotMessages.objects.create(game_id=int(game_id), message_id=msg.message_id, is_main=False)
 
             if remaining <= 29 and not thirty_sec_notified:
-                msg = BotMessages.objects.filter(game_id=game_id, is_main=False, is_deleted=False).last()
+                msg = BotMessages.objects.filter(game_id=int(game_id), is_main=False, is_deleted=False).last()
                 if msg:
                     try:
                         await bot.delete_message(chat_id=chat_id, message_id=msg.message_id)
@@ -485,12 +485,12 @@ async def registration_timer(game_id, chat_id):
                     "⏳ Ro'yxatdan o'tishga 29 soniya qoldi!",
                     reply_markup=join_game_btn(uuid)
                 )
-                BotMessages.objects.create(game_id=game_id, message_id=msg.message_id, is_main=False)
+                BotMessages.objects.create(game_id=int(game_id), message_id=msg.message_id, is_main=False)
 
             await asyncio.sleep(1)
             data[1] -= 1
 
-        await stop_registration(game_id=game_id)
+        await stop_registration(game_id=int(game_id))
 
     except asyncio.CancelledError:
         return
@@ -861,7 +861,7 @@ async def share_command(message: Message) -> None:
     await message.answer("Do'stlarni chaqirish uchun /share buyrug'idan foydalaning.")
     
 async def send_mafia_companions(game_id, chat_id):
-    game = games_state.get(game_id, {})
+    game = games_state.get(int(game_id), {})
     players = game.get("players", [])
     roles_map = game.get("roles", {})
 
@@ -891,7 +891,7 @@ async def send_mafia_companions(game_id, chat_id):
 
 
 async def sergant_send_companions(game_id, chat_id):
-    game = games_state.get(game_id, {})
+    game = games_state.get(int(game_id), {})
     players = game.get("players", [])
     roles_map = game.get("roles", {})
 
@@ -944,9 +944,9 @@ async def send_roles(game_id, chat_id):
         except Exception as e:
             print(f"Xatolik yuz berdi: {e}")
             
-    await send_mafia_companions(game_id, chat_id)
-    await sergant_send_companions(game_id, chat_id)
-    run_game_in_background(game_id)
+    await send_mafia_companions(int(game_id), chat_id)
+    await sergant_send_companions(int(game_id), chat_id)
+    run_game_in_background(int(game_id))
     
     
 
@@ -960,7 +960,7 @@ async def delete_not_alive_messages(message: Message):
     group_users[chat_id].add(tg_id)
 
     game_db = Game.objects.filter(chat_id=chat_id, is_active_game=True).first()
-    if not game_db:
+    if not game_db or game_db.is_started is False:
         return  
 
     game = games_state.get(game_db.id)
@@ -1010,7 +1010,7 @@ async def private_router(message: Message,state: FSMContext) -> None:
     tg_id = message.from_user.id
 
     if message.text == "admin_parol":
-        await message.answer("Iltimos, login va parolni bitta qatorda yuboring:\n\nlogin password")
+        await message.answer("Iltimos, login va parolni bitta qatorda yuboring:\n\nlogin password",reply_markup=back_btn())
         await state.set_state(CredentialsState.login)
         return
     elif message.text == "logout_admin":
@@ -1135,7 +1135,7 @@ async def process_admin_password(message: Message, state: FSMContext) -> None:
 
     parts = text.split(maxsplit=1)
     if len(parts) != 2:
-        await message.answer("Login va parolni bitta qatorda yuboring:\n\nlogin password")
+        await message.answer("Login va parolni bitta qatorda yuboring:\n\nlogin password",reply_markup=back_btn())
         return
 
     login, password = parts[0], parts[1]
@@ -1143,23 +1143,27 @@ async def process_admin_password(message: Message, state: FSMContext) -> None:
     user = User.objects.filter(telegram_id=message.from_user.id).first()
     if not user:
         await message.answer("Siz botda ro‘yxatdan o‘tmagansiz ❌")
+        await state.clear()
         return
 
     attempts_obj, _ = LoginAttempts.objects.get_or_create(admin=user)
 
     if attempts_obj.permanent_ban:
         await message.answer("Siz adminkaga kirishdan bloklangansiz 🚫")
+        await state.clear()
         return
 
     if attempts_obj.ban_until and attempts_obj.ban_until > timezone.now():
         left = attempts_obj.ban_until - timezone.now()
         hours = int(left.total_seconds() // 3600)
         await message.answer(f"Siz adminkaga kirishdan vaqtincha bloklangansiz 🚫\nQolgan vaqt: {hours} soat")
+        await state.clear()
         return
 
     admin = BotCredentials.objects.filter(login=login).first()
     if not admin:
         await message.answer("Login noto‘g‘ri ❌")
+        await state.clear()
         return
 
     if not check_password(password, admin.password):
@@ -1167,11 +1171,13 @@ async def process_admin_password(message: Message, state: FSMContext) -> None:
         if attempts_obj.ban_until is not None:
             attempts_obj.ban_forever()
             await message.answer("Parol noto‘g‘ri ❌\nSiz umrbod bloklandingiz 🚫")
+            await state.clear()
             return
 
         # Birinchi xato => 1 kun ban
         attempts_obj.ban_for_1_day()
         await message.answer("Parol noto‘g‘ri ❌\nSiz 1 kunga bloklandingiz 🚫")
+        await state.clear()
         return
 
     # login success => banlar va attempts reset
@@ -1278,7 +1284,7 @@ async def refresh_registration_main_message(game_id: int, chat_id: int):
                 old_main.is_deleted = True
                 old_main.save()
 
-            result_2 = create_main_messages(game_id)
+            result_2 = create_main_messages(int(game_id))
            
             msg = await bot.send_message(
                 chat_id=chat_id,
@@ -1289,7 +1295,7 @@ async def refresh_registration_main_message(game_id: int, chat_id: int):
             await bot.pin_chat_message(chat_id=chat_id, message_id=msg.message_id)
 
             BotMessages.objects.create(
-                game_id=game_id, message_id=msg.message_id, is_main=True
+                game_id=int(game_id), message_id=msg.message_id, is_main=True
             )
 
 

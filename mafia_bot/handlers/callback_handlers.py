@@ -490,14 +490,14 @@ async def com_callback(callback: CallbackQuery):
         await bot.send_message(chat_id=chat_id, text="🕵️‍ Komissar Katani pistoletini o'qladi...")
         await callback.message.edit_text(
             text=ACTIONS.get("com_shoot"),
-            reply_markup=com_inline_action_btn(action="shoot",chat_id=chat_id, game_id=parts[2],com_id=com_id,day=day)
+            reply_markup=com_inline_action_btn(action="shoot",chat_id=chat_id, game_id=int(parts[2]),com_id=com_id,day=day)
         )
         return
 
     await bot.send_message(chat_id=chat_id, text="🕵️‍ Komissar Katani yovuzlarni qidirishga ketdi...")
     await callback.message.edit_text(
         text=ACTIONS.get("com_check"),
-        reply_markup=com_inline_action_btn(action="search",chat_id=chat_id, game_id=parts[2],com_id=com_id,day=day)
+        reply_markup=com_inline_action_btn(action="search",chat_id=chat_id, game_id=int(parts[2]),com_id=com_id,day=day)
     )
 
 
@@ -859,7 +859,7 @@ async def don_callback(callback: CallbackQuery):
     
     target_name = get_first_name_from_players(int(target_id))
     mafia_name = get_first_name_from_players(don_id)
-    mafia_members = get_mafia_members(game_id)
+    mafia_members = get_mafia_members(int(game_id))
     
 
     text_for_mafia = (
@@ -916,7 +916,7 @@ async def mafia_callback(callback: CallbackQuery):
     
     target_name = get_first_name_from_players(int(target_id))
     mafia_name = get_first_name_from_players(mafia_id)
-    mafia_members = get_mafia_members(game_id)
+    mafia_members = get_mafia_members(int(game_id))
     
 
     text_for_mafia = (
@@ -943,9 +943,9 @@ async def mafia_callback(callback: CallbackQuery):
 async def adv_callback(callback: CallbackQuery):
     await callback.answer()
     await callback.message.edit_reply_markup(None)
-    target_id = callback.data.split("_")[1]
-    game_id = callback.data.split("_")[2]
-    chat_id = callback.data.split("_")[3]
+    target_id = int(callback.data.split("_")[1])
+    game_id = int(callback.data.split("_")[2])
+    chat_id = int(callback.data.split("_")[3])
     day = callback.data.split("_")[4]
     adv_id = callback.from_user.id
     
@@ -982,7 +982,7 @@ async def adv_callback(callback: CallbackQuery):
     
     target_name = get_first_name_from_players(int(target_id))
     adv_name = get_first_name_from_players(adv_id)
-    mafia_members = get_mafia_members(game_id)
+    mafia_members = get_mafia_members(int(game_id))
     
 
     text_for_mafia = (
@@ -1050,7 +1050,7 @@ async def spy_callback(callback: CallbackQuery):
     
     target_name = get_first_name_from_players(int(target_id))
     spy_name = get_first_name_from_players(spy_id)
-    mafia_members = get_mafia_members(game_id)
+    mafia_members = get_mafia_members(int(game_id))
     text_for_mafia = (
         f"🦇 Ayg'oqchi {spy_name} tanlovi: <a href='tg://user?id={target_id}'>{target_name}</a>"
     )
@@ -1075,9 +1075,9 @@ async def spy_callback(callback: CallbackQuery):
 async def lab_callback(callback: CallbackQuery):
     await callback.answer()
     await callback.message.edit_reply_markup(None)
-    target_id = callback.data.split("_")[1]
-    game_id = callback.data.split("_")[2]
-    chat_id = callback.data.split("_")[3]
+    target_id = int(callback.data.split("_")[1])
+    game_id = int(callback.data.split("_")[2])
+    chat_id = int(callback.data.split("_")[3])
     day = callback.data.split("_")[4]
     
     lab_id = callback.from_user.id
@@ -1393,7 +1393,7 @@ async def pirate_callback(callback: CallbackQuery):
     await bot.send_message(
         chat_id=int(target_id),
         text=f"👺 Qaroqchi sizning narsalaringizni o'g'irlash uchun keldi\nUnga 10💶 pul berasizmi!!!",
-        reply_markup=pirate_steal_inline_btn(pirate_id=pirate_id,game_id=game_id,day=day)
+        reply_markup=pirate_steal_inline_btn(pirate_id=pirate_id,game_id=int(game_id),day=day)
     )
     await bot.send_message(
         chat_id=int(chat_id),
@@ -1463,8 +1463,8 @@ async def professor_callback(callback: CallbackQuery):
     await callback.answer()
     await callback.message.edit_reply_markup(None)
     target_id = callback.data.split("_")[1]
-    game_id = callback.data.split("_")[2]
-    chat_id = callback.data.split("_")[3]
+    game_id = int(callback.data.split("_")[2])
+    chat_id = int(callback.data.split("_")[3])
     day = callback.data.split("_")[4]
     
     professor_id = callback.from_user.id
@@ -1505,7 +1505,7 @@ async def professor_callback(callback: CallbackQuery):
     await bot.send_message(
         chat_id=int(target_id),
         text=f"🎩 Professor sizga 3 ta quticha bilan keldi!",
-        reply_markup=professor_gift_inline_btn(game_id=game_id,day=day)
+        reply_markup=professor_gift_inline_btn(game_id=int(game_id),day=day)
     )
     
     await callback.message.edit_text(text=f"{ACTIONS.get('professor_action')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni tanladingiz")
@@ -1570,7 +1570,7 @@ async def hang_callback(callback: CallbackQuery):
         )
         return
     game["day_actions"]['votes'].append(int(target_id))
-    mark_hang_done(game_id, callback.from_user.id)
+    mark_hang_done(int(game_id), callback.from_user.id)
     
     
     target_player = User.objects.filter(telegram_id=int(target_id)).first()
@@ -1624,14 +1624,14 @@ async def confirm_callback(callback: CallbackQuery):
         if voter_id in game["day_actions"]["hang_yes"]:
             game["day_actions"]["hang_yes"].remove(voter_id)
     
-    mark_confirm_done(game_id, voter_id)
+    mark_confirm_done(int(game_id), voter_id)
     
     
     await callback.answer(text="👍 Ovozingiz qabul qilindi.")
     yes = len(game["day_actions"]["hang_yes"])
     no = len(game["day_actions"]["hang_no"])
     
-    await update_hang_votes(voter_id=target_id,game_id=game_id,chat_id=chat_id,yes=yes,no=no)
+    await update_hang_votes(voter_id=target_id,game_id=int(game_id),chat_id=chat_id,yes=yes,no=no)
     
     
 async def update_hang_votes(voter_id,game_id: int, chat_id: int, yes: int, no: int):
@@ -1642,7 +1642,7 @@ async def update_hang_votes(voter_id,game_id: int, chat_id: int, yes: int, no: i
     await bot.edit_message_reply_markup(
         chat_id=chat_id,
         message_id=msg_id,
-        reply_markup=confirm_hang_inline_btn(voted_user_id=voter_id,game_id=game_id,chat_id=chat_id,yes=yes,no=no)
+        reply_markup=confirm_hang_inline_btn(voted_user_id=voter_id,game_id=int(game_id),chat_id=chat_id,yes=yes,no=no)
     )
     
 @dp.pre_checkout_query()
