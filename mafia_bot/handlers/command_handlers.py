@@ -178,7 +178,7 @@ async def profile_command(message: Message):
 @dp.message(Command("help"), StateFilter(None))
 async def help_command(message: Message) -> None:
     await message.delete()
-    await message.answer("Admin.\n\n@yunusbek_pardaboyev")
+    await message.answer("Admin.\n\n@RedDon_Mafia")
     
 
 @dp.message(Command("money"), F.chat.type.in_({"group", "supergroup"}), StateFilter(None))
@@ -407,7 +407,7 @@ async def leave(message: Message) -> None:
     await message.delete()
     tg_id = message.from_user.id
     game_db = Game.objects.filter(chat_id=message.chat.id, is_active_game=True).first()
-    if not game_db:
+    if not game_db or not game_db.is_started:
         return
     
     game = games_state.get(game_db.id)
