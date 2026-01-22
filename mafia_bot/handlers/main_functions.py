@@ -1193,12 +1193,14 @@ async def apply_night_actions(game_id: int):
     mafia_alive = any(roles.get(tg) in {"don", "mafia"} for tg in alive_ids)
     if mafia_alive:
         mafia_target = get_mafia_kill_target(night_actions)
+        if not mafia_target:
+            return
         add_intent(mafia_target, "don", priority=1)
         mafia_ids = get_mafia_members(game_id)
         for mafia in mafia_ids:
             await bot.send_message(
             chat_id=int(mafia),
-            text=f"Mafiyaning ovoz berishi yakunlandi\nMafialar {uname( mafia_target)} 💀 shavqatsizlarcha o'ldirdi."
+            text=f"Mafiyaning ovoz berishi yakunlandi\nMafialar {uname(mafia_target)} 💀 shavqatsizlarcha o'ldirdi."
         )
 
     killer_id = get_alive_role_id(game, "killer")
