@@ -377,6 +377,11 @@ async def start_game(game_id):
             
     except asyncio.CancelledError:
         print(f"Game {game_id} cancelled.")
+        game = Game.objects.filter(id=game_id).first()
+        game.is_active_game = False
+        game.is_ended = True
+        game.is_started = False
+        game.save()
         return
     except Exception as e:
         traceback.print_exc()

@@ -1157,7 +1157,7 @@ async def process_admin_password(message: Message, state: FSMContext) -> None:
         await message.answer(f"Siz adminkaga kirishdan vaqtincha bloklangansiz 🚫\nQolgan vaqt: {hours} soat")
         return
 
-    admin = BotCredentials.objects.filter(username=login).first()
+    admin = BotCredentials.objects.filter(login=login).first()
     if not admin:
         await message.answer("Login noto‘g‘ri ❌")
         return
