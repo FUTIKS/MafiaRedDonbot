@@ -64,7 +64,7 @@ async def start(message: Message) -> None:
             await message.reply(text="Sabr qiling siz o'yindasiz! Tushunyapsizmi? O'yinda! :)")
         elif result.get("message") in ("joined","full"):
             trial = GroupTrials.objects.filter(group_id=game.chat_id).first()
-            await message.reply(text=f"Tabriklaymiz! Siz <b> {trial.group_name if trial else ''} </b>guruhda o'yinga qo'shildingiz.")
+            await message.reply(text=f"✅ Tabriklaymiz! Siz <b> {trial.group_name if trial else ''} </b>guruhda o'yinga qo'shildingiz.")
             result_2 = create_main_messages(game.id)
             bot_message=BotMessages.objects.filter(game_id=game.id,is_main=True,is_deleted=False).first()
             if bot_message:
