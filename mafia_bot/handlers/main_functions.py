@@ -511,7 +511,7 @@ def mark_night_action_done(game, tg_id: int):
     pending = runtime.get("pending_night")
     event = runtime.get("night_event")
 
-    if not pending or not event:
+    if pending is None or event is None:
         return
 
     pending.discard(int(tg_id))
@@ -543,8 +543,9 @@ def mark_confirm_done(game_id, voter_id: int):
     pending = runtime.get("pending_confirm")
     event = runtime.get("confirm_event")
 
-    if not pending or not event:
+    if pending is None or event is None:
         return
+
 
     pending.discard(int(voter_id))
 

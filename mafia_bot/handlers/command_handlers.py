@@ -406,16 +406,16 @@ async def change_command(message: Message) -> None:
 async def leave(message: Message) -> None:
     await message.delete()
     tg_id = message.from_user.id
-    game = Game.objects.filter(chat_id=message.chat.id, is_active_game=True).first()
-    if not game:
+    game_db = Game.objects.filter(chat_id=message.chat.id, is_active_game=True).first()
+    if not game_db:
         return
     
-    game = games_state.get(game.id)
+    game = games_state.get(game_db.id)
     if not game:
         return
     kill(game,tg_id)
     user = User.objects.filter(telegram_id=tg_id).first()
-    if user:
+    if not user:
         return
     role = game.get("roles", {}).get(tg_id)
     role_label_text = role_label(role)
@@ -1039,9 +1039,6 @@ async def private_router(message: Message,state: FSMContext) -> None:
 
         game = games_state.get(game_db.id)
         if not game:
-            return
-        game_day = game.get("day", 0)
-        if not (day <= game_day <= day + 2):
             return
 
         dead = set(game.get("dead", []))

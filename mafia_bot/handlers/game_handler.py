@@ -78,7 +78,7 @@ async def start_game(game_id):
 
             await asyncio.sleep(2)
 
-            msg = "<b>Tirik o'yinchilar:</b>\n\n"
+            msgb = "<b>Tirik o'yinchilar:</b>\n\n"
 
             for idx, tg_id in enumerate(all_players, 1):
                 if tg_id not in alive_players:
@@ -86,13 +86,13 @@ async def start_game(game_id):
                 user = users_map.get(tg_id)
                 if not user:
                     continue
-                msg += f'<b>{idx}. <a href="tg://user?id={user.telegram_id}">{user.first_name}</a></b>\n'
+                msgb += f'<b>{idx}. <a href="tg://user?id={user.telegram_id}">{user.first_name}</a></b>\n'
 
-            msg += "\n<b>Tonggacha 1 daqiqa qoldii!</b>"
+            msgb += "\n<b>Tonggacha 1 daqiqa qoldii!</b>"
 
             await bot.send_message(
                 chat_id=game.chat_id,
-                text=msg,
+                text=msgb,
                 reply_markup=go_to_bot_inline_btn(2),
                 parse_mode="HTML"
             )
@@ -155,7 +155,9 @@ async def start_game(game_id):
             users_after_night_qs = User.objects.filter(telegram_id__in=alive_after_night).only("telegram_id", "first_name")
             users_map_after_night = {u.telegram_id: u for u in users_after_night_qs}
 
-            msg += "\nUlardan:\n\n"
+            
+
+            msg = "<b>Tirik o'yinchilar:</b>\n\n"
 
             roles_map = games_state.get(game_id, {}).get("roles", {})
 
@@ -163,7 +165,13 @@ async def start_game(game_id):
             mafia_labels = []
             solo_labels = []
 
-            for tg_id in alive_after_night:
+            for idx, tg_id in enumerate(all_players, 1):
+                if tg_id not in alive_after_night:
+                    continue
+                user_after = users_map_after_night.get(tg_id)
+                if not user_after:
+                    continue
+                msg += f'<b>{idx}. <a href="tg://user?id={user_after.telegram_id}">{user_after.first_name}</a></b>\n'
                 role_key = roles_map.get(tg_id)
                 if tg_id not in games_state[game_id]['alive']:
                     continue
@@ -189,6 +197,7 @@ async def start_game(game_id):
                 random.shuffle(result)
                 return ", ".join(result) if result else "—"
 
+            msg += "\nUlardan:\n\n"
             msg += f"<b>Tinch axolilar - {len(peace_labels)}\n {format_role_list(peace_labels)}</b>\n\n"
             msg += f"<b>Mafialar - {len(mafia_labels)}\n {format_role_list(mafia_labels)}</b>\n\n"
             msg += f"<b>Yakka rollar - {len(solo_labels)}\n {format_role_list(solo_labels)}</b>"
