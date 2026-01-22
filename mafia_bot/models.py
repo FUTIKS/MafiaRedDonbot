@@ -194,7 +194,6 @@ class GameSettings(SafeBaseModel):
     
     
 class BotCredentials(SafeBaseModel):
-    admin = models.ForeignKey(User,on_delete=models.CASCADE)
     login = models.CharField(max_length=255,default="admin")
     password = models.CharField(max_length=255,default="1234")
     

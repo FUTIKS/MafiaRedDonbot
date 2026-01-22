@@ -132,10 +132,9 @@ class GameSettingsAdmin(admin.ModelAdmin):
 
 @admin.register(BotCredentials)
 class BotCredentialsAdmin(admin.ModelAdmin):
-    list_display = ("id", "admin", "login", "created_datetime")
-    search_fields = ("login", "admin__username", "admin__telegram_id")
+    list_display = ("id",  "login", "created_datetime")
+    search_fields = ("login",)
     ordering = ("-id",)
-    readonly_fields = ("admin",)
 
 
 @admin.register(LoginAttempts)

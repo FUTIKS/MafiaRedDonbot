@@ -349,7 +349,7 @@ async def start_game(game_id):
             if roles_map.get(voted_user.telegram_id) == "don":
                 new_don_id = promote_new_don_if_needed(games_state[game_id])
                 if new_don_id:
-                    await notify_new_don( game, new_don_id )
+                    await notify_new_don( games_state[game_id], new_don_id )
                     await bot.send_message(
                         chat_id=game.chat_id,
                         text=f"🤵🏻 Don vafot etdi.\nMafialardan biri endi yangi Don "
@@ -357,7 +357,7 @@ async def start_game(game_id):
             if roles_map.get(voted_user.telegram_id) == "com":
                 new_com_id = promote_new_com_if_needed(games_state[game_id])
                 if new_com_id:
-                    await notify_new_com( game, new_com_id)
+                    await notify_new_com( games_state[game_id], new_com_id)
                     await bot.send_message(
                         chat_id=game.chat_id,
                         text=f"🕵🏻‍♂ Komissar vafot etdi.\nYangi Komissar tayinlandi."
