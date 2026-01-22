@@ -1250,7 +1250,7 @@ async def apply_night_actions(game_id: int):
         kaldun_target = night_actions.get("kaldun_target")
         if kaldun_target and is_alive(game, kaldun_target):
             if roles.get(int(kaldun_target)) in PEACE_ROLES:
-                effects.setdefault("no_hang", {})[int(kaldun_target)] = "kaldun"
+                protected[int(kaldun_target)] = "kaldun"
             else:
                 add_intent(kaldun_target, "kaldun", priority=2)
 
