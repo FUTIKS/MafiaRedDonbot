@@ -3005,7 +3005,7 @@ async def take_gsend_stone(callback: CallbackQuery):
         await callback.answer("❌ Hozir tarqatish yo'q.", show_alert=True)
         return
     
-    game_db = Game.objects.filter(group_id=chat_id, is_active=True).first()
+    game_db = Game.objects.filter(chat_id=chat_id, is_active=True).first()
     if not game_db:
         return
     
