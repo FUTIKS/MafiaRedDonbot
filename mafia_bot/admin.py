@@ -38,7 +38,7 @@ class UserAdmin(admin.ModelAdmin):
 
 @admin.register(UserRole)
 class UserRoleAdmin(admin.ModelAdmin):
-    list_display = ("id", "user", "role_key", "quantity", "created_at")
+    list_display = ("id", "user", "role_key", "quantity", "created_datetime")
     list_filter = ("role_key",)
     search_fields = ("user__username", "user__telegram_id", "role_key")
     ordering = ("-id",)
@@ -46,7 +46,7 @@ class UserRoleAdmin(admin.ModelAdmin):
 
 @admin.register(Game)
 class GameAdmin(admin.ModelAdmin):
-    list_display = ("id", "chat_id", "lang", "is_started", "is_ended", "is_active_game", "created_at")
+    list_display = ("id", "chat_id", "lang", "is_started", "is_ended", "is_active_game", "created_datetime")
     list_filter = ("lang", "is_started", "is_ended", "is_active_game")
     search_fields = ("chat_id",)
     ordering = ("-id",)
@@ -62,7 +62,7 @@ class PrizeHistoryAdmin(admin.ModelAdmin):
 
 @admin.register(MostActiveUser)
 class MostActiveUserAdmin(admin.ModelAdmin):
-    list_display = ("id", "user", "group", "games_played", "games_win", "created_at")
+    list_display = ("id", "user", "group", "games_played", "games_win", "created_datetime")
     list_filter = ("group",)
     search_fields = ("user__username", "user__telegram_id", "group")
     ordering = ("-games_played", "-games_win")
@@ -70,7 +70,7 @@ class MostActiveUserAdmin(admin.ModelAdmin):
 
 @admin.register(BotMessages)
 class BotMessagesAdmin(admin.ModelAdmin):
-    list_display = ("id", "game", "message_id", "is_main", "is_deleted", "created_at")
+    list_display = ("id", "game", "message_id", "is_main", "is_deleted", "created_datetime")
     list_filter = ("is_main", "is_deleted")
     search_fields = ("message_id", "game__id", "game__chat_id")
     ordering = ("-id",)
@@ -78,7 +78,7 @@ class BotMessagesAdmin(admin.ModelAdmin):
 
 @admin.register(PremiumGroup)
 class PremiumGroupAdmin(admin.ModelAdmin):
-    list_display = ("id", "group_id", "name", "stones_for", "ends_date", "created_at")
+    list_display = ("id", "group_id", "name", "stones_for", "ends_date", "created_datetime")
     list_filter = ("ends_date",)
     search_fields = ("group_id", "name")
     ordering = ("-ends_date",)
@@ -86,7 +86,7 @@ class PremiumGroupAdmin(admin.ModelAdmin):
 
 @admin.register(CasesOpened)
 class CasesOpenedAdmin(admin.ModelAdmin):
-    list_display = ("id", "user", "money_case", "stone_case", "created_at")
+    list_display = ("id", "user", "money_case", "stone_case", "created_datetime")
     list_filter = ("money_case", "stone_case")
     search_fields = ("user__username", "user__telegram_id")
     ordering = ("-id",)
@@ -107,14 +107,14 @@ class GroupTrialsAdmin(admin.ModelAdmin):
 
 @admin.register(PriceStones)
 class PriceStonesAdmin(admin.ModelAdmin):
-    list_display = ("id", "created_at")
+    list_display = ("id", "created_datetime")
     ordering = ("-id",)
 
 
 @admin.register(MoneySendHistory)
 class MoneySendHistoryAdmin(admin.ModelAdmin):
-    list_display = ("id", "sender", "receiver", "amount", "created_at")
-    list_filter = ("created_at",)
+    list_display = ("id", "sender", "receiver", "amount", "created_datetime")
+    list_filter = ("created_datetime",)
     search_fields = ("sender__username", "receiver__username", "sender__telegram_id", "receiver__telegram_id")
     ordering = ("-id",)
 
@@ -123,7 +123,7 @@ class MoneySendHistoryAdmin(admin.ModelAdmin):
 class GameSettingsAdmin(admin.ModelAdmin):
     list_display = (
         "id", "user", "group_id", "begin_instance",
-        "begin_instance_time", "number_of_players", "begin_after_end", "created_at"
+        "begin_instance_time", "number_of_players", "begin_after_end", "created_datetime"
     )
     list_filter = ("begin_instance", "begin_after_end")
     search_fields = ("group_id", "user__username", "user__telegram_id")
@@ -132,7 +132,7 @@ class GameSettingsAdmin(admin.ModelAdmin):
 
 @admin.register(BotCredentials)
 class BotCredentialsAdmin(admin.ModelAdmin):
-    list_display = ("id", "admin", "login", "created_at")
+    list_display = ("id", "admin", "login", "created_datetime")
     search_fields = ("login", "admin__username", "admin__telegram_id")
     ordering = ("-id",)
     readonly_fields = ("admin",)
@@ -142,7 +142,7 @@ class BotCredentialsAdmin(admin.ModelAdmin):
 class LoginAttemptsAdmin(admin.ModelAdmin):
     list_display = (
         "id", "admin", "attempts", "is_banned_display",
-        "ban_until", "permanent_ban", "last_attempt", "created_at"
+        "ban_until", "permanent_ban", "last_attempt", "created_datetime"
     )
     list_filter = ("permanent_ban", "ban_until", "last_attempt")
     search_fields = ("admin__username", "admin__telegram_id")
