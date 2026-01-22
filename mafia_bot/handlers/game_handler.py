@@ -266,9 +266,9 @@ async def start_game(game_id):
                 return
 
             # ================= MOST VOTED =================
-            games_state[game_id]['meta']['message_allowed'] = "no"
             top_voted = get_most_voted_id(game_id)  # siz yozgan function: tie bo'lsa False
             if not top_voted:
+                games_state[game_id]['meta']['message_allowed'] = "no"
                 await bot.send_message(
                     chat_id=game.chat_id,
                     text="Ovoz berish yakunlandi.\nOvoz berish janjalga aylanib ketdi... Xamma uy-uyiga tarqaldi..."
@@ -306,6 +306,7 @@ async def start_game(game_id):
                 pass
             await asyncio.sleep(2)
 
+            games_state[game_id]['meta']['message_allowed'] = "no"
             ended = await stop_game_if_needed(game_id)
             if ended:
                 return
