@@ -113,6 +113,11 @@ async def start_game(game_id):
                     chat_id=game.chat_id,
                     text="🤵🏻 Mafia navbatdagi o'ljasini tanladi..."
                 )
+            else:
+                await bot.send_message(
+                    chat_id=game.chat_id,
+                    text="🚷 🤵🏻 Don hech kimni o'ldirmaslikni afzal ko'rdi."
+                )
             ended = await stop_game_if_needed(game_id)
             if ended:
                 return

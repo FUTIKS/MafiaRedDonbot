@@ -822,7 +822,6 @@ async def don_callback(callback: CallbackQuery):
     await callback.message.edit_reply_markup(None)
     target_id = callback.data.split("_")[1]
     game_id = callback.data.split("_")[2]
-    chat_id = callback.data.split("_")[3]
     day = callback.data.split("_")[4]
     
     don_id = callback.from_user.id
@@ -846,10 +845,7 @@ async def don_callback(callback: CallbackQuery):
             text=f"{ACTIONS.get('don_kill')}\n\nSiz hech kimni o'ldirmadingiz.",
             parse_mode="HTML"
         )
-        await bot.send_message(
-            chat_id=int(chat_id),
-            text="🚷 🤵🏻 Don hech kimni o'ldirmaslikni afzal ko'rdi."
-        )   
+        
         return
     
     # ✅ night action saqlash
