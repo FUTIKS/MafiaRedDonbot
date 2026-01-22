@@ -77,7 +77,7 @@ def admin_inline_btn():
     keyboard1 = InlineKeyboardButton(text=" 💬 Guruhlar obunasi", callback_data="trial")
     keyboard2 = InlineKeyboardButton(text=" ⭐ Premium guruhlar", callback_data="premium_group")
     keyboard3 = InlineKeyboardButton(text=" 👥 Foydalanuvchi bilan aloqa", callback_data="user_talk")
-    keyboard4 = InlineKeyboardButton(text="📢 Botga habar jo'natish", callback_data="broadcast_message")
+    keyboard4 = InlineKeyboardButton(text=" 📢 Botga habar jo'natish", callback_data="broadcast_message")
     keyboard5 = InlineKeyboardButton(text=" 📊 Statistika", callback_data="statistics")
     keyboard6 = InlineKeyboardButton(text=" 💶 Pul jo'natish", callback_data="send_pul")
     keyboard7 = InlineKeyboardButton(text=" 💎 Olmos jo'natish",callback_data="send_olmos")
@@ -86,6 +86,7 @@ def admin_inline_btn():
     keyboard10 = InlineKeyboardButton(text=" 💰 Pul narxini o'zgartirish",callback_data="change_money")
     keyboard11 = InlineKeyboardButton(text=" 💎 Olmos narxini o'zgartirish",callback_data="change_stone")
     keyboard12 = InlineKeyboardButton(text=" 💳 O'tkazmalar tarixi",callback_data="transfer_history")
+    keyboard13 = InlineKeyboardButton(text=" 🔒 Xavsizlik sozlamalari", callback_data="privacy")
     design = [
         [keyboard1],
         [keyboard2],
@@ -1025,3 +1026,14 @@ def stones_to_premium_inline_btn(stones: int, chat_id: int):
 
     builder.adjust(1)
     return builder.as_markup()
+
+
+def privacy_inline_btn():
+    keyboard1 = InlineKeyboardButton(text=" 🔑 Parolni o'zgartirish", callback_data="change_password")
+    keyboard3 = InlineKeyboardButton(text="⬅️ Orqaga", callback_data="back_admin")
+    design = [
+        [keyboard1],
+        [keyboard3],
+    ]
+    keyboard = InlineKeyboardMarkup(inline_keyboard=design)
+    return keyboard

@@ -3255,4 +3255,10 @@ async def premium_manage_callback(callback: CallbackQuery):
         
     
 
-   
+# @dp.callback_query(F.data == "privacy")
+# async def privacy_callback(callback: CallbackQuery):
+#     await callback.answer()
+#     await callback.message.edit_text(
+#         text=(
+#             ""
+#         )

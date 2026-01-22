@@ -966,6 +966,8 @@ def compute_daydi_seen(game):
             continue
         if visitor_id in invisible:
             continue
+        if visitor_id != daydi_house:
+            continue
         if visitor_id not in seen:
             seen.append(visitor_id)
         
