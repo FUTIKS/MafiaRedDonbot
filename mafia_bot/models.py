@@ -201,6 +201,7 @@ class BotCredentials(SafeBaseModel):
     def __str__(self):
         return f"BotCredentials Admin {self.admin.username}"
     
+    
 class LoginAttempts(SafeBaseModel):
     admin = models.OneToOneField(User, on_delete=models.CASCADE, related_name="login_attempts")
     attempts = models.IntegerField(default=0)
