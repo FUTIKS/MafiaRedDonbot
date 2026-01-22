@@ -347,7 +347,7 @@ async def start_game(game_id):
                 text = f"<a href='tg://user?id={voted_user.telegram_id}'>{voted_user.first_name}</a> - {ROLE_LABELS.get(roles_map.get(voted_user.telegram_id))} edi!!"
             )
             if roles_map.get(voted_user.telegram_id) == "don":
-                new_don_id = promote_new_don_if_needed(game)
+                new_don_id = promote_new_don_if_needed(games_state[game_id])
                 if new_don_id:
                     await notify_new_don( game, new_don_id )
                     await bot.send_message(
@@ -355,7 +355,7 @@ async def start_game(game_id):
                         text=f"🤵🏻 Don vafot etdi.\nMafialardan biri endi yangi Don "
                     )
             if roles_map.get(voted_user.telegram_id) == "com":
-                new_com_id = promote_new_com_if_needed(game)
+                new_com_id = promote_new_com_if_needed(games_state[game_id])
                 if new_com_id:
                     await notify_new_com( game, new_com_id)
                     await bot.send_message(

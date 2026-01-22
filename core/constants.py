@@ -35,7 +35,7 @@ LANGUAGE_CHOICES = [
 DESCRIPTIONS = {
         "peace": "👨🏼 Tinch aholi! Sizning vazifangiz mafiani topish va ovoz berish jarayonida ularni osish.",
         "don": "🤵🏻 Don (Mafialar sardori)! Bu tunda kim o'lishini siz xal qilasiz.",
-        "mafia": "🤵🏼 Mafia1 Sizning donga bo'ysinasiz va sizga qarshilik qilganlarni o'dirasiz. Don o'lsa siz yangi Don bo'lishingiz mumkin.",
+        "mafia": "🤵🏼 Mafia Sizning donga bo'ysinasiz va sizga qarshilik qilganlarni o'dirasiz. Don o'lsa siz yangi Don bo'lishingiz mumkin.",
         "com": "🕵🏻‍♂️ Komissar katani! Shaharning asosiy himoyachisi va mafia kushandasi...",
         "serg": "👮🏻‍♂️ Serjant! 🕵🏻‍♂Komissarga yordam berish.  U sizni o'z harakatlaringiz to'g'risida xabardor qiladi va sizni voqealar to'g'risida xabardor qiladi.  Agar komissar vafot etsa, uning o'rnini egallaysiz.",
         "doc": "👨🏼‍⚕️ Shifokor! Siz aholining birdan-bir umidisiz...",
