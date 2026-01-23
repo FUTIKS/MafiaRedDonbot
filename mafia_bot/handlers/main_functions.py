@@ -1331,7 +1331,7 @@ async def apply_night_actions(game_id: int):
         if target_role == "com":
             new_com_id = promote_new_com_if_needed(game)
             if new_com_id:
-                await notify_new_com( game, new_com_id, uname)
+                await notify_new_com( game, new_com_id)
                 await bot.send_message(
                     chat_id=chat_id,
                     text=f"🕵🏻‍♂ Komissar vafot etdi.\nYangi Komissar tayinlandi."
