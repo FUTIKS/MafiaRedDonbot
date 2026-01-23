@@ -556,12 +556,12 @@ registration_refresh_tasks = {}
 
 @dp.message(Command("game"), StateFilter(None)) 
 async def game_command(message: Message) -> None:
-    await message.delete() 
     bot_member = await message.chat.get_member(message.bot.id)
     result = check_bot_rights(bot_member)
     if result:
         await message.answer(text=result)
         return
+    await message.delete() 
     if message.chat.type in ("group", "supergroup"): 
         chat_id = message.chat.id
         trial = GroupTrials.objects.filter(group_id=chat_id).first()
