@@ -993,7 +993,7 @@ async def delete_not_alive_messages(message: Message):
 
     group_users[chat_id].add(tg_id)
     game = get_game_by_chat_id(chat_id)
-    if not game or not game.get("meta", {}).get("is_active_game"):
+    if not game or game.get("meta", {}).get("is_active_game") is not True:
         return 
 
     if message and message.text and message.text.startswith('!'):
