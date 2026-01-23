@@ -15,7 +15,7 @@ from mafia_bot.utils import stones_taken,gsend_taken,giveaways,games_state
 from aiogram.types import Message, LabeledPrice, PreCheckoutQuery,CallbackQuery
 from mafia_bot.models import Game, MoneySendHistory, User,PremiumGroup,MostActiveUser,CasesOpened,GameSettings,GroupTrials,PriceStones, UserRole,BotCredentials
 from mafia_bot.state import AddGroupState, BeginInstanceState,SendMoneyState,ChangeStoneCostState,ChangeMoneyCostState,ExtendGroupState,QuestionState,Register,CredentialsState
-from mafia_bot.handlers.main_functions import (add_visit, get_mafia_members,get_first_name_from_players,
+from mafia_bot.handlers.main_functions import (add_visit, get_mafia_members,get_first_name_from_players,send_safe_message,
                                                mark_confirm_done, mark_hang_done,mark_night_action_done,get_week_range,get_month_range)
 from mafia_bot.buttons.inline import (
     admin_inline_btn, answer_admin, back_btn, cart_inline_btn, change_money_cost, change_stones_cost, com_inline_btn, end_talk_keyboard,  giveaway_join_btn, group_profile_inline_btn,
@@ -366,7 +366,7 @@ async def doc_heal_callback(callback: CallbackQuery):
             parse_mode="HTML"
         )
         try:
-            await bot.send_message(
+            await send_safe_message(
             chat_id=chat_id,
             text="🚷 👨🏼‍⚕️ Shifokor hech qayoqqa bormaslikni afzal ko'rdi."
         )
@@ -394,7 +394,7 @@ async def doc_heal_callback(callback: CallbackQuery):
 
     await callback.message.edit_text(text=text, parse_mode="HTML")
     try:
-        await bot.send_message(
+        await send_safe_message(
             chat_id=chat_id,
             text="👨🏼‍⚕️ Shifokor tungi navbatchilikka ketdi..."
         )
@@ -431,7 +431,7 @@ async def daydi_callback(callback: CallbackQuery):
             parse_mode="HTML"
         )
         try:
-            await bot.send_message(
+            await send_safe_message(
                 chat_id=chat_id,
                 text="🚷 🧙🏼‍♂️ Daydi hech qayoqqa bormaslikni afzal ko'rdi."
             )
@@ -451,7 +451,7 @@ async def daydi_callback(callback: CallbackQuery):
         parse_mode="HTML"
     )
     try:
-        await bot.send_message(chat_id=chat_id, text="🧙🏼‍♂️ Daydi kimnikigadir shisha olish uchun ketdi...")
+        await send_safe_message(chat_id=chat_id, text="🧙🏼‍♂️ Daydi kimnikigadir shisha olish uchun ketdi...")
     except:
         pass
     
@@ -484,7 +484,7 @@ async def com_callback(callback: CallbackQuery):
             parse_mode="HTML"
         )
         try:
-            await bot.send_message(
+            await send_safe_message(
                 chat_id=chat_id,
                 text="🚷 🕵️‍ Komissar bugun dam olishni xohladi."
             )
@@ -500,7 +500,7 @@ async def com_callback(callback: CallbackQuery):
     
     if action == "shoot":
         try:
-            await bot.send_message(chat_id=chat_id, text="🕵️‍ Komissar Katani pistoletini o'qladi...")
+            await send_safe_message(chat_id=chat_id, text="🕵️‍ Komissar Katani pistoletini o'qladi...")
         except:
             pass
         await callback.message.edit_text(
@@ -510,7 +510,7 @@ async def com_callback(callback: CallbackQuery):
         return
 
     try:
-        await bot.send_message(chat_id=chat_id, text="🕵️‍ Komissar Katani yovuzlarni qidirishga ketdi...")
+        await send_safe_message(chat_id=chat_id, text="🕵️‍ Komissar Katani yovuzlarni qidirishga ketdi...")
     except:
         pass
     await callback.message.edit_text(
@@ -651,7 +651,7 @@ async def lover_callback(callback: CallbackQuery):
             parse_mode="HTML"
         )
         try:
-            await bot.send_message(
+            await send_safe_message(
                 chat_id=chat_id,
                 text="🚷 💃🏼 Ma'shuqa hech kimni kutmayapti."
             )
@@ -669,7 +669,7 @@ async def lover_callback(callback: CallbackQuery):
 
     await callback.message.edit_text(text=text, parse_mode="HTML")
 
-    await bot.send_message(
+    await send_safe_message(
         chat_id=chat_id,
         text="💃🏼 Ma'shuqa qandaydir mehmonni kutayapti..."
     )
@@ -702,7 +702,7 @@ async def killer_callback(callback: CallbackQuery):
             text=f"{ACTIONS.get('killer_kill')}\n\nSiz hech kimni o'ldirmadingiz.",
             parse_mode="HTML"
         )
-        await bot.send_message(
+        await send_safe_message(
             chat_id=chat_id,
             text="🚷 🔪 Qotil hech kimni o'ldirmaslikni afzal ko'rdi."
         )
@@ -718,7 +718,7 @@ async def killer_callback(callback: CallbackQuery):
 
     await callback.message.edit_text(text=text, parse_mode="HTML")
 
-    await bot.send_message(
+    await send_safe_message(
         chat_id=chat_id,
         text="🔪 Qotil butalar orasiga yashirinib oldi..."
     )
@@ -751,7 +751,7 @@ async def santa_callback(callback: CallbackQuery):
             text=f"{ACTIONS.get('santa')}\n\nSiz hech kimni o'ldirmadingiz.",
             parse_mode="HTML"
         )
-        await bot.send_message(
+        await send_safe_message(
             chat_id=chat_id,
             text="🚷 🎅 Santa hech kimga sovg'a bermaslikni afzal ko'rdi."
         )
@@ -774,11 +774,11 @@ async def santa_callback(callback: CallbackQuery):
     text = f"{ACTIONS.get('santa')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ga sovg'a berdingiz."
 
     await callback.message.edit_text(text=text, parse_mode="HTML")
-    await bot.send_message(
+    await send_safe_message(
         chat_id=target_id,
         text="🎅 Sizga Santa tomonidan 20 ta pullar sovg'a qilindi!"
     )
-    await bot.send_message(
+    await send_safe_message(
         chat_id=chat_id,
         text="🎅 Santa sovg'alarini tarqatmoqda..."
     )
@@ -811,7 +811,7 @@ async def kaldun_callback(callback: CallbackQuery):
             text=f"{ACTIONS.get('kaldun_spell')}\n\nSiz hech kimni sehrlamadingiz.",
             parse_mode="HTML"
         )
-        await bot.send_message(
+        await send_safe_message(
             chat_id=chat_id,
             text="🚷 ⚡️ Koldun hech kimni sehrlamaslikni afzal ko'rdi."
         )
@@ -829,7 +829,7 @@ async def kaldun_callback(callback: CallbackQuery):
 
     await callback.message.edit_text(text=text, parse_mode="HTML")
 
-    await bot.send_message(
+    await send_safe_message(
         chat_id=chat_id,
         text="⚡️ Koldun o'z sehrini ishga soldi."
     )
@@ -887,7 +887,7 @@ async def don_callback(callback: CallbackQuery):
         if member_id == don_id:
             continue
         try:
-            await bot.send_message(
+            await send_safe_message(
                 chat_id=member_id,
                 text=text_for_mafia,
                 parse_mode="HTML"
@@ -945,7 +945,7 @@ async def mafia_callback(callback: CallbackQuery):
             continue
 
         try:
-            await bot.send_message(
+            await send_safe_message(
                 chat_id=member_id,
                 text=text_for_mafia,
                 parse_mode="HTML"
@@ -983,7 +983,7 @@ async def adv_callback(callback: CallbackQuery):
             text=f"{ACTIONS.get('adv_mask')}\n\nSiz hech kimni ximoya qilmadingiz.",
             parse_mode="HTML"
         )
-        await bot.send_message(
+        await send_safe_message(
             chat_id=int(chat_id),
             text="🚷 ⚖️ Advokat hech kimni ximoya qilmaslikni afzal ko'rdi."
         )
@@ -992,7 +992,7 @@ async def adv_callback(callback: CallbackQuery):
     game["night_actions"]["advokat_target"] = int(target_id)
     add_visit(game=game, visitor_id=adv_id, house_id=target_id, invisible=False)
     
-    await bot.send_message(
+    await send_safe_message(
         chat_id=int(chat_id),
         text=f"👨🏼‍💼 Advokat ximoya qiluvchi Mafiani tanladi",
     )
@@ -1011,7 +1011,7 @@ async def adv_callback(callback: CallbackQuery):
             continue
 
         try:
-            await bot.send_message(
+            await send_safe_message(
                 chat_id=member_id,
                 text=text_for_mafia,
                 parse_mode="HTML"
@@ -1050,7 +1050,7 @@ async def spy_callback(callback: CallbackQuery):
             text=f"{ACTIONS.get('spy_check')}\n\nSiz hech kimni tekshirmadingiz.",
             parse_mode="HTML"
         )
-        await bot.send_message(
+        await send_safe_message(
             chat_id=int(chat_id),
             text="🚷 🦇 Ayg'oqchi hech kimni tekshirmaslikni afzal ko'rdi."
         )
@@ -1060,7 +1060,7 @@ async def spy_callback(callback: CallbackQuery):
     game["night_actions"]["spy_target"] = int(target_id)
     add_visit(game=game, visitor_id=spy_id, house_id=target_id, invisible=False)
     
-    await bot.send_message(
+    await send_safe_message(
         chat_id=int(chat_id),
         text=f"🦇 Ayg'oqchi o'z harakatini boshladi",
     )
@@ -1076,7 +1076,7 @@ async def spy_callback(callback: CallbackQuery):
             continue
 
         try:
-            await bot.send_message(
+            await send_safe_message(
                 chat_id=member_id,
                 text=text_for_mafia,
                 parse_mode="HTML"
@@ -1116,7 +1116,7 @@ async def lab_callback(callback: CallbackQuery):
             text=f"{ACTIONS.get('lab_action')}\n\nSiz hech kimga o'lim eleksirini bermadingiz.",
             parse_mode="HTML"
         )
-        await bot.send_message(
+        await send_safe_message(
             chat_id=int(chat_id),
             text="🚷 👨‍🔬 Labarant hech kimga o'lim eleksirini bermaslikni afzal ko'rdi."
         )
@@ -1126,7 +1126,7 @@ async def lab_callback(callback: CallbackQuery):
     game["night_actions"]["lab_target"] = int(target_id)
     add_visit(game=game, visitor_id=lab_id, house_id=target_id, invisible=False)
     
-    await bot.send_message(
+    await send_safe_message(
         chat_id=int(chat_id),
         text=f"👨‍🔬 Labarant o'lim eleksirini ishga soldi",
     )
@@ -1165,7 +1165,7 @@ async def arrow_callback(callback: CallbackQuery):
             text=f"{ACTIONS.get('arrow_kill')}\n\nSiz hech kimni o'ldirmadingiz.",
             parse_mode="HTML"
         )
-        await bot.send_message(
+        await send_safe_message(
             chat_id=int(chat_id),
             text="🚷 🏹 Kamonchi hech kimni o'ldirmaslikni afzal ko'rdi."
         )   
@@ -1174,7 +1174,7 @@ async def arrow_callback(callback: CallbackQuery):
     game["night_actions"]["arrow_target"] = int(target_id)
     add_visit(game=game, visitor_id=arrow_id, house_id=target_id, invisible=True)
     
-    await bot.send_message(
+    await send_safe_message(
         chat_id=int(chat_id),
         text=f"🏹 Kamonchi o'z nishonini tanlab oldi",
     )
@@ -1212,7 +1212,7 @@ async def trap_callback(callback: CallbackQuery):
             text=f"{ACTIONS.get('trap_action')}\n\nSiz hech kimning uyiga mina joylashtirmadingiz.",
             parse_mode="HTML"
         )
-        await bot.send_message(
+        await send_safe_message(
             chat_id=int(chat_id),
             text="🚷 ☠️ Minior hech kimning uyiga mina joylashtirmaslikni afzal ko'rdi."
         )
@@ -1221,7 +1221,7 @@ async def trap_callback(callback: CallbackQuery):
     # ✅ night action saqlash
     game["night_actions"]["trap_house"] = int(target_id)
     
-    await bot.send_message(
+    await send_safe_message(
         chat_id=int(chat_id),
         text=f"☠️ Minior o'z 🧨 minasini joylashtirdi",
     )
@@ -1260,7 +1260,7 @@ async def snyper_callback(callback: CallbackQuery):
             text=f"{ACTIONS.get('snyper_kill')}\n\nSiz hech kimni o'ldirmadingiz.",
             parse_mode="HTML"
         )
-        await bot.send_message(
+        await send_safe_message(
             chat_id=int(chat_id),
             text="🚷 👨🏻‍🎤 Snayper hech kimni o'ldirmaslikni afzal ko'rdi."
         )   
@@ -1270,7 +1270,7 @@ async def snyper_callback(callback: CallbackQuery):
     game["night_actions"]["snyper_target"] = int(target_id)
     add_visit(game=game, visitor_id=snyper_id, house_id=target_id, invisible=True)
     
-    await bot.send_message(
+    await send_safe_message(
         chat_id=int(chat_id),
         text=f"👨🏻‍🎤 Snayper nishonini tanladi va tepkini bosdi",
     )
@@ -1308,7 +1308,7 @@ async def spy_callback(callback: CallbackQuery):
             text=f"{ACTIONS.get('traitor_choose')}\n\nSiz hech kimning rolini o'zlashtirmadingiz.",
             parse_mode="HTML"
         )
-        await bot.send_message(
+        await send_safe_message(
             chat_id=int(chat_id),
             text="🚷 🦎 Sotqin hech kimning rolini o'zlashtirmaslikni afzal ko'rdi."
         )
@@ -1317,7 +1317,7 @@ async def spy_callback(callback: CallbackQuery):
     # ✅ night action saqlash
     game["night_actions"]["traitor_target"] = int(target_id)
     add_visit(game=game, visitor_id=traitor_id, house_id=target_id, invisible=False)
-    await bot.send_message(
+    await send_safe_message(
         chat_id=int(chat_id),
         text=f"🦎 Sotqin kimningdir rolini o'zlashtirdi",
     )
@@ -1353,7 +1353,7 @@ async def snowball_callback(callback: CallbackQuery):
             text=f"{ACTIONS.get('snowball_kill')}\n\nSiz hech kimni qor bilan to'ldirmadingiz.",
             parse_mode="HTML"
         )
-        await bot.send_message(
+        await send_safe_message(
             chat_id=int(chat_id),
             text="🚷 ❄️ Qorbola hech kimni qor bilan to'ldirmaslikni afzal ko'rdi."
         )
@@ -1362,7 +1362,7 @@ async def snowball_callback(callback: CallbackQuery):
     # ✅ night action saqlash
     game["night_actions"]["snowball_target"] = int(target_id)
     add_visit(game=game, visitor_id=snowball_id, house_id=target_id, invisible=False)
-    await bot.send_message(
+    await send_safe_message(
         chat_id=int(chat_id),
         text=f"❄️ Qorbola kimnidir qor bilan to'ldirdi",
     )
@@ -1396,7 +1396,7 @@ async def pirate_callback(callback: CallbackQuery):
             text=f"{ACTIONS.get('pirate_steal')}\n\nSiz hech kimni o'g'irlamangiz.",
             parse_mode="HTML"
         )
-        await bot.send_message(
+        await send_safe_message(
             chat_id=int(chat_id),
             text="🚷 👺 Qaroqchi hech kimni o'g'irlashni afzal ko'rdi."
         )
@@ -1407,12 +1407,12 @@ async def pirate_callback(callback: CallbackQuery):
     game["night_actions"]["pirate"]['pirate_id'] = int(pirate_id)
     add_visit(game=game, visitor_id=pirate_id, house_id=target_id, invisible=False)
 
-    await bot.send_message(
+    await send_safe_message(
         chat_id=int(target_id),
         text=f"👺 Qaroqchi sizning narsalaringizni o'g'irlash uchun keldi\nUnga 10💶 pul berasizmi!!!",
         reply_markup=pirate_steal_inline_btn(pirate_id=pirate_id,game_id=int(game_id),day=day)
     )
-    await bot.send_message(
+    await send_safe_message(
         chat_id=int(chat_id),
         text=f"👺 Qaroqchi kimnidir tunash uchun ovga chiqdi...",
     )
@@ -1444,7 +1444,7 @@ async def pirpay_callback(callback: CallbackQuery):
     target_name = get_first_name_from_players(int(target_id))
     if confirmation == "no":
         await callback.message.edit_text(text="👺 Siz Qaroqchiga pul bermadingiz va u endi sizni o'ldirishi mumkin!!!")
-        await bot.send_message(
+        await send_safe_message(
             chat_id=pirate_id,
             text=f"<a href='tg://user?id={target_id}'>{target_name}</a> sizga 10💶 berishdan bosh tortdi!"
         )
@@ -1460,7 +1460,7 @@ async def pirpay_callback(callback: CallbackQuery):
         )
     if target_player.coin < 10:
         await callback.message.edit_text(text="👺 Sizda Qaroqchiga berish uchun 10💶 pulingiz yetarli emas va u endi sizni o'ldirishi mumkin!!!")
-        await bot.send_message(
+        await send_safe_message(
             chat_id=pirate_id,
             text=f"<a href='tg://user?id={target_id}'>{target_name}</a> sizga 10💶 berish uchun puli yetarli emas!"
         )
@@ -1503,7 +1503,7 @@ async def professor_callback(callback: CallbackQuery):
             text=f"{ACTIONS.get('professor_action')}\n\nSiz hech kimni tanlamadingiz.",
             parse_mode="HTML"
         )
-        await bot.send_message(
+        await send_safe_message(
             chat_id=int(chat_id),
             text="🚷 🎩 Professor hech kimga quti bermaslikni afzal ko'rdi."
         )
@@ -1513,13 +1513,13 @@ async def professor_callback(callback: CallbackQuery):
     game["night_actions"]["professor"]['target_id'] = int(target_id)
     add_visit(game=game, visitor_id=professor_id, house_id=target_id, invisible=False)
     
-    await bot.send_message(
+    await send_safe_message(
         chat_id=int(chat_id),
         text=f"🎩 Professor manzilini aniqlab yo‘lga otlandi...",
     )
     
     target_name = get_first_name_from_players(int(target_id))
-    await bot.send_message(
+    await send_safe_message(
         chat_id=int(target_id),
         text=f"🎩 Professor sizga 3 ta quticha bilan keldi!",
         reply_markup=professor_gift_inline_btn(game_id=int(game_id),day=day)
@@ -1581,7 +1581,7 @@ async def hang_callback(callback: CallbackQuery):
         return
     if target_id == "no":
         await callback.message.edit_text(text=f"Aybdorlarni izlash vaqti keldi!\nKimni osishni xohlaysiz?\n\nSiz hech kimni osmadingiz.")
-        await bot.send_message(
+        await send_safe_message(
             chat_id=chat_id,
             text=f"🚷 <a href='tg://user?id={shooter_id}'>{shooter_name}</a> hech kimni osmaslikni taklif qildi"
         )
@@ -1593,7 +1593,7 @@ async def hang_callback(callback: CallbackQuery):
     user_map = game.get("users_map",{})
     user = user_map.get(int(target_id))
     await callback.message.edit_text(text=f"Aybdorlarni izlash vaqti keldi!\nKimni osishni xohlaysiz?\n\nSiz <a href='tg://user?id={target_id}'>{user.get('first_name')}</a> ni tanladingiz")
-    await bot.send_message(
+    await send_safe_message(
         chat_id=chat_id,
         text=f"<a href='tg://user?id={shooter_id}'>{shooter_name}</a> -> <a href='tg://user?id={target_id}'>{user.get('first_name')}</a> ga ovoz berdi"
     )
@@ -2036,7 +2036,7 @@ async def process_send_money(message: Message, state: FSMContext) -> None:
         reply_markup=admin_inline_btn(),
         parse_mode="HTML"
     )
-    await bot.send_message(
+    await send_safe_message(
         chat_id=user.telegram_id,
         text=f"Sizdan admin  💶 {amount} pullar yechib oldi."
     )   
@@ -2085,7 +2085,7 @@ async def process_send_olmos(message: Message, state: FSMContext) -> None:
         reply_markup=admin_inline_btn(),
         parse_mode="HTML"
     )
-    await bot.send_message(
+    await send_safe_message(
         chat_id=user.telegram_id,
         text= f"Sizdan admin tomonidan 💎 {amount} olmoslar yechib olindi."
     )
@@ -2156,7 +2156,7 @@ async def process_send_money(message: Message, state: FSMContext) -> None:
         reply_markup=admin_inline_btn(),
         parse_mode="HTML"
     )
-    await bot.send_message(
+    await send_safe_message(
         chat_id=user.telegram_id,
         text=f"Sizga admin tomonidan 💶 {amount} pullar yuborildi."
     )   
@@ -2197,7 +2197,7 @@ async def process_send_olmos(message: Message, state: FSMContext) -> None:
         reply_markup=admin_inline_btn(),
         parse_mode="HTML"
     )
-    await bot.send_message(
+    await send_safe_message(
         chat_id=user.telegram_id,
         text= f"Sizga admin tomonidan 💎 {amount} olmoslar yuborildi."
     )
@@ -3160,7 +3160,7 @@ async def process_user_talk(message: Message, state: FSMContext) -> None:
     msg_id = message.message_id
 
     try:
-        await bot.send_message(
+        await send_safe_message(
             chat_id=tg_id,
             text=f"💬 Admindan xabar:\n\n{message.text}",
             reply_markup=answer_admin(message.from_user.id, msg_id)
@@ -3192,7 +3192,7 @@ async def process_answer_to_admin(message: Message, state: FSMContext) -> None:
     msg_id = data.get("answer_to_admin_msg_id")
 
     try:
-        await bot.send_message(
+        await send_safe_message(
             chat_id=tg_id,
             text=f"💬 Foydalanuvchidan javob:\n\n{message.text}",
             reply_to_message_id=msg_id
@@ -3230,7 +3230,7 @@ async def process_broadcast_message(message: Message, state: FSMContext) -> None
 
     for user in users:
         try:
-            await bot.send_message(
+            await send_safe_message(
                 chat_id=user.telegram_id,
                 text=f"📢 Botdan umumiy xabar:\n\n{text}"
             )

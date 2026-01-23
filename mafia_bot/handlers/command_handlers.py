@@ -17,7 +17,7 @@ from mafia_bot.handlers.game_handler import run_game_in_background
 from mafia_bot.handlers.callback_handlers import begin_instance_callback
 from mafia_bot.models import Game, GroupTrials, MostActiveUser,User,BotMessages,GameSettings, UserRole,default_end_date,BotCredentials,LoginAttempts
 from mafia_bot.utils import last_wishes,team_chat_sessions,game_tasks,group_users,stones_taken,gsend_taken,games_state,giveaways,notify_users,active_role_used
-from mafia_bot.handlers.main_functions import MAFIA_ROLES, find_game,create_main_messages, kill,  shuffle_roles ,check_bot_rights,role_label,is_group_admin,mute_user,has_link,parse_amount,get_game_by_chat_id
+from mafia_bot.handlers.main_functions import MAFIA_ROLES, find_game,create_main_messages, kill,  shuffle_roles ,check_bot_rights,role_label,is_group_admin,mute_user,has_link,parse_amount,get_game_by_chat_id,send_safe_message
 from mafia_bot.buttons.inline import (admin_inline_btn, back_btn, giveaway_join_btn, group_profile_inline_btn, join_game_btn, 
                                       main_inline_btn, go_to_bot_inline_btn, cart_inline_btn, start_inline_btn, take_gsend_stone_btn,
                                       take_stone_btn,stones_to_premium_inline_btn)
@@ -63,6 +63,7 @@ async def start(message: Message) -> None:
         if not game or game.is_started:
             await message.reply(text="Kechirasiz, o'yin allaqachon boshlandi.")
             return
+        
         result = find_game(game.id,tg_id,game.chat_id,user)
         if result.get("message") == "already_in":
             await message.reply(text="Sabr qiling siz o'yindasiz! Tushunyapsizmi? O'yinda! :)")
@@ -225,7 +226,7 @@ async def money_command(message: Message) -> None:
     sender_user.save(update_fields=["coin"])
     target_user.save(update_fields=["coin"])
 
-    await bot.send_message(
+    await send_safe_message(
         chat_id=message.chat.id,
         text=(
             f"<a href='tg://user?id={sender_user.telegram_id}'>{sender_user.first_name}</a> -> <a href='tg://user?id={target_user.telegram_id}'>{target_user.first_name}</a> ga 💶 {amount} o'tkazdi"
@@ -364,7 +365,7 @@ async def money_command(message: Message) -> None:
     target_user.save(update_fields=["stones"])
 
     
-    await bot.send_message(
+    await send_safe_message(
         chat_id=message.chat.id,
         text=(
             f"<a href='tg://user?id={sender_user.telegram_id}'>{sender_user.first_name}</a> -> <a href='tg://user?id={target_user.telegram_id}'>{target_user.first_name}</a> ga 💎 {amount} o'tkazdi"
@@ -442,7 +443,7 @@ async def leave(message: Message) -> None:
         return
     role = game.get("roles", {}).get(tg_id)
     role_label_text = role_label(role)
-    await bot.send_message(chat_id=message.chat.id,text=f"<a href='tg://user?id={user.telegram_id}'> {user.first_name}</a>Bu shaharning yovuzliklariga chiday olmadi va o'zini osib qo'ydi. U {role_label_text} edi.")
+    await send_safe_message(chat_id=message.chat.id,text=f"<a href='tg://user?id={user.telegram_id}'> {user.first_name}</a>Bu shaharning yovuzliklariga chiday olmadi va o'zini osib qo'ydi. U {role_label_text} edi.")
     
     
 
@@ -486,7 +487,7 @@ async def registration_timer(game_id, chat_id):
                 thirty_sec_notified = False
             if remaining <= 59 and not one_minute_notified:
                 one_minute_notified = True
-                msg = await bot.send_message(
+                msg = await send_safe_message(
                     chat_id,
                     "⏳ Ro'yxatdan o'tishga 59 soniya qoldi!",
                     reply_markup=join_game_btn(uuid)
@@ -503,7 +504,7 @@ async def registration_timer(game_id, chat_id):
                     except:
                         pass
                 thirty_sec_notified = True
-                msg = await bot.send_message(
+                msg = await send_safe_message(
                     chat_id,
                     "⏳ Ro'yxatdan o'tishga 29 soniya qoldi!",
                     reply_markup=join_game_btn(uuid)
@@ -553,14 +554,14 @@ async def stop_registration(game_id=None, chat_id=None, instant=False):
     if players_count < 4 and not game.is_started:
         game.is_active_game = False
         game.save()
-        await bot.send_message(
+        await send_safe_message(
             chat_id=game.chat_id,
             text="O'yinni boshlash uchun o'yinchilar yetarli emas...\n\nMinimal o'yinchilar soni - 4"
         )
     else:
         game.is_started = True
         game.save()
-        await bot.send_message(
+        await send_safe_message(
             chat_id=game.chat_id,
             text="O'yin boshlandi!\nBir necha soniya ichida bot sizga rol va uning tavsifi bilan shaxsiy xabar yuboradi.",
             reply_markup=go_to_bot_inline_btn()
@@ -652,7 +653,7 @@ async def game_command(message: Message) -> None:
 
             for user_id in users_to_notify:
                 try:
-                    await bot.send_message(chat_id=user_id, text=text,reply_markup=join_game_btn(str(game.uuid)))
+                    await send_safe_message(chat_id=user_id, text=text,reply_markup=join_game_btn(str(game.uuid)))
                 except Exception:
                     pass
             notify_users[chat_id].clear()
@@ -682,7 +683,7 @@ async def auto_begin_game(chat_id: int):
         except:
             pass
     messages.update(is_deleted=True)
-    msg = await bot.send_message(chat_id=chat_id,text="Ro'yxatdan o'tish boshlandi",reply_markup=join_game_btn(str(game.uuid)))
+    msg = await send_safe_message(chat_id=chat_id,text="Ro'yxatdan o'tish boshlandi",reply_markup=join_game_btn(str(game.uuid)))
     await bot.pin_chat_message(chat_id=chat_id,message_id=msg.message_id)
     BotMessages.objects.create(game_id=game.id,message_id=msg.message_id,is_main=True)
     task = asyncio.create_task(refresh_registration_main_message(game.id, chat_id))
@@ -740,13 +741,13 @@ async def stop_command(message: Message) -> None:
         game_reg.is_active_game = False
         game_reg.save()
         await stop_registration(game_id=game_reg.id,instant=True)
-        await bot.send_message(chat_id=chat_id, text="🛑 Ro'yxatdan o'tish to'xtatildi.")
+        await send_safe_message(chat_id=chat_id, text="🛑 Ro'yxatdan o'tish to'xtatildi.")
         return
 
     # 2) START bo'lgan o'yinni to'xtatis
     
     if not game_reg or not game_reg.is_started:
-        await bot.send_message(chat_id=chat_id, text="❗ Hozir bu chatda active o'yin yo'q.")
+        await send_safe_message(chat_id=chat_id, text="❗ Hozir bu chatda active o'yin yo'q.")
         return
 
     # task bo'lsa cancel (agar siz game_tasks ishlatayotgan bo'lsangiz)
@@ -771,7 +772,7 @@ async def stop_command(message: Message) -> None:
     if task and not task.done():
         task.cancel()
 
-    await bot.send_message(chat_id=chat_id, text="🛑 O'yin majburan to'xtatildi.")
+    await send_safe_message(chat_id=chat_id, text="🛑 O'yin majburan to'xtatildi.")
 
             
 @dp.message(Command("mute"), Command("kick"), Command("ban"), StateFilter(None))
@@ -792,7 +793,7 @@ async def admin_moderation_commands(message: Message) -> None:
         game = games_state.get(game_db.id)
         if game is not None:
             kill(game,message.reply_to_message.from_user.id)
-            await bot.send_message(chat_id=message.reply_to_message.from_user.id,text="🔇 Siz o'yindan chetlatildingiz!")
+            await send_safe_message(chat_id=message.reply_to_message.from_user.id,text="🔇 Siz o'yindan chetlatildingiz!")
         return
     tg_id = message.text.split(' ')[1]
     game_db = Game.objects.filter(chat_id=chat_id, is_active_game=True).first()
@@ -801,7 +802,7 @@ async def admin_moderation_commands(message: Message) -> None:
     game = games_state.get(game_db.id)
     if game is not None:
         kill(game,int(tg_id))
-        await bot.send_message(chat_id=message.reply_to_message.from_user.id,text="🔇 Siz o'yindan chetlatildingiz!")
+        await send_safe_message(chat_id=message.reply_to_message.from_user.id,text="🔇 Siz o'yindan chetlatildingiz!")
     return
 
     
@@ -822,7 +823,7 @@ async def next_command(message: Message) -> None:
 
     notify_users[chat_id].add(user_id)
 
-    await bot.send_message(
+    await send_safe_message(
         chat_id=user_id,
         text="✅ Siz keyingi o'yin haqida eslatma olasiz."
     )
@@ -920,7 +921,7 @@ async def send_mafia_companions(game_id, chat_id):
         text = "Sheriklaringizni eslab qoling:\n" + ("\n".join(lines) if lines else "Yo'q")
 
         try:
-            await bot.send_message(chat_id=my_id, text=text, parse_mode="HTML")
+            await send_safe_message(chat_id=my_id, text=text, parse_mode="HTML")
         except Exception:
             pass
 
@@ -951,7 +952,7 @@ async def sergant_send_companions(game_id, chat_id):
         text = "Sheriklaringizni eslab qoling:\n" + ("\n".join(lines) if lines else "Yo'q")
 
         try:
-            asyncio.create_task(bot.send_message(chat_id=my_id, text=text))
+            asyncio.create_task(send_safe_message(chat_id=my_id, text=text))
         except Exception:
             pass
 
@@ -964,7 +965,7 @@ async def send_roles(game_id, chat_id):
     for tg_id in game_players:
         role_key = roles_map.get(tg_id)
         if tg_id in active_role_used:
-            await bot.send_message(
+            await send_safe_message(
                 chat_id=tg_id,
                 text="🎭 Faol roldan foydalanildi.")
             active_role_used.remove(tg_id)
@@ -972,7 +973,7 @@ async def send_roles(game_id, chat_id):
         role_text = DESCRIPTIONS.get(role_key, "Rol topilmadi.")
 
         try:
-            await bot.send_message(
+            await send_safe_message(
                 chat_id=tg_id,
                 text=f"Siz - {role_text}",
                 parse_mode="HTML"
@@ -1009,7 +1010,7 @@ async def delete_not_alive_messages(message: Message):
     if lover_block_target == tg_id:
         try:
             await message.delete()
-            await bot.send_message(
+            await send_safe_message(
                 chat_id=tg_id,
                 text="🥲 Siz Mashuqa bilan vaqtni chog' o'tkazing"
             )
@@ -1021,7 +1022,7 @@ async def delete_not_alive_messages(message: Message):
         try:
             await message.delete()
             await mute_user(chat_id, tg_id)
-            await bot.send_message(
+            await send_safe_message(
                 chat_id=tg_id,
                 text="🥲 O'yin vaqti sizga yozishga ruxsat yoq!\n🔈 45 sekundga mute qilindingiz."
             )
@@ -1080,7 +1081,7 @@ async def private_router(message: Message,state: FSMContext) -> None:
             try:
                 role = game.get("roles", {}).get(tg_id, "unknown")
                 role_label_text = role_label(role)
-                await bot.send_message(
+                await send_safe_message(
                     chat_id=int(chat_id),
                     text=(
                         f"{role_label_text} <a href='tg://user?id={user.get('tg_id')}'>{user.get('first_name')}</a> "
@@ -1141,7 +1142,7 @@ async def private_router(message: Message,state: FSMContext) -> None:
         if mid == tg_id:
             continue
         try:
-            await bot.send_message(
+            await send_safe_message(
                 chat_id=int(mid),
                 text=relay_text,
                 parse_mode="HTML"
@@ -1275,11 +1276,11 @@ async def finish_giveaway(chat_id: int, bot):
     user.save(update_fields=["stones"])
 
     try:
-        await bot.send_message(winner_id, text=f"🎉 Tabriklaymiz! Siz {amount} olmos yutib oldingiz!")
+        await send_safe_message(winner_id, text=f"🎉 Tabriklaymiz! Siz {amount} olmos yutib oldingiz!")
         await bot.edit_message_text(text, chat_id=chat_id, message_id=msg_id, parse_mode="HTML", reply_markup=None)
-        await bot.send_message(text,chat_id=chat_id,parse_mode="HTML")
+        await send_safe_message(text,chat_id=chat_id,parse_mode="HTML")
     except:
-        await bot.send_message(chat_id, text, parse_mode="HTML")
+        await send_safe_message(chat_id, text, parse_mode="HTML")
 
     giveaways.pop(chat_id, None)
 
@@ -1307,7 +1308,7 @@ async def refresh_registration_main_message(game_id: int, chat_id: int):
 
             result_2 = create_main_messages(int(game_id))
            
-            msg = await bot.send_message(
+            msg = await send_safe_message(
                 chat_id=chat_id,
                 text=result_2,
                 reply_markup=join_game_btn(uuid)

@@ -9,7 +9,7 @@ from mafia_bot.utils import game_tasks
 from mafia_bot.models import Game,User
 from mafia_bot.buttons.inline import confirm_hang_inline_btn, go_to_bot_inline_btn,action_inline_btn
 from mafia_bot.handlers.main_functions import (can_hang, games_state, get_most_voted_id,night_reset,day_reset, notify_new_com, notify_new_don, prepare_confirm_pending,
-                                               prepare_hang_pending, prepare_night_pending, promote_new_com_if_needed, promote_new_don_if_needed, punish_afk_night_players,send_night_actions_to_all,
+                                               prepare_hang_pending, prepare_night_pending, promote_new_com_if_needed, promote_new_don_if_needed, punish_afk_night_players,send_night_actions_to_all,send_safe_message,
                                                apply_night_actions,ROLE_LABELS, stop_game_if_needed,PEACE_ROLES,MAFIA_ROLES_LAB,SOLO_ROLES)
 
 
@@ -93,7 +93,7 @@ async def start_game(game_id):
 
             msgb += "\n<b>Tonggacha 1 daqiqa qoldii!</b>"
 
-            await bot.send_message(
+            await send_safe_message(
                 chat_id=game.chat_id,
                 text=msgb,
                 reply_markup=go_to_bot_inline_btn(2),
@@ -112,12 +112,12 @@ async def start_game(game_id):
             await asyncio.sleep(1)
             
             if games_state[game_id]['night_actions']['don_kill_target'] is not None:
-                await bot.send_message(
+                await send_safe_message(
                     chat_id=game.chat_id,
                     text="🤵🏻 Mafia navbatdagi o'ljasini tanladi..."
                 )
             else:
-                await bot.send_message(
+                await send_safe_message(
                     chat_id=game.chat_id,
                     text="🚷 🤵🏻 Don hech kimni o'ldirmaslikni afzal ko'rdi."
                 )
@@ -152,7 +152,7 @@ async def start_game(game_id):
 
             alive_after_night = games_state.get(game_id, {}).get("alive", [])
             if len(alive_before_night) == len(alive_after_night):
-                await bot.send_message(
+                await send_safe_message(
                     chat_id=game.chat_id,
                     text="🧐 Ishonish qiyin tunda hech kim o'lmadi..."
                 )
@@ -216,7 +216,7 @@ async def start_game(game_id):
             msg += "\n\n<b>Tunda bo'lgan xodisalarni muxokama qilishning ayni vaqti...</b>"
 
 
-            await bot.send_message(
+            await send_safe_message(
                 chat_id=game.chat_id,
                 text=msg,
                 parse_mode="HTML"
@@ -228,7 +228,7 @@ async def start_game(game_id):
             if ended:
                 return
             # ================= START VOTING =================
-            await bot.send_message(
+            await send_safe_message(
                 chat_id=game.chat_id,
                 text="<b>Aybdorlarni aniqlash va jazolash vaqti keldi.\nOvoz berish uchun 45 sekund</b>",
                 reply_markup=go_to_bot_inline_btn(3),
@@ -243,7 +243,7 @@ async def start_game(game_id):
                 if lover_block_target == tg_id:
                     continue
                 try:
-                    await bot.send_message(
+                    await send_safe_message(
                         chat_id=tg_id,
                         text="<b>Aybdorlarni izlash vaqti keldi!\nKimni osishni xohlaysiz?</b>",
                         reply_markup=action_inline_btn(
@@ -277,7 +277,7 @@ async def start_game(game_id):
             top_voted = get_most_voted_id(game_id)  # siz yozgan function: tie bo'lsa False
             if not top_voted:
                 games_state[game_id]['meta']['message_allowed'] = "no"
-                await bot.send_message(
+                await send_safe_message(
                     chat_id=game.chat_id,
                     text="<b>Ovoz berish yakunlandi.\nOvoz berish janjalga aylanib ketdi... Xamma uy-uyiga tarqaldi...</b>",
                     parse_mode="HTML"
@@ -286,11 +286,11 @@ async def start_game(game_id):
 
             voted_user = users_map.get(top_voted)
             if not voted_user:
-                await bot.send_message(chat_id=game.chat_id, text="❗ Ovoz berilgan o'yinchi topilmadi.")
+                await send_safe_message(chat_id=game.chat_id, text="❗ Ovoz berilgan o'yinchi topilmadi.")
                 continue
 
             # ================= CONFIRM HANG =================
-            msg_obj = await bot.send_message(
+            msg_obj = await send_safe_message(
                 chat_id=game.chat_id,
                 text=f"<b>Rostandan ham <a href='tg://user?id={voted_user.get('tg_id')}'>{voted_user.get('first_name')}</a> ni osmoqchimisiz?</b>",
                 reply_markup=confirm_hang_inline_btn(
@@ -338,14 +338,14 @@ async def start_game(game_id):
             final_vote, yes, no = can_hang(game_id)
 
             if final_vote == "no":
-                await bot.send_message(
+                await send_safe_message(
                     chat_id=game.chat_id,
                     text=f"<b>Aholi kelisha olmadi ({yes} 👍 | {no} 👎 )...\nKelisha olmaslik oqibatida hech kim osilmadi...</b>",
                     parse_mode="HTML"
                 )
                 continue
 
-            await bot.send_message(
+            await send_safe_message(
                 chat_id=game.chat_id,
                 text=(
                     f"<b>Ovoz berish natijalari:\n\n"
@@ -367,7 +367,7 @@ async def start_game(game_id):
             
 
             await asyncio.sleep(2)
-            await bot.send_message(
+            await send_safe_message(
                 chat_id=game.chat_id,
                 text = f"<a href='tg://user?id={voted_user.get('tg_id')}'>{voted_user.get('first_name')}</a> - {ROLE_LABELS.get(roles_map.get(voted_user.get('tg_id')))} edi!!"
             )
@@ -375,7 +375,7 @@ async def start_game(game_id):
                 new_don_id = promote_new_don_if_needed(games_state[game_id])
                 if new_don_id:
                     await notify_new_don( games_state[game_id], new_don_id )
-                    await bot.send_message(
+                    await send_safe_message(
                         chat_id=game.chat_id,
                         text=f"🤵🏻 Don vafot etdi.\nMafialardan biri endi yangi Don "
                     )
@@ -383,7 +383,7 @@ async def start_game(game_id):
                 new_com_id = promote_new_com_if_needed(games_state[game_id])
                 if new_com_id:
                     await notify_new_com( games_state[game_id], new_com_id)
-                    await bot.send_message(
+                    await send_safe_message(
                         chat_id=game.chat_id,
                         text=f"🕵🏻‍♂ Komissar vafot etdi.\nYangi Komissar tayinlandi."
                     )
