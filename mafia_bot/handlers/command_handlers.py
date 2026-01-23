@@ -655,7 +655,10 @@ async def auto_begin_game(chat_id: int):
     messages = BotMessages.objects.filter(game_id=game.id,is_main=True,is_deleted=False)
     message_ids = [m.message_id for m in messages if m]
     if message_ids:
-        await bot.delete_messages(chat_id=chat_id,message_ids=message_ids)
+        try:
+            await bot.delete_messages(chat_id=chat_id,message_ids=message_ids)
+        except:
+            pass
     messages.update(is_deleted=True)
     msg = await bot.send_message(chat_id=chat_id,text="Ro'yxatdan o'tish boshlandi",reply_markup=join_game_btn(str(game.uuid)))
     await bot.pin_chat_message(chat_id=chat_id,message_id=msg.message_id)
