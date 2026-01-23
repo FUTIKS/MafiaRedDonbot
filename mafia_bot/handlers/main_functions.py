@@ -943,6 +943,10 @@ def role_label(role_key: str):
         
         
 def kill(game, tg_id: int):
+    if not tg_id:
+        return
+    if not game:
+        return
     tg_id = int(tg_id)
     if tg_id in game["alive"]:
         game["alive"].remove(tg_id)
@@ -1110,7 +1114,7 @@ async def notify_new_com(game: dict, new_com_id: int):
             user = users_map.get(int(new_com_id))
             await bot.send_message(
                 chat_id=int(chat_id),
-                text=f"🕵🏻‍♂ Komissar vafot etdi.\nEndi yangi Komissar: <a href='tg://user?id={new_com_id}'>{user.get('first_name')}</a>",
+                text=f"🕵🏻‍♂ Komissar vafot etdi.\nEndi yangi Komissar tayinlanadi",
                 parse_mode="HTML"
             )
         except Exception:
