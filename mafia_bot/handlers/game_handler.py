@@ -175,7 +175,7 @@ async def start_game(game_id):
             for idx, tg_id in enumerate(all_players, 1):
                 if tg_id not in alive_after_night:
                     continue
-                user = users_after_night_qs.get(tg_id)
+                user = users_map.get(tg_id)
                 if not user:
                     continue
                 first_name = user.get("first_name")
