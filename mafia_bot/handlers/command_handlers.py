@@ -434,6 +434,8 @@ async def leave(message: Message) -> None:
     game = games_state.get(game_db.id)
     if not game:
         return
+    if tg_id not in game.get("alive", []):
+        return
     kill(game,tg_id)
     user = User.objects.filter(telegram_id=tg_id).first()
     if not user:
