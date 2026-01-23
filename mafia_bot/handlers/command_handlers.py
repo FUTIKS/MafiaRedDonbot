@@ -1101,11 +1101,7 @@ async def private_router(message: Message,state: FSMContext) -> None:
     if not team_chat_id:
         return
 
-    game_db = Game.objects.filter(chat_id=team_chat_id, is_active_game=True).first()
-    if not game_db:
-        return
-
-    game = games_state.get(game_db.id)
+    game = get_game_by_chat_id(team_chat_id)
     if not game:
         return
 
