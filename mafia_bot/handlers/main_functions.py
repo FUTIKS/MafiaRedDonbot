@@ -275,6 +275,7 @@ def init_game(game_id: int, chat_id: int | None = None):
                 "message_allowed":"yes",
                 "team_chat_open":"no",
                 "max_players": max_players,
+                "is_active_game": False,
             },
             "runtime": {
                 "night_event": None,
@@ -1099,6 +1100,7 @@ async def notify_new_com(game: dict, new_com_id: int):
             chat_id=int(new_com_id),
             text="🕵🏻‍♂ Komissar vafot etdi.\nEndi siz Komissar bo'ldingiz!",
         )
+        
     except Exception:
         pass
 
@@ -1511,7 +1513,12 @@ async def apply_night_actions(game_id: int):
             pass
 
                 
-                
+def get_game_by_chat_id(chat_id: int):
+    chat_id = int(chat_id)
+    for game in games_state.values():
+        if game.get("meta", {}).get("chat_id") == chat_id:
+            return game
+    return None    
                 
 def get_alive_teams(game):
     roles = game.get("roles", {})

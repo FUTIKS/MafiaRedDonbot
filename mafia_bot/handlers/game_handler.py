@@ -38,6 +38,7 @@ async def start_game(game_id):
             return
         game_data_bg['meta']["chat_id"] = game.chat_id
         game_data_bg['meta']["uuid"] = str(game.uuid)
+        game_data_bg['meta']['is_active_game'] = True
         game_data_bg['meta']['created_at'] = int(time.time())
         day = 1
         sunset = FSInputFile("mafia_bot/gifs/sunset.mp4")

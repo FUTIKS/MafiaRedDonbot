@@ -17,7 +17,7 @@ from mafia_bot.handlers.game_handler import run_game_in_background
 from mafia_bot.handlers.callback_handlers import begin_instance_callback
 from mafia_bot.models import Game, GroupTrials, MostActiveUser,User,BotMessages,GameSettings, UserRole,default_end_date,BotCredentials,LoginAttempts
 from mafia_bot.utils import last_wishes,team_chat_sessions,game_tasks,group_users,stones_taken,gsend_taken,games_state,giveaways,notify_users,active_role_used
-from mafia_bot.handlers.main_functions import MAFIA_ROLES, find_game,create_main_messages, kill,  shuffle_roles ,check_bot_rights,role_label,is_group_admin,mute_user,has_link,parse_amount
+from mafia_bot.handlers.main_functions import MAFIA_ROLES, find_game,create_main_messages, kill,  shuffle_roles ,check_bot_rights,role_label,is_group_admin,mute_user,has_link,parse_amount,get_game_by_chat_id
 from mafia_bot.buttons.inline import (admin_inline_btn, back_btn, giveaway_join_btn, group_profile_inline_btn, join_game_btn, 
                                       main_inline_btn, go_to_bot_inline_btn, cart_inline_btn, start_inline_btn, take_gsend_stone_btn,
                                       take_stone_btn,stones_to_premium_inline_btn)
@@ -118,6 +118,9 @@ async def start(message: Message) -> None:
 async def profile_command(message: Message):
     if message.chat.type != "private":
         await message.delete()
+        is_admin = await is_group_admin(message.chat.id, message.from_user.id)
+        if not is_admin:
+            return
         group_trial = GroupTrials.objects.filter(group_id=message.chat.id).first()
         if not group_trial:
             link = message.chat.username if message.chat.username else ""
@@ -578,6 +581,9 @@ async def game_command(message: Message) -> None:
     await message.delete() 
     if message.chat.type in ("group", "supergroup"): 
         chat_id = message.chat.id
+        is_admin = await is_group_admin(chat_id, message.from_user.id)
+        if not is_admin:
+            return
         trial = GroupTrials.objects.filter(group_id=chat_id).first()
         if trial:
             if trial.end_date <= timezone.now():
@@ -692,6 +698,9 @@ async def auto_begin_game(chat_id: int):
 async def extend_command(message: Message):
     await message.delete()
     if message.chat.type in ("group", "supergroup"):
+        is_admin = await is_group_admin(message.chat.id, message.from_user.id)
+        if not is_admin:
+            return
         chat_id = message.chat.id
         game = Game.objects.filter(chat_id=chat_id, is_active_game=True).first()
         if game and game.id in registration_timers:
@@ -822,7 +831,9 @@ async def send_top(message: Message, days: int, title: str):
 
     if message.chat.type == "private":
         return
-
+    is_admin = await is_group_admin(message.chat.id, message.from_user.id)
+    if not is_admin:
+        return
     group_id = message.chat.id
     since = timezone.now() - timedelta(days=days)
 
@@ -981,22 +992,17 @@ async def delete_not_alive_messages(message: Message):
         group_users[chat_id] = set()
 
     group_users[chat_id].add(tg_id)
+    game = get_game_by_chat_id(chat_id)
+    if not game or not game.get("is_active_game"):
+        return 
 
-    game_db = Game.objects.filter(chat_id=chat_id, is_active_game=True).first()
-    if not game_db or game_db.is_started is False:
-        return  
-
-    game = games_state.get(game_db.id)
-    if not game:
-        return
     if message and message.text and message.text.startswith('!'):
         is_group_admin_bool = await is_group_admin(chat_id, tg_id)
         if is_group_admin_bool:
             return
     
     alive = set(game.get("alive", []))
-    game_data = games_state.get(game_db.id, {})
-    night_action = game_data.get("night_actions", {})
+    night_action = game.get("night_actions", {})
     lover_block_target = night_action.get("lover_block_target")
     if lover_block_target == tg_id:
         try:
@@ -1056,11 +1062,7 @@ async def private_router(message: Message,state: FSMContext) -> None:
         return
     chat_id, day = data
     if chat_id:
-        game_db = Game.objects.filter(chat_id=chat_id, is_active_game=True).first()
-        if not game_db:
-            return
-
-        game = games_state.get(game_db.id)
+        game = get_game_by_chat_id(chat_id)
         if not game:
             return
 
@@ -1084,6 +1086,7 @@ async def private_router(message: Message,state: FSMContext) -> None:
                     ),
                     parse_mode="HTML"
                 )
+                await message.answer("✅ Sizning so'ngi so'zlaringiz guruhga yuborildi.")
                 last_wishes.pop(tg_id, None)
             except Exception:
                 pass
