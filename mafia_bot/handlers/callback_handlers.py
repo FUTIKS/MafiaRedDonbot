@@ -365,10 +365,13 @@ async def doc_heal_callback(callback: CallbackQuery):
             text=f"{ACTIONS.get('doc_heal')}\n\nSiz hech kimni davolamadingiz.",
             parse_mode="HTML"
         )
-        await bot.send_message(
+        try:
+            await bot.send_message(
             chat_id=chat_id,
             text="🚷 👨🏼‍⚕️ Shifokor hech qayoqqa bormaslikni afzal ko'rdi."
         )
+        except:
+            pass
         return
     
     target_id = int(target_id)
@@ -390,11 +393,13 @@ async def doc_heal_callback(callback: CallbackQuery):
     text = f"{ACTIONS.get('doc_heal')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni davoladingiz."
 
     await callback.message.edit_text(text=text, parse_mode="HTML")
-    
-    await bot.send_message(
+    try:
+        await bot.send_message(
             chat_id=chat_id,
             text="👨🏼‍⚕️ Shifokor tungi navbatchilikka ketdi..."
         )
+    except:
+        pass
     
 
 @dp.callback_query(F.data.startswith("daydi_"))
@@ -425,10 +430,13 @@ async def daydi_callback(callback: CallbackQuery):
             text=f"{ACTIONS.get('daydi_watch')}\n\nSiz hech kimning uyiga bormadingiz.",
             parse_mode="HTML"
         )
-        await bot.send_message(
-            chat_id=chat_id,
-            text="🚷 🧙🏼‍♂️ Daydi hech qayoqqa bormaslikni afzal ko'rdi."
-        )
+        try:
+            await bot.send_message(
+                chat_id=chat_id,
+                text="🚷 🧙🏼‍♂️ Daydi hech qayoqqa bormaslikni afzal ko'rdi."
+            )
+        except:
+            pass
         return
     house_id = int(house_id)
 
@@ -442,9 +450,10 @@ async def daydi_callback(callback: CallbackQuery):
         text=f"{ACTIONS.get('daydi_watch')}\n\nSiz <a href='tg://user?id={house_id}'>{target_name}</a> uyiga shisha olgani bordingiz.",
         parse_mode="HTML"
     )
-
-    await bot.send_message(chat_id=chat_id, text="🧙🏼‍♂️ Daydi kimnikigadir shisha olish uchun ketdi...")
-
+    try:
+        await bot.send_message(chat_id=chat_id, text="🧙🏼‍♂️ Daydi kimnikigadir shisha olish uchun ketdi...")
+    except:
+        pass
     
 
 
@@ -474,10 +483,13 @@ async def com_callback(callback: CallbackQuery):
             text=f"{ACTIONS.get('com_deside')}\n\nSiz hech narsa qilmaslikni tanladingiz.",
             parse_mode="HTML"
         )
-        await bot.send_message(
-            chat_id=chat_id,
-            text="🚷 🕵️‍ Komissar bugun dam olishni xohladi."
-        )
+        try:
+            await bot.send_message(
+                chat_id=chat_id,
+                text="🚷 🕵️‍ Komissar bugun dam olishni xohladi."
+            )
+        except:
+            pass
         return
     elif action == "back":
         await callback.message.edit_text(
@@ -487,14 +499,20 @@ async def com_callback(callback: CallbackQuery):
         return
     
     if action == "shoot":
-        await bot.send_message(chat_id=chat_id, text="🕵️‍ Komissar Katani pistoletini o'qladi...")
+        try:
+            await bot.send_message(chat_id=chat_id, text="🕵️‍ Komissar Katani pistoletini o'qladi...")
+        except:
+            pass
         await callback.message.edit_text(
             text=ACTIONS.get("com_shoot"),
             reply_markup=com_inline_action_btn(action="shoot",chat_id=chat_id, game_id=int(parts[2]),com_id=com_id,day=day)
         )
         return
 
-    await bot.send_message(chat_id=chat_id, text="🕵️‍ Komissar Katani yovuzlarni qidirishga ketdi...")
+    try:
+        await bot.send_message(chat_id=chat_id, text="🕵️‍ Komissar Katani yovuzlarni qidirishga ketdi...")
+    except:
+        pass
     await callback.message.edit_text(
         text=ACTIONS.get("com_check"),
         reply_markup=com_inline_action_btn(action="search",chat_id=chat_id, game_id=int(parts[2]),com_id=com_id,day=day)
@@ -632,10 +650,13 @@ async def lover_callback(callback: CallbackQuery):
             text=f"{ACTIONS.get('lover_block')}\n\nSiz hech kimni tanlamadingiz.",
             parse_mode="HTML"
         )
-        await bot.send_message(
-            chat_id=chat_id,
-            text="🚷 💃🏼 Ma'shuqa hech kimni kutmayapti."
-        )
+        try:
+            await bot.send_message(
+                chat_id=chat_id,
+                text="🚷 💃🏼 Ma'shuqa hech kimni kutmayapti."
+            )
+        except:
+            pass
         return
     target_id = int(target_id)
     # ✅ lover action saqlash
@@ -939,7 +960,7 @@ async def mafia_callback(callback: CallbackQuery):
 async def adv_callback(callback: CallbackQuery):
     await callback.answer()
     await callback.message.edit_reply_markup(None)
-    target_id = int(callback.data.split("_")[1])
+    target_id = callback.data.split("_")[1]
     game_id = int(callback.data.split("_")[2])
     chat_id = int(callback.data.split("_")[3])
     day = callback.data.split("_")[4]
@@ -1071,7 +1092,7 @@ async def spy_callback(callback: CallbackQuery):
 async def lab_callback(callback: CallbackQuery):
     await callback.answer()
     await callback.message.edit_reply_markup(None)
-    target_id = int(callback.data.split("_")[1])
+    target_id = callback.data.split("_")[1]
     game_id = int(callback.data.split("_")[2])
     chat_id = int(callback.data.split("_")[3])
     day = callback.data.split("_")[4]

@@ -1832,3 +1832,10 @@ def get_month_range(today):
     else:
         end = start.replace(month=start.month + 1)
     return start, end
+
+
+async def send_safe_message(chat_id: int, text: str, **kwargs):
+    try:
+        await bot.send_message(chat_id=chat_id, text=text, **kwargs)
+    except Exception:
+        pass
