@@ -76,7 +76,7 @@ async def start_game(game_id):
                 reply_markup=go_to_bot_inline_btn(2)
             )
 
-            await asyncio.sleep(2)
+            await asyncio.sleep(1)
 
             msgb = "<b>Tirik o'yinchilar:</b>\n\n"
 
@@ -107,7 +107,7 @@ async def start_game(game_id):
             except asyncio.TimeoutError:
                 pass
             
-            await asyncio.sleep(3)
+            await asyncio.sleep(1)
             
             if games_state[game_id]['night_actions']['don_kill_target'] is not None:
                 await bot.send_message(
@@ -133,7 +133,7 @@ async def start_game(game_id):
                 caption=f"🏙 {day}-kun \nQuyosh chiqdi, ammo tun orqasida nima bo‘lganini faqat bir necha kishi biladi..."
             )
             day += 1
-            await asyncio.sleep(3)
+            await asyncio.sleep(1)
             
             games_state[game_id]['meta']['day'] +=1
             await apply_night_actions(game_id)
@@ -141,7 +141,7 @@ async def start_game(game_id):
             ended = await stop_game_if_needed(game_id)
             if ended:
                 return
-            await asyncio.sleep(3)
+            await asyncio.sleep(1)
             # ================= DAY RESET =================
             day_reset(game_id)
 
@@ -154,7 +154,7 @@ async def start_game(game_id):
                     text="🧐 Ishonish qiyin tunda hech kim o'lmadi..."
                 )
 
-            await asyncio.sleep(3)
+            await asyncio.sleep(1)
 
             # ================= ALIVE LIST AFTER NIGHT =================
             
@@ -261,7 +261,7 @@ async def start_game(game_id):
                 await asyncio.wait_for(event.wait(), timeout=45)
             except asyncio.TimeoutError:
                 pass
-            await asyncio.sleep(2)
+            await asyncio.sleep(1)
             games_state[game_id]["meta"]["day"] +=1
 
             ended = await stop_game_if_needed(game_id)
@@ -307,7 +307,7 @@ async def start_game(game_id):
                 await asyncio.wait_for(event.wait(), timeout=45)
             except asyncio.TimeoutError:
                 pass
-            await asyncio.sleep(2)
+            await asyncio.sleep(1)
 
             games_state[game_id]['meta']['message_allowed'] = "no"
             ended = await stop_game_if_needed(game_id)
