@@ -42,6 +42,7 @@ async def start_game(game_id):
         day = 1
         sunset = FSInputFile("mafia_bot/gifs/sunset.mp4")
         sunrise = FSInputFile("mafia_bot/gifs/sunrise.mp4")
+        users_map = game_data.get("users_map", {})
         while True:
             # ================= NIGHT START =================
             night_reset(game_id)
@@ -54,12 +55,11 @@ async def start_game(game_id):
             alive_before_night = alive_players.copy()
 
             # alive ids join-order bilan
-            alive_ids = [tg_id for tg_id in all_players if tg_id in alive_players]
 
-            users_qs = User.objects.filter(telegram_id__in=alive_ids).only("telegram_id", "first_name")
-            users_map = {u.telegram_id: u for u in users_qs}
+            alive_users_qs = [users_map[tg_id] for tg_id in alive_players if tg_id in users_map]
 
-            users_after_night = list(users_qs)  # object list keyboardlar uchun
+
+            # object list keyboardlar uchun
 
             # night action buttonlar
 
@@ -67,7 +67,7 @@ async def start_game(game_id):
             games_state[game_id]["meta"]["team_chat_open"] = "yes"
             game_day = games_state[game_id].get("meta", {}).get("day", 0) 
             
-            asyncio.create_task(send_night_actions_to_all( game_id, game, users_after_night,game_day))
+            asyncio.create_task(send_night_actions_to_all( game_id, game, alive_users_qs,game_day))
 
             await bot.send_video(
                     chat_id=game.chat_id,
@@ -86,7 +86,8 @@ async def start_game(game_id):
                 user = users_map.get(tg_id)
                 if not user:
                     continue
-                msgb += f'<b>{idx}. <a href="tg://user?id={user.telegram_id}">{user.first_name}</a></b>\n'
+                first_name = user.get("first_name")
+                msgb += f'<b>{idx}. <a href="tg://user?id={tg_id}">{first_name}</a></b>\n'
 
             msgb += "\n<b>Tonggacha 1 daqiqa qoldii!</b>"
 
@@ -157,8 +158,9 @@ async def start_game(game_id):
 
             # ================= ALIVE LIST AFTER NIGHT =================
             
-            users_after_night_qs = User.objects.filter(telegram_id__in=alive_after_night).only("telegram_id", "first_name")
-            users_map_after_night = {u.telegram_id: u for u in users_after_night_qs}
+            
+            users_after_night_qs = [users_map[tg_id] for tg_id in alive_after_night if tg_id in users_map]
+
 
             
 
@@ -173,10 +175,11 @@ async def start_game(game_id):
             for idx, tg_id in enumerate(all_players, 1):
                 if tg_id not in alive_after_night:
                     continue
-                user_after = users_map_after_night.get(tg_id)
-                if not user_after:
+                user = users_after_night_qs.get(tg_id)
+                if not user:
                     continue
-                msg += f'<b>{idx}. <a href="tg://user?id={user_after.telegram_id}">{user_after.first_name}</a></b>\n'
+                first_name = user.get("first_name")
+                msg += f'<b>{idx}. <a href="tg://user?id={tg_id}">{first_name}</a></b>\n'
                 role_key = roles_map.get(tg_id)
                 if tg_id not in games_state[game_id]['alive']:
                     continue
@@ -275,7 +278,7 @@ async def start_game(game_id):
                 )
                 continue
 
-            voted_user = users_map_after_night.get(top_voted)
+            voted_user = users_after_night_qs.get(top_voted)
             if not voted_user:
                 await bot.send_message(chat_id=game.chat_id, text="❗ Ovoz berilgan o'yinchi topilmadi.")
                 continue
@@ -283,9 +286,9 @@ async def start_game(game_id):
             # ================= CONFIRM HANG =================
             msg_obj = await bot.send_message(
                 chat_id=game.chat_id,
-                text=f"Rostandan ham <a href='tg://user?id={voted_user.telegram_id}'>{voted_user.first_name}</a> ni osmoqchimisiz?",
+                text=f"Rostandan ham <a href='tg://user?id={voted_user.get('tg_id')}'>{voted_user.get('first_name')}</a> ni osmoqchimisiz?",
                 reply_markup=confirm_hang_inline_btn(
-                    voted_user_id=voted_user.telegram_id,
+                    voted_user_id=voted_user.get('tg_id'),
                     game_id=game.id,
                     chat_id=game.chat_id,
                     yes=0,
@@ -295,9 +298,9 @@ async def start_game(game_id):
             )
 
             games_state[game_id]["day_actions"]["hang_confirm_msg_id"] = msg_obj.message_id
-            games_state[game_id]["day_actions"]["hang_target_id"] = voted_user.telegram_id
+            games_state[game_id]["day_actions"]["hang_target_id"] = voted_user.get('tg_id')
 
-            prepare_confirm_pending(game_id,voted_user.telegram_id)
+            prepare_confirm_pending(game_id,voted_user.get('tg_id'))
 
             event = games_state[game_id]["runtime"]["confirm_event"]
             try:
@@ -314,7 +317,7 @@ async def start_game(game_id):
             try:
                 await msg_obj.edit_text(
                     text=(
-                        f"Rostandan ham <a href='tg://user?id={voted_user.telegram_id}'>{voted_user.first_name}</a> ni osmoqchimisiz?\n\n"
+                        f"Rostandan ham <a href='tg://user?id={voted_user.get('tg_id')}'>{voted_user.get('first_name')}</a> ni osmoqchimisiz?\n\n"
                         "Ovoz berish tugadi."
                     ),
                     reply_markup=None,
@@ -340,13 +343,13 @@ async def start_game(game_id):
                 text=(
                     f"Ovoz berish natijalari:\n\n"
                     f"{yes} 👍  |  {no} 👎\n\n"
-                    f"<a href='tg://user?id={voted_user.telegram_id}'>{voted_user.first_name}</a> - ni osamiz! :)"
+                    f"<a href='tg://user?id={voted_user.get('tg_id')}'>{voted_user.get('first_name')}</a> - ni osamiz! :)"
                 ),
                 parse_mode="HTML"
             )
 
             # ================= HANG PLAYER =================
-            target_id = voted_user.telegram_id
+            target_id = voted_user.get('tg_id')
 
             if target_id in games_state[game_id]["alive"]:
                 games_state[game_id]["alive"].remove(target_id)
@@ -359,9 +362,9 @@ async def start_game(game_id):
             await asyncio.sleep(2)
             await bot.send_message(
                 chat_id=game.chat_id,
-                text = f"<a href='tg://user?id={voted_user.telegram_id}'>{voted_user.first_name}</a> - {ROLE_LABELS.get(roles_map.get(voted_user.telegram_id))} edi!!"
+                text = f"<a href='tg://user?id={voted_user.get('tg_id')}'>{voted_user.get('first_name')}</a> - {ROLE_LABELS.get(roles_map.get(voted_user.get('tg_id')))} edi!!"
             )
-            if roles_map.get(voted_user.telegram_id) == "don":
+            if roles_map.get(voted_user.get('tg_id')) == "don":
                 new_don_id = promote_new_don_if_needed(games_state[game_id])
                 if new_don_id:
                     await notify_new_don( games_state[game_id], new_don_id )
@@ -369,7 +372,7 @@ async def start_game(game_id):
                         chat_id=game.chat_id,
                         text=f"🤵🏻 Don vafot etdi.\nMafialardan biri endi yangi Don "
                     )
-            if roles_map.get(voted_user.telegram_id) == "com":
+            if roles_map.get(voted_user.get('tg_id')) == "com":
                 new_com_id = promote_new_com_if_needed(games_state[game_id])
                 if new_com_id:
                     await notify_new_com( games_state[game_id], new_com_id)

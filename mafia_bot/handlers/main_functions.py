@@ -244,7 +244,7 @@ async def send_night_actions_to_all( game_id, game,players,day):
 
     tasks = []
     for user in players:
-        tg_id = user.telegram_id
+        tg_id = user.get("tg_id")
         role = roles_map.get(tg_id)
         
         tasks.append(asyncio.create_task(
@@ -258,6 +258,11 @@ def init_game(game_id: int, chat_id: int | None = None):
     with lock:
         if game_id in games_state:
             return
+        max_players = 30
+        game_settings = GameSettings.objects.filter(group_id=int(chat_id)).first()
+        if game_settings and game_settings.begin_instance:
+            max_players = game_settings.number_of_players if game_settings else max_players
+       
 
         games_state[game_id] = {
             "meta": {
@@ -269,6 +274,7 @@ def init_game(game_id: int, chat_id: int | None = None):
                 "night": 0,
                 "message_allowed":"yes",
                 "team_chat_open":"no",
+                "max_players": max_players,
             },
             "runtime": {
                 "night_event": None,
@@ -285,6 +291,7 @@ def init_game(game_id: int, chat_id: int | None = None):
 
             "allowed_to_send_message":[] ,
             "players": [],
+            "users_map": {},
             "alive": [],
             "dead": [],
             "left": [],
@@ -411,8 +418,7 @@ async def punish_afk_night_players(game_id):
         return
 
     # userlarni 1 ta query bilan olish
-    users_qs = User.objects.filter(telegram_id__in=to_kick).only("telegram_id", "first_name")
-    users_map = {u.telegram_id: u for u in users_qs}
+    users_qs = game.get("users_map", {})
 
     for pid in to_kick:
         alive.discard(pid)
@@ -431,8 +437,8 @@ async def punish_afk_night_players(game_id):
 
         # guruhga xabar
         if chat_id:
-            u = users_map.get(pid)
-            name = u.first_name if u else str(pid)
+            user = users_qs.get(pid)
+            name = user.get("first_name") if user else str(pid)
             role = roles.get(pid, "Noma'lum")
             role_label = ROLE_LABELS.get(role, role)
             try:
@@ -628,22 +634,20 @@ def is_alive(game, tg_id: int) -> bool:
 
 
 
-def find_game(game_id, tg_id,chat_id):
-    init_game(game_id)
+def find_game(game_id, tg_id,chat_id,user):
+    init_game(game_id,chat_id)
 
     with lock:
         game = games_state[game_id]
 
         if tg_id in game["players"]:
             return {"message": "already_in"}
-        game_settings = GameSettings.objects.filter(group_id=int(chat_id)).first()
-        max_players = 30
-        if game_settings and game_settings.begin_instance:
-            max_players = game_settings.number_of_players if game_settings else max_players
+        max_players = game["meta"].get("max_players", 30)
         if len(game["players"]) >= max_players:
             return {"message": "full"}
 
         game["players"].append(tg_id)
+        game["users_map"][tg_id]={"first_name":user.first_name,"protection":user.protection,"doc":user.docs,"tg_id":tg_id}
         game["alive"].append(tg_id)
 
     return {"message": "joined"}
@@ -658,15 +662,14 @@ def create_main_messages(game_id):
     if not tg_ids:
         return msg + "\n\nJami 0ta odam"
 
-    users_qs = User.objects.filter(telegram_id__in=tg_ids).only("telegram_id", "first_name")
-    users_map = {u.telegram_id: u for u in users_qs}
-
+    users_map = games_state.get(game_id, {}).get("users_map", {})
+    
     count = 0
     for tg_id in tg_ids:
-        u = users_map.get(tg_id)
-        if not u:
+        user = users_map.get(tg_id)
+        if not user:
             continue
-        msg += f'<a href="tg://user?id={u.telegram_id}">{u.first_name}</a>, '
+        msg += f'<a href="tg://user?id={tg_id}">{user.get("first_name")}</a>, '
         count += 1
 
     msg += f"\n\nJami {count}ta odam"
@@ -1004,10 +1007,13 @@ def get_visible_role_for_com(game, target_id: int, users_map=None) -> str:
 
     # 2) shop protection: mafia/solo bo'lsa tinch ko'rinsin
     if users_map:
-        u = users_map.get(int(target_id))
-        if u and u.docs > 0 and real_role in (MAFIA_ROLES_LAB | SOLO_ROLES):
-            u.docs -= 1
-            u.save(update_fields=["docs"])
+        user = users_map.get(int(target_id))
+        if user and user.get("docs", 0) > 0 and real_role in (MAFIA_ROLES_LAB | SOLO_ROLES):
+            user_qs = User.objects.filter(telegram_id=int(target_id)).first()
+            user["docs"] -= 1
+            user_qs.docs -= 1
+            user_qs.save(update_fields=["docs"])
+            # Assuming there's a mechanism to save the updated user data back to the database or game state
             return "peace"
 
     return real_role
@@ -1038,6 +1044,7 @@ def promote_new_don_if_needed(game: dict):
 async def notify_new_don(game: dict, new_don_id: int):
     roles = game.get("roles", {})
     alive = set(game.get("alive", []))
+    user_map = game.get("users_map", {})    
 
     mafia_members = [
         tid for tid in alive
@@ -1053,10 +1060,10 @@ async def notify_new_don(game: dict, new_don_id: int):
         if member_id == int(new_don_id):
             continue
         try:
-            user = User.objects.filter(telegram_id=member_id).only("telegram_id", "first_name").first()
+            user = user_map.get(int(new_don_id))
             await bot.send_message(
                 chat_id=int(member_id),
-                text=f"🤵🏻 Sizning yangi Don: <a href='tg://user?id={new_don_id}'>{user.first_name}</a>",
+                text=f"🤵🏻 Sizning yangi Don: <a href='tg://user?id={new_don_id}'>{user.get('first_name')}</a>",
                 parse_mode="HTML"
             )
         except Exception:
@@ -1084,6 +1091,7 @@ def promote_new_com_if_needed(game: dict):
 
 async def notify_new_com(game: dict, new_com_id: int):
     chat_id = game.get("meta", {}).get("chat_id")
+    users_map = game.get("users_map", {})
 
     # serjantning o'ziga
     try:
@@ -1097,10 +1105,10 @@ async def notify_new_com(game: dict, new_com_id: int):
     # guruhga ham xabar (xohlasangiz)
     if chat_id:
         try:
-            user = User.objects.filter(telegram_id=new_com_id).only("telegram_id", "first_name").first()
+            user = users_map.get(int(new_com_id))
             await bot.send_message(
                 chat_id=int(chat_id),
-                text=f"🕵🏻‍♂ Komissar vafot etdi.\nEndi yangi Komissar: <a href='tg://user?id={new_com_id}'>{user.first_name}</a>",
+                text=f"🕵🏻‍♂ Komissar vafot etdi.\nEndi yangi Komissar: <a href='tg://user?id={new_com_id}'>{user.get('first_name')}</a>",
                 parse_mode="HTML"
             )
         except Exception:
@@ -1159,12 +1167,11 @@ async def apply_night_actions(game_id: int):
         return
 
     alive_ids = game.get("alive", [])
-    alive_users_qs = User.objects.filter(telegram_id__in=alive_ids)
-    alive_users_map = {u.telegram_id: u for u in alive_users_qs}
-
+    alive_users_map = game.get("users_map", {})
+    
     def uname(tg_id):
-        u = alive_users_map.get(int(tg_id))
-        return u.first_name if u else str(tg_id)
+        user = alive_users_map.get(int(tg_id))
+        return user.get("first_name") if user else str(tg_id)
 
     protected = effects.setdefault("protected", {})
 
@@ -1281,9 +1288,11 @@ async def apply_night_actions(game_id: int):
             saved_tonight.append((target_id, protected[target_id], killer_by))
             continue
         target_user = alive_users_map.get(int(target_id))
-        if target_user and target_user.protection > 0:
-            target_user.protection -= 1
-            target_user.save(update_fields=["protection"])
+        if target_user and target_user.get("protection", 0) > 0:
+            target_user_qs = User.objects.filter(telegram_id=int(target_id)).first()
+            target_user["protection"] -= 1
+            target_user_qs.protection -= 1
+            target_user_qs.save(update_fields=["protection"])
 
             saved_tonight.append((target_id, "protection", killer_by))
             continue
@@ -1371,7 +1380,7 @@ async def apply_night_actions(game_id: int):
 
     if com_id and com_check_target and is_alive(game, com_id):
         target_user = alive_users_map.get(int(com_check_target))
-        target_name = target_user.first_name if target_user else str(com_check_target)
+        target_name = target_user.get("first_name") if target_user else str(com_check_target)
 
         visible_role_key = get_visible_role_for_com(game, int(com_check_target), alive_users_map)
         visible_role_text = ROLE_LABELS.get(visible_role_key, "👨🏼 Tinch axoli")
@@ -1403,7 +1412,7 @@ async def apply_night_actions(game_id: int):
 
     if spy_id and spy_target and is_alive(game, spy_id):
         target_user = alive_users_map.get(int(spy_target))
-        target_name = target_user.first_name if target_user else str(spy_target)
+        target_name = target_user.get("first_name") if target_user else str(spy_target)
 
         real_role_key = roles.get(int(spy_target))
         real_role_text = ROLE_LABELS.get(real_role_key, "Unknown")
@@ -1725,8 +1734,7 @@ async def build_final_game_text(game_id: int, winner_key: str) -> str:
     ids_in_order = [tg_id for tg_id in all_players if tg_id in roles]
 
     # userlarni 1 query bilan olamiz
-    qs = User.objects.filter(telegram_id__in=ids_in_order).only("telegram_id", "first_name")
-    users_map = {u.telegram_id: u for u in qs}
+    users_map = game.get("users_map", {})
 
     winners = []
     others = []
@@ -1736,7 +1744,7 @@ async def build_final_game_text(game_id: int, winner_key: str) -> str:
         role_key = roles.get(tg_id)
         user = users_map.get(tg_id)
 
-        name = user.first_name if user else str(tg_id)
+        name = user.get("first_name") if user else str(tg_id)
         role_txt = role_label(role_key)
 
         line = f"    {name} - {role_txt}"

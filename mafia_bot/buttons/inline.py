@@ -350,13 +350,15 @@ def doc_btn(players,doctor_id=None,game_id=None,chat_id=None,day=None):
     builder = InlineKeyboardBuilder()
     game = games_state.get(int(game_id), {})
     used_self = game.get("limits", {}).get("doc_self_heal_used", set())
-    for player in players:
-        if player.telegram_id == doctor_id and doctor_id in used_self:
+    for player in players :
+        first_name = player.get("first_name")
+        tg_id = player.get("tg_id")
+        if tg_id == doctor_id and doctor_id in used_self:
             continue
-        callback=f"doc_{player.telegram_id}_{game_id}_{chat_id}_{day}"
+        callback=f"doc_{tg_id}_{game_id}_{chat_id}_{day}"
     
         button = InlineKeyboardButton(
-            text=player.first_name if player.first_name else player.username,
+            text=first_name,
             callback_data=callback
         )
         builder.add(button)
@@ -392,13 +394,15 @@ def com_inline_action_btn(action,game_id,chat_id,day=None,com_id=None):
     builder = InlineKeyboardBuilder()
     game = games_state.get(int(game_id), {})
     alive_players = game.get("alive", [])
-    users_qs = User.objects.filter(telegram_id__in=alive_players).only("telegram_id", "first_name")
-    for user in users_qs:
-        if user.telegram_id == com_id:
+    users_map = game.get("users_map", {})
+    alive_users_qs = [users_map[tg_id] for tg_id in alive_players if tg_id in users_map]
+    for user in alive_users_qs:
+        
+        if user.get("tg_id") == com_id:
             continue
         button = InlineKeyboardButton(
-            text=f"{user.first_name}",
-            callback_data=f"{action}_{user.telegram_id}_{game_id}_{day}"
+            text=f"{user.get("first_name")}",
+            callback_data=f"{action}_{user.get("tg_id")}_{game_id}_{day}"
         )
         builder.add(button)
     builder.add(
@@ -415,13 +419,15 @@ def com_inline_action_btn(action,game_id,chat_id,day=None,com_id=None):
 def action_inline_btn(action,own_id,players,game_id,chat_id,day=None):
     builder = InlineKeyboardBuilder()
 
-    for user in players:
-        if user.telegram_id == own_id:
+    for player in players:
+        tg_id = player.get("tg_id")
+        first_name = player.get("first_name")
+        if tg_id == own_id:
             continue
-        text = user.first_name 
+        text = first_name 
         button = InlineKeyboardButton(
             text=text,
-            callback_data=f"{action}_{user.telegram_id}_{game_id}_{chat_id}_{day}"
+            callback_data=f"{action}_{tg_id}_{game_id}_{chat_id}_{day}"
         )
         builder.add(button)
     
@@ -458,8 +464,9 @@ def don_inline_btn(players,  game_id, chat_id, don_id,day=None):
 
     roles_map = games_state.get(int(game_id), {}).get("roles", {})
 
-    for user in players:
-        tg_id = user.telegram_id
+    for player in players:
+        tg_id = player.get("tg_id")
+        first_name = player.get("first_name")
         role = roles_map.get(tg_id)
 
         if tg_id == don_id:
@@ -468,11 +475,11 @@ def don_inline_btn(players,  game_id, chat_id, don_id,day=None):
         if role == "mafia":
             continue
         elif role == "spy":
-            text = f"🦇 {user.first_name}"
+            text = f"🦇 {first_name}"
         elif role == "adv":
-            text = f"👨🏻‍💻 {user.first_name}"
+            text = f"👨🏻‍💻 {first_name}"
         else:
-            text = user.first_name
+            text = first_name
 
         builder.add(
             InlineKeyboardButton(
@@ -495,22 +502,23 @@ def mafia_inline_btn(players, game_id,day=None):
 
     roles_map = games_state.get(int(game_id), {}).get("roles", {})
 
-    for user in players:
-        tg_id = user.telegram_id
+    for player in players:
+        tg_id = player.get("tg_id")
+        first_name = player.get("first_name")
         role = roles_map.get(tg_id)
 
         
         
         if role == "mafia":
-            text = f"🤵🏼 {user.first_name}"
+            text = f"🤵🏼 {first_name}"
         elif role == "don":
             continue
         elif role == "spy":
-            text = f"🦇 {user.first_name}"
+            text = f"🦇 {first_name}"
         elif role == "adv":
-            text = f"👨🏻‍💻 {user.first_name}"
+            text = f"👨🏻‍💻 {first_name}"
         else:
-            text = user.first_name
+            text = first_name
 
         builder.add(
             InlineKeyboardButton(
@@ -530,15 +538,16 @@ def mafia_inline_btn(players, game_id,day=None):
 def adv_inline_btn(players,  game_id, chat_id,day=None):
     builder = InlineKeyboardBuilder()
     roles_map = games_state.get(int(game_id), {}).get("roles", {})
-    for user in players:
-        tg_id = user.telegram_id
+    for player in players:
+        tg_id = player.get("tg_id")
+        first_name = player.get("first_name")
         role = roles_map.get(tg_id)
         if role not in ["don", "mafia"]:
             continue
         if role == "don":
-            text = f"🤵🏻 {user.first_name}"
+            text = f"🤵🏻 {first_name}"
         else:
-            text = f"🤵🏼 {user.first_name}"
+            text = f"🤵🏼 {first_name}"
         builder.add(
             InlineKeyboardButton(
                 text=text,
@@ -558,21 +567,22 @@ def adv_inline_btn(players,  game_id, chat_id,day=None):
 def spy_inline_btn(players,  game_id, chat_id,day=None,spy_id=None):
     builder = InlineKeyboardBuilder()
     roles_map = games_state.get(int(game_id), {}).get("roles", {})
-    for user in players:
-        tg_id = user.telegram_id
+    for player in players:
+        tg_id = player.get("tg_id")
+        first_name = player.get("first_name")
         role = roles_map.get(tg_id)
         
         if tg_id == spy_id:
             continue
         
         if role == "don":
-            text = f"🤵🏻 {user.first_name}"
+            text = f"🤵🏻 {first_name}"
         elif role == "mafia":
-            text = f"🤵🏼 {user.first_name}"
+            text = f"🤵🏼 {first_name}"
         elif role == "adv":
-            text = f"👨🏻‍💻 {user.first_name}"
+            text = f"👨🏻‍💻 {first_name}"
         else:
-            text = user.first_name
+            text = first_name
         builder.add(
             InlineKeyboardButton(
                 text=text,
@@ -590,15 +600,15 @@ def spy_inline_btn(players,  game_id, chat_id,day=None,spy_id=None):
 
 def lab_inline_btn(players, lab_id, game_id, chat_id,day=None):
     builder = InlineKeyboardBuilder()
-    for user in players:
-        tg_id = user.telegram_id
-
+    for player in players:
+        tg_id = player.get("tg_id")
+        first_name = player.get("first_name")
         if tg_id == lab_id:
             continue
         
         builder.add(
             InlineKeyboardButton(
-                text=user.first_name,
+                text=first_name,
                 callback_data=f"lab_{tg_id}_{game_id}_{chat_id}_{day}"
             )
         )
@@ -665,13 +675,13 @@ def professor_gift_inline_btn(game_id,day=None):
 def hang_inline_btn(players, own_id, game_id, chat_id,day=None):
     builder = InlineKeyboardBuilder()
 
-    for user in players:
-        if user.telegram_id == own_id:
+    for tg_id, first_name in players.values():
+        if tg_id == own_id:
             continue
-        text = user.first_name
+        text = first_name
         button = InlineKeyboardButton(
             text=text,
-            callback_data=f"hang_{user.telegram_id}_{game_id}_{chat_id}_{day}"
+            callback_data=f"hang_{tg_id}_{game_id}_{chat_id}_{day}"
         )
         builder.add(button)
 

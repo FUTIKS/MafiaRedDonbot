@@ -1569,11 +1569,12 @@ async def hang_callback(callback: CallbackQuery):
     mark_hang_done(int(game_id), callback.from_user.id)
     
     
-    target_player = User.objects.filter(telegram_id=int(target_id)).first()
-    await callback.message.edit_text(text=f"Aybdorlarni izlash vaqti keldi!\nKimni osishni xohlaysiz?\n\nSiz <a href='tg://user?id={target_id}'>{target_player.first_name}</a> ni tanladingiz")
+    user_map = game.get("users_map",{})
+    user = user_map.get(int(target_id))
+    await callback.message.edit_text(text=f"Aybdorlarni izlash vaqti keldi!\nKimni osishni xohlaysiz?\n\nSiz <a href='tg://user?id={target_id}'>{user.get('first_name')}</a> ni tanladingiz")
     await bot.send_message(
         chat_id=chat_id,
-        text=f"<a href='tg://user?id={shooter_id}'>{shooter_name}</a> -> <a href='tg://user?id={target_id}'>{target_player.first_name}</a> ga ovoz berdi"
+        text=f"<a href='tg://user?id={shooter_id}'>{shooter_name}</a> -> <a href='tg://user?id={target_id}'>{user.get('first_name')}</a> ga ovoz berdi"
     )
 
         

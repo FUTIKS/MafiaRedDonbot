@@ -34,6 +34,10 @@ async def start(message: Message) -> None:
             first_name=message.from_user.first_name,
             username=message.from_user.username
         )
+    if message.from_user.first_name != user.first_name or message.from_user.username != user.username:
+        user.first_name = message.from_user.first_name
+        user.username = message.from_user.username
+        user.save(update_fields=["first_name","username"])
     if ' ' in message.text and message.chat.type == "private": 
         args = message.text.split(' ')[1]
         print(args)
@@ -59,7 +63,7 @@ async def start(message: Message) -> None:
         if not game or game.is_started:
             await message.reply(text="Kechirasiz, o'yin allaqachon boshlandi.")
             return
-        result = find_game(game.id,tg_id,game.chat_id)
+        result = find_game(game.id,tg_id,game.chat_id,user)
         if result.get("message") == "already_in":
             await message.reply(text="Sabr qiling siz o'yindasiz! Tushunyapsizmi? O'yinda! :)")
         elif result.get("message") in ("joined","full"):
@@ -864,6 +868,7 @@ async def send_mafia_companions(game_id, chat_id):
     game = games_state.get(int(game_id), {})
     players = game.get("players", [])
     roles_map = game.get("roles", {})
+    users_map = game.get("users_map", {})
 
     mafia_members = [
         u for u in players
@@ -871,16 +876,16 @@ async def send_mafia_companions(game_id, chat_id):
     ]
     if len(mafia_members) < 2:
         return
-    user_qs = User.objects.filter(telegram_id__in=mafia_members)
+    user_qs = [users_map[tg_id] for tg_id in mafia_members if tg_id in users_map]
     for user in user_qs:
-        my_id = user.telegram_id
+        my_id = user.get("tg_id")
         team_chat_sessions[my_id] = chat_id
 
 
         lines = []
         for mate in user_qs:
-            mate_role = roles_map.get(mate.telegram_id)
-            lines.append(f"{mate.first_name} - {role_label(mate_role)}")
+            mate_role = roles_map.get(mate.get("tg_id"))
+            lines.append(f"{mate.get('first_name')} - {role_label(mate_role)}")
 
         text = "Sheriklaringizni eslab qoling:\n" + ("\n".join(lines) if lines else "Yo'q")
 
@@ -894,6 +899,7 @@ async def sergant_send_companions(game_id, chat_id):
     game = games_state.get(int(game_id), {})
     players = game.get("players", [])
     roles_map = game.get("roles", {})
+    users_map = game.get("users_map", {})
 
     sergant_members = [
         u for u in players
@@ -901,16 +907,16 @@ async def sergant_send_companions(game_id, chat_id):
     ]
     if len(sergant_members) < 2:
         return
-    user_qs = User.objects.filter(telegram_id__in=sergant_members)
+    user_qs = [users_map[tg_id] for tg_id in sergant_members if tg_id in users_map]
     for user in user_qs:
-        my_id = user.telegram_id
+        my_id = user.get("tg_id")
         team_chat_sessions[my_id] = chat_id
 
 
         lines = []
         for mate in user_qs:
-            mate_role = roles_map.get(mate.telegram_id)
-            lines.append(f"{mate.first_name} - {role_label(mate_role)}")
+            mate_role = roles_map.get(mate.get("tg_id"))
+            lines.append(f"{mate.get('first_name')} - {role_label(mate_role)}")
 
         text = "Sheriklaringizni eslab qoling:\n" + ("\n".join(lines) if lines else "Yo'q")
 
@@ -1045,8 +1051,8 @@ async def private_router(message: Message,state: FSMContext) -> None:
         if tg_id in dead:
             if has_link(text):
                 return
-
-            user = User.objects.filter(telegram_id=tg_id).only("telegram_id", "first_name").first()
+            user = game.get("users_map", {}).get(tg_id)
+            
             if not user:
                 return
 
@@ -1056,7 +1062,7 @@ async def private_router(message: Message,state: FSMContext) -> None:
                 await bot.send_message(
                     chat_id=int(chat_id),
                     text=(
-                        f"{role_label_text} <a href='tg://user?id={user.telegram_id}'>{user.first_name}</a> "
+                        f"{role_label_text} <a href='tg://user?id={user.get('tg_id')}'>{user.get('first_name')}</a> "
                         f"ning so'ngi so'zlari quyidagicha edi:\n\n{text}"
                     ),
                     parse_mode="HTML"
@@ -1104,8 +1110,8 @@ async def private_router(message: Message,state: FSMContext) -> None:
         if r in MAFIA_ROLES and pid in set(game.get("alive", []))
     ]
 
-    sender_user = User.objects.filter(telegram_id=tg_id).only("telegram_id", "first_name").first()
-    sender_name = sender_user.first_name if sender_user else str(tg_id)
+    sender_user = game.get("users_map", {}).get(tg_id)
+    sender_name = sender_user.get("first_name") if sender_user else str(tg_id)
 
     relay_text = (
         f"🕶 <b>Mafiya chat</b>\n"
