@@ -993,7 +993,9 @@ async def delete_not_alive_messages(message: Message):
 
     group_users[chat_id].add(tg_id)
     game = get_game_by_chat_id(chat_id)
+    print(game)
     if not game or not game.get("is_active_game"):
+        print
         return 
 
     if message and message.text and message.text.startswith('!'):
@@ -1063,6 +1065,7 @@ async def private_router(message: Message,state: FSMContext) -> None:
     chat_id, day = data
     if chat_id:
         game = get_game_by_chat_id(chat_id)
+        print(game)
         if not game:
             return
 
