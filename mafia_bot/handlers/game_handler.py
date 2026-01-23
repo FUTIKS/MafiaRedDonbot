@@ -278,7 +278,7 @@ async def start_game(game_id):
                 )
                 continue
 
-            voted_user = users_after_night_qs.get(top_voted)
+            voted_user = users_map.get(top_voted)
             if not voted_user:
                 await bot.send_message(chat_id=game.chat_id, text="❗ Ovoz berilgan o'yinchi topilmadi.")
                 continue
