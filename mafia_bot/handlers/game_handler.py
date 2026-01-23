@@ -42,7 +42,7 @@ async def start_game(game_id):
         day = 1
         sunset = FSInputFile("mafia_bot/gifs/sunset.mp4")
         sunrise = FSInputFile("mafia_bot/gifs/sunrise.mp4")
-        users_map = game_data.get("users_map", {})
+        users_map = game_data_bg.get("users_map", {})
         while True:
             # ================= NIGHT START =================
             night_reset(game_id)
