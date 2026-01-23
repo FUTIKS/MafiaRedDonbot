@@ -46,8 +46,8 @@ def group_profile_inline_btn(has_stone, chat_id):
     return keyboard
 
 def start_inline_btn():
-    keyboard1 = InlineKeyboardButton(text= "ℹ️ Rollar haqida ma'lumot",url="https://t.me/RedDon_Roles/39")
-    keyboard2 = InlineKeyboardButton(text="☑️ Botni guruhga qo'shish haqida ma'lumot",url="https://t.me/RedDon_Roles/96")
+    keyboard1 = InlineKeyboardButton(text= "ℹ️ Rollar haqida ma'lumot",url="https://t.me/MafiaRedDon_Roles/39")
+    keyboard2 = InlineKeyboardButton(text="☑️ Botni guruhga qo'shish haqida ma'lumot",url="https://t.me/MafiaRedDon_Roles/96")
     keyboard3 = InlineKeyboardButton(text="➕ Botni guruhga qo'shish", url=f"https://t.me/{remove_prefix(config('BOT_USERNAME'))}?startgroup=true")
     keyboard4 = InlineKeyboardButton(text="⭐ Premium guruhlar", callback_data="groups")
     design = [
