@@ -733,8 +733,8 @@ async def stop_command(message: Message) -> None:
     
 
     # 1) REGISTRATION ketayotgan bo'lsa
-    game_reg = Game.objects.filter(chat_id=chat_id, is_active_game=True, is_started=False).first()
-    if game_reg:
+    game_reg = Game.objects.filter(chat_id=chat_id, is_active_game=True).first()
+    if game_reg and not game_reg.is_started:
         game_reg.is_active_game = False
         game_reg.save()
         await stop_registration(game_id=game_reg.id,instant=True)
@@ -742,30 +742,30 @@ async def stop_command(message: Message) -> None:
         return
 
     # 2) START bo'lgan o'yinni to'xtatis
-    game_db = Game.objects.filter(chat_id=chat_id).first()
-    if not game_db or not game_db.is_active_game:
+    
+    if not game_reg or not game_reg.is_started:
         await bot.send_message(chat_id=chat_id, text="❗ Hozir bu chatda active o'yin yo'q.")
         return
 
     # task bo'lsa cancel (agar siz game_tasks ishlatayotgan bo'lsangiz)
-    timer = registration_timers.pop(game_db.id, None)
+    timer = registration_timers.pop(game_reg.id, None)
     if timer:
         task = timer[0]
         if task and not task.done():
             task.cancel()
-    t = registration_refresh_tasks.pop(game_db.id, None)
+    t = registration_refresh_tasks.pop(game_reg.id, None)
     if t and not t.done():
         t.cancel()
 
     # DB update (active game)
-    if game_db:
-        game_db.is_active_game = False
-        game_db.is_started = False
-        game_db.save()
+    if game_reg:
+        game_reg.is_active_game = False
+        game_reg.is_started = False
+        game_reg.save()
 
     # RAM dan o'chiramiz
-    games_state.pop(game_db.id, None)
-    task = game_tasks.get(game_db.id)
+    games_state.pop(game_reg.id, None)
+    task = game_tasks.get(game_reg.id)
     if task and not task.done():
         task.cancel()
 
