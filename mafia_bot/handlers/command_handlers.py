@@ -260,6 +260,9 @@ async def gsend_command(message: Message) -> None:
     if not game or not game.get("players"):
         await message.answer("❌ O'yin boshlanmagan yoki o'yinchilar yo'q.")
         return
+    if sender.stones < amount:
+        await message.answer("❌ Sizda yetarli olmos yo'q.")
+        return
 
     text = (
         f"💎 <b>Olmos tarqatish boshlandi!</b>\n\n"
@@ -269,7 +272,8 @@ async def gsend_command(message: Message) -> None:
     )
 
     sent = await message.answer(text, reply_markup=take_gsend_stone_btn(), parse_mode="HTML")
-
+    sender.stones -= amount
+    sender.save(update_fields=["stones"])
     gsend_taken[chat_id] = {
         "limit": amount,
         "taken": [],
@@ -302,7 +306,11 @@ async def money_command(message: Message) -> None:
 
         if count <= 0:
             return
-
+        if sender.stones < count:
+            await message.answer("❌ Sizda yetarli olmos yo'q.")
+            return
+        sender.stones -= count
+        sender.save(update_fields=["stones"])
         chat_id = message.chat.id
 
         text = (
@@ -383,6 +391,12 @@ async def change_command(message: Message) -> None:
         )
 
     chat_id = message.chat.id
+    if sender.stones< amount:
+        await message.answer("❌ Sizda yetarli olmos yo'q.")
+        return
+
+    sender.stones -= amount
+    sender.save(update_fields=["stones"])
 
     duration = 300  # ⏳ seconds
     minut = duration // 60

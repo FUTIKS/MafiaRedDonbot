@@ -72,7 +72,8 @@ async def start_game(game_id):
             await bot.send_video(
                     chat_id=game.chat_id,
                     video=sunset,
-                caption="🌃 Tun\nKo'chaga faqat jasur va qo'rqmas odamlar chiqishdi. Ertalab tirik qolganlarni sanaymiz..",
+                caption="<b>🌃 Tun\nKo'chaga faqat jasur va qo'rqmas odamlar chiqishdi. Ertalab tirik qolganlarni sanaymiz..</b>",
+                parse_mode="HTML",
                 reply_markup=go_to_bot_inline_btn(2)
             )
 
@@ -130,7 +131,8 @@ async def start_game(game_id):
             await bot.send_video(
                 chat_id=game.chat_id,
                 video=sunrise,
-                caption=f"🏙 {day}-kun \nQuyosh chiqdi, ammo tun orqasida nima bo‘lganini faqat bir necha kishi biladi..."
+                caption=f"<b>🏙 {day}-kun \nQuyosh chiqdi, ammo tun orqasida nima bo‘lganini faqat bir necha kishi biladi...</b>",
+                parse_mode="HTML"
             )
             day += 1
             await asyncio.sleep(1)
@@ -227,8 +229,9 @@ async def start_game(game_id):
             # ================= START VOTING =================
             await bot.send_message(
                 chat_id=game.chat_id,
-                text="Aybdorlarni aniqlash va jazolash vaqti keldi.\nOvoz berish uchun 45 sekund",
-                reply_markup=go_to_bot_inline_btn(3)
+                text="<b>Aybdorlarni aniqlash va jazolash vaqti keldi.\nOvoz berish uchun 45 sekund</b>",
+                reply_markup=go_to_bot_inline_btn(3),
+                parse_mode="HTML"
             )
             game_day = games_state.get(game_id, {}).get("meta", {}).get("day", 0)
             # har bir tirikka osish keyboard yuboramiz
@@ -241,7 +244,7 @@ async def start_game(game_id):
                 try:
                     await bot.send_message(
                         chat_id=tg_id,
-                        text="Aybdorlarni izlash vaqti keldi!\nKimni osishni xohlaysiz?",
+                        text="<b>Aybdorlarni izlash vaqti keldi!\nKimni osishni xohlaysiz?</b>",
                         reply_markup=action_inline_btn(
                             action="hang",
                             own_id=tg_id,
@@ -249,7 +252,8 @@ async def start_game(game_id):
                             game_id=game.id,
                             chat_id=game.chat_id,
                             day=game_day,
-                        )
+                        ),
+                        parse_mode="HTML"
                     )
                 except Exception:
                     pass
@@ -274,7 +278,8 @@ async def start_game(game_id):
                 games_state[game_id]['meta']['message_allowed'] = "no"
                 await bot.send_message(
                     chat_id=game.chat_id,
-                    text="Ovoz berish yakunlandi.\nOvoz berish janjalga aylanib ketdi... Xamma uy-uyiga tarqaldi..."
+                    text="<b>Ovoz berish yakunlandi.\nOvoz berish janjalga aylanib ketdi... Xamma uy-uyiga tarqaldi...</b>",
+                    parse_mode="HTML"
                 )
                 continue
 
@@ -286,7 +291,7 @@ async def start_game(game_id):
             # ================= CONFIRM HANG =================
             msg_obj = await bot.send_message(
                 chat_id=game.chat_id,
-                text=f"Rostandan ham <a href='tg://user?id={voted_user.get('tg_id')}'>{voted_user.get('first_name')}</a> ni osmoqchimisiz?",
+                text=f"<b>Rostandan ham <a href='tg://user?id={voted_user.get('tg_id')}'>{voted_user.get('first_name')}</a> ni osmoqchimisiz?</b>",
                 reply_markup=confirm_hang_inline_btn(
                     voted_user_id=voted_user.get('tg_id'),
                     game_id=game.id,
@@ -317,8 +322,8 @@ async def start_game(game_id):
             try:
                 await msg_obj.edit_text(
                     text=(
-                        f"Rostandan ham <a href='tg://user?id={voted_user.get('tg_id')}'>{voted_user.get('first_name')}</a> ni osmoqchimisiz?\n\n"
-                        "Ovoz berish tugadi."
+                        f"<b>Rostandan ham <a href='tg://user?id={voted_user.get('tg_id')}'>{voted_user.get('first_name')}</a> ni osmoqchimisiz?\n\n"
+                        "Ovoz berish tugadi.</b>"
                     ),
                     reply_markup=None,
                     parse_mode="HTML"
@@ -334,16 +339,17 @@ async def start_game(game_id):
             if final_vote == "no":
                 await bot.send_message(
                     chat_id=game.chat_id,
-                    text=f"Aholi kelisha olmadi ({yes} 👍 | {no} 👎 )...\nKelisha olmaslik oqibatida hech kim osilmadi..."
+                    text=f"<b>Aholi kelisha olmadi ({yes} 👍 | {no} 👎 )...\nKelisha olmaslik oqibatida hech kim osilmadi...</b>",
+                    parse_mode="HTML"
                 )
                 continue
 
             await bot.send_message(
                 chat_id=game.chat_id,
                 text=(
-                    f"Ovoz berish natijalari:\n\n"
+                    f"<b>Ovoz berish natijalari:\n\n"
                     f"{yes} 👍  |  {no} 👎\n\n"
-                    f"<a href='tg://user?id={voted_user.get('tg_id')}'>{voted_user.get('first_name')}</a> - ni osamiz! :)"
+                    f"<a href='tg://user?id={voted_user.get('tg_id')}'>{voted_user.get('first_name')}</a> - ni osamiz! :)</b>"
                 ),
                 parse_mode="HTML"
             )
