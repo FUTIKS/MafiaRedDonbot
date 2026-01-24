@@ -421,7 +421,7 @@ async def punish_afk_night_players(game_id):
 
     # userlarni 1 ta query bilan olish
     users_qs = game.get("users_map", {})
-
+    night_text= []
     for pid in to_kick:
         alive.discard(pid)
         kicked.add(pid)
@@ -442,15 +442,33 @@ async def punish_afk_night_players(game_id):
             user = users_qs.get(pid)
             name = user.get("first_name") if user else str(pid)
             role = roles.get(pid, "Noma'lum")
+            if role == "don":
+                new_don_id = promote_new_don_if_needed(game)
+                if new_don_id:
+                    await notify_new_don( game,new_don_id)
+                    await send_safe_message(
+                        chat_id=game.chat_id,
+                        text=f"🤵🏻 Don vafot etdi.\nMafialardan biri endi yangi Don "
+                                )
+            elif role == "com":
+                new_com_id = promote_new_com_if_needed(game)
+                if new_com_id:
+                    await notify_new_com( game, new_com_id)
+                    await send_safe_message(
+                                chat_id=game.chat_id,
+                                text=f"🕵🏻‍♂ Komissar vafot etdi.\nYangi Komissar tayinlandi."
+                            )
+                
             role_label = ROLE_LABELS.get(role, role)
-            try:
-                await send_safe_message(
-                    chat_id=int(chat_id),
-                    text=f"Tunda {role_label} <a href='tg://user?id={pid}'>{name}</a> vahshiylarcha o‘ldirildi...\nU o‘lim oldidan shunday so‘z qoldirdi:\n'Men o‘yin paytida boshqa uxlamayma-a-a-a-a-a-an!'",
-                    parse_mode="HTML"
-                )
-            except Exception:
-                pass
+            night_text.append(f"Tunda {role_label} <a href='tg://user?id={pid}'>{name}</a> vahshiylarcha o‘ldirildi...\nU o‘lim oldidan shunday so‘z qoldirdi:\n'Men o‘yin paytida boshqa uxlamayma-a-a-a-a-a-an!'")
+    try:
+        await send_safe_message(
+        chat_id=int(chat_id),
+        text="\n\n".join(night_text),
+        parse_mode="HTML"
+        )
+    except Exception:
+        pass
 
 
 
