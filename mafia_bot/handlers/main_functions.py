@@ -447,7 +447,7 @@ async def punish_afk_night_players(game_id):
                 if new_don_id:
                     await notify_new_don( game,new_don_id)
                     await send_safe_message(
-                        chat_id=game.chat_id,
+                        chat_id=chat_id,
                         text=f"🤵🏻 Don vafot etdi.\nMafialardan biri endi yangi Don "
                                 )
             elif role == "com":
@@ -455,7 +455,7 @@ async def punish_afk_night_players(game_id):
                 if new_com_id:
                     await notify_new_com( game, new_com_id)
                     await send_safe_message(
-                                chat_id=game.chat_id,
+                                chat_id=chat_id,
                                 text=f"🕵🏻‍♂ Komissar vafot etdi.\nYangi Komissar tayinlandi."
                             )
                 
