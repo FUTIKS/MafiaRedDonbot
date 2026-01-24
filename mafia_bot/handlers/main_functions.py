@@ -1120,9 +1120,6 @@ def promote_new_com_if_needed(game: dict):
     return int(serg_id)
 
 async def notify_new_com(game: dict, new_com_id: int):
-    chat_id = game.get("meta", {}).get("chat_id")
-    users_map = game.get("users_map", {})
-
     # serjantning o'ziga
     try:
         await send_safe_message(
@@ -1133,17 +1130,6 @@ async def notify_new_com(game: dict, new_com_id: int):
     except Exception:
         pass
 
-    # guruhga ham xabar (xohlasangiz)
-    if chat_id:
-        try:
-            user = users_map.get(int(new_com_id))
-            await send_safe_message(
-                chat_id=int(chat_id),
-                text=f"🕵🏻‍♂ Komissar vafot etdi.\nEndi yangi Komissar tayinlanadi",
-                parse_mode="HTML"
-            )
-        except Exception:
-            pass
 
 
 def traitor_swap_roles(game: dict):
