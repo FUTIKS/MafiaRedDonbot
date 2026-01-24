@@ -16,7 +16,7 @@ from mafia_bot.state import CredentialsState
 from mafia_bot.handlers.game_handler import run_game_in_background
 from mafia_bot.handlers.callback_handlers import begin_instance_callback
 from mafia_bot.models import Game, GroupTrials, MostActiveUser,User,BotMessages,GameSettings, UserRole,default_end_date,BotCredentials,LoginAttempts
-from mafia_bot.utils import last_wishes,team_chat_sessions,game_tasks,group_users,stones_taken,gsend_taken,games_state,giveaways,notify_users,active_role_used
+from mafia_bot.utils import last_wishes,team_chat_sessions,game_tasks,group_users,stones_taken,gsend_taken,games_state,giveaways,notify_users,active_role_used,writing_allowed_groups
 from mafia_bot.handlers.main_functions import (MAFIA_ROLES, find_game,create_main_messages,
                                                kill, notify_new_don, promote_new_com_if_needed,
                                                promote_new_don_if_needed,  shuffle_roles ,check_bot_rights,
@@ -789,6 +789,7 @@ async def stop_command(message: Message) -> None:
 
     # RAM dan o'chiramiz
     games_state.pop(game_reg.id, None)
+    writing_allowed_groups.pop(game_reg.chat_id, None)
     task = game_tasks.get(game_reg.id)
     if task and not task.done():
         task.cancel()
@@ -1016,6 +1017,13 @@ async def delete_not_alive_messages(message: Message):
         group_users[chat_id] = set()
 
     group_users[chat_id].add(tg_id)
+
+    if writing_allowed_groups.get(chat_id) == "no":
+        try:
+            await message.delete()
+        except Exception:
+            pass
+        return
     game = get_game_by_chat_id(chat_id)
     if not game or game.get("meta", {}).get("is_active_game") is not True:
         return 

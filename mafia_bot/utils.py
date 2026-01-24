@@ -12,6 +12,7 @@ stones_taken = {}
 gsend_taken = {}
 giveaways = {}
 active_role_used = []
+writing_allowed_groups = {}
 
 
 async def set_bot_commands(bot: Bot):

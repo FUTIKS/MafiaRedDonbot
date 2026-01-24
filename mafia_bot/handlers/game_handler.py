@@ -5,7 +5,7 @@ import traceback
 from dispatcher import bot
 from collections import Counter
 from aiogram.types import FSInputFile
-from mafia_bot.utils import game_tasks
+from mafia_bot.utils import game_tasks,writing_allowed_groups
 from mafia_bot.models import Game
 from aiogram.exceptions import TelegramRetryAfter
 from mafia_bot.buttons.inline import confirm_hang_inline_btn, go_to_bot_inline_btn,action_inline_btn
@@ -54,6 +54,7 @@ async def start_game(game_id):
             all_players = game_data.get("players", [])   # tg_id list
             alive_players = game_data.get("alive", [])   # tg_id list
             game_data['meta']['message_allowed'] = "no"
+            writing_allowed_groups[game.chat_id] = "no"
             alive_before_night = alive_players.copy()
 
             # alive ids join-order bilan
@@ -145,6 +146,7 @@ async def start_game(game_id):
             if ended:
                 return
             games_state[game_id]["meta"]["team_chat_open"] = "no"
+            writing_allowed_groups[game.chat_id] = "no"
 
 
             # ================= MORNING =================
@@ -263,6 +265,7 @@ async def start_game(game_id):
                 parse_mode="HTML"
             )
             games_state[game_id]['meta']['message_allowed'] = "yes"
+            writing_allowed_groups[game.chat_id] = "yes"
             # ================= DISCUSSION =================
             await asyncio.sleep(45)
             ended = await stop_game_if_needed(game_id)
@@ -318,6 +321,7 @@ async def start_game(game_id):
             top_voted = get_most_voted_id(game_id)  # siz yozgan function: tie bo'lsa False
             if not top_voted:
                 games_state[game_id]['meta']['message_allowed'] = "no"
+                writing_allowed_groups[game.chat_id] = "no"
                 await send_safe_message(
                     chat_id=game.chat_id,
                     text="<b>Ovoz berish yakunlandi.\nOvoz berish janjalga aylanib ketdi... Xamma uy-uyiga tarqaldi...</b>",
@@ -357,6 +361,7 @@ async def start_game(game_id):
             await asyncio.sleep(1)
 
             games_state[game_id]['meta']['message_allowed'] = "no"
+            writing_allowed_groups[game.chat_id] = "no"
             ended = await stop_game_if_needed(game_id)
             if ended:
                 return

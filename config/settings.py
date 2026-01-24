@@ -168,7 +168,8 @@ DATABASES = {
         'PORT': config('DB_PORT', default='5432'),
         'OPTIONS': {
             'options': f"-c search_path={config('DB_SCHEMA', default='public')}"
-        }
+        },
+        "CONN_MAX_AGE": 60,
     }
 }
 
