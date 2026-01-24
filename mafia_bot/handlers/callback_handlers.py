@@ -1657,11 +1657,14 @@ async def update_hang_votes(voter_id,game_id: int, chat_id: int, yes: int, no: i
     if not game:
         return
     msg_id = game['day_actions']['hang_confirm_msg_id']
-    await bot.edit_message_reply_markup(
+    try:
+        await bot.edit_message_reply_markup(
         chat_id=chat_id,
         message_id=msg_id,
         reply_markup=confirm_hang_inline_btn(voted_user_id=voter_id,game_id=int(game_id),chat_id=chat_id,yes=yes,no=no)
     )
+    except Exception as e:
+        pass
     
 @dp.pre_checkout_query()
 async def pre_checkout(pre_checkout_query: PreCheckoutQuery):
