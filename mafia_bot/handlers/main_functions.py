@@ -1557,7 +1557,6 @@ def get_alive_teams(game):
             solo.append(tg_id)
 
     return mafia, peace, solo
-
 def check_game_over(game_id: int) -> str | None:
     game = games_state.get(game_id)
     if not game:
@@ -1568,43 +1567,49 @@ def check_game_over(game_id: int) -> str | None:
         return "draw"
 
     mafia_ids, peace_ids, solo_ids = get_alive_teams(game)
-    alive_count = len(alive)
 
     mafia = len(mafia_ids)
     peace = len(peace_ids)
     solo  = len(solo_ids)
+    alive_count = mafia + peace + solo
 
     # =========================
-    # ✅ Siz aytgan maxsus qoidalar
+    # 🔥 1. SOLO MAXSUS HOLATLAR
     # =========================
 
-    # 1) 3 tadan kam qoldi va mafiya bor => mafia win
-    if alive_count < 3 and mafia > 0:
-        return "mafia"
+    # Faqat solo qolsa
+    if solo > 0 and mafia == 0 and peace == 0:
+        return "solo"
 
-    # 2) 1 peace + 1 solo => solo win
+    # 1 peace + 1 solo
     if alive_count == 2 and peace == 1 and solo == 1:
         return "solo"
 
-    # 3) 1 mafia + 1 solo => mafia win
+    # 1 mafia + 1 solo
     if alive_count == 2 and mafia == 1 and solo == 1:
         return "mafia"
 
     # =========================
-    # ✅ umumiy qoidalar
+    # 🔥 2. MAFIA PARITY QOIDASI (ENG MUHIM)
     # =========================
-
-    if mafia > 0 and peace == 0 and solo == 0:
+    # Mafia soni tinchlardan kam emas bo‘lsa — mafia yutadi
+    if mafia > 0 and mafia >= peace and solo == 0:
         return "mafia"
 
+    # 3 kishidan kam va mafia bor
+    if alive_count < 3 and mafia > 0:
+        return "mafia"
+
+    # =========================
+    # 🔥 3. TINCHLAR YUTISHI
+    # =========================
     if peace > 0 and mafia == 0 and solo == 0:
         return "peace"
 
-    if solo > 0 and mafia == 0 and peace == 0:
-        return "solo"
-
+    # =========================
+    # 🔥 4. Aralash holat — o‘yin davom etadi
+    # =========================
     return None
-
 
 
 async def stop_game_if_needed(game_id :int):
