@@ -12,7 +12,7 @@ from aiogram.types import Message
 from aiogram.enums import ChatMemberStatus
 from core.constants import ROLES_BY_COUNT,ROLES_CHOICES, ACTIONS
 from mafia_bot.models import Game, GameSettings,User,MostActiveUser, UserRole
-from mafia_bot.utils import games_state, last_wishes,game_tasks, active_role_used
+from mafia_bot.utils import games_state, last_wishes,game_tasks, active_role_used,writing_allowed_groups
 from aiogram.types import ChatPermissions,ChatMemberAdministrator, ChatMemberOwner
 from mafia_bot.buttons.inline import cart_inline_btn, doc_btn, com_inline_btn, don_inline_btn, mafia_inline_btn, adv_inline_btn, spy_inline_btn, lab_inline_btn, action_inline_btn
 
@@ -1735,6 +1735,7 @@ async def stop_game_if_needed(game_id :int):
             pass
 
     games_state.pop(game_id, None)
+    writing_allowed_groups.pop(chat_id, None)
     game_tasks.pop(game_id, None)
 
     game_settings = GameSettings.objects.first()

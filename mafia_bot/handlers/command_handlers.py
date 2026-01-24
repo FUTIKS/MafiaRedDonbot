@@ -761,6 +761,8 @@ async def stop_command(message: Message) -> None:
     if game_reg and not game_reg.is_started:
         game_reg.is_active_game = False
         game_reg.save()
+        writing_allowed_groups.pop(game_reg.chat_id, None)
+        # task bo'lsa cancel (agar siz game_tasks ishlatayotgan bo'ls
         await stop_registration(game_id=game_reg.id,instant=True)
         await send_safe_message(chat_id=chat_id, text="🛑 Ro'yxatdan o'tish to'xtatildi.")
         return
@@ -1017,6 +1019,10 @@ async def delete_not_alive_messages(message: Message):
         group_users[chat_id] = set()
 
     group_users[chat_id].add(tg_id)
+    if message and message.text and message.text.startswith('!'):
+        is_group_admin_bool = await is_group_admin(chat_id, tg_id)
+        if is_group_admin_bool:
+            return
 
     if writing_allowed_groups.get(chat_id) == "no":
         try:
@@ -1028,10 +1034,6 @@ async def delete_not_alive_messages(message: Message):
     if not game or game.get("meta", {}).get("is_active_game") is not True:
         return 
 
-    if message and message.text and message.text.startswith('!'):
-        is_group_admin_bool = await is_group_admin(chat_id, tg_id)
-        if is_group_admin_bool:
-            return
     
     alive = set(game.get("alive", []))
     night_action = game.get("night_actions", {})
@@ -1055,12 +1057,6 @@ async def delete_not_alive_messages(message: Message):
                 chat_id=tg_id,
                 text="🥲 O'yin vaqti sizga yozishga ruxsat yoq!\n🔈 45 sekundga mute qilindingiz."
             )
-        except Exception:
-            pass
-        return
-    elif game.get("meta", {}).get("message_allowed") == "no":
-        try:
-            await message.delete()
         except Exception:
             pass
         return
