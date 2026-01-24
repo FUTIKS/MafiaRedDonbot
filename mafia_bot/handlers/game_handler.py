@@ -6,7 +6,8 @@ from dispatcher import bot
 from collections import Counter
 from aiogram.types import FSInputFile
 from mafia_bot.utils import game_tasks
-from mafia_bot.models import Game,User
+from mafia_bot.models import Game
+from aiogram.exceptions import TelegramRetryAfter
 from mafia_bot.buttons.inline import confirm_hang_inline_btn, go_to_bot_inline_btn,action_inline_btn
 from mafia_bot.handlers.main_functions import (can_hang, games_state, get_most_voted_id,night_reset,day_reset, notify_new_com, notify_new_don, prepare_confirm_pending,
                                                prepare_hang_pending, prepare_night_pending, promote_new_com_if_needed, promote_new_don_if_needed, punish_afk_night_players,send_night_actions_to_all,send_safe_message,
@@ -70,13 +71,32 @@ async def start_game(game_id):
             
             asyncio.create_task(send_night_actions_to_all( game_id, game, alive_users_qs,game_day))
 
-            await bot.send_video(
+            
+            caption = "<b>🌃 Tun\nKo'chaga faqat jasur va qo'rqmas odamlar chiqishdi. Ertalab tirik qolganlarni sanaymiz..</b>"
+            try:
+                await bot.send_video(
                     chat_id=game.chat_id,
                     video=sunset,
-                caption="<b>🌃 Tun\nKo'chaga faqat jasur va qo'rqmas odamlar chiqishdi. Ertalab tirik qolganlarni sanaymiz..</b>",
-                parse_mode="HTML",
-                reply_markup=go_to_bot_inline_btn(2)
-            )
+                    caption=caption,
+                    parse_mode="HTML"
+                )
+
+            except TelegramRetryAfter as e:
+                # video limit — textga tushamiz
+                await send_safe_message(
+                    chat_id=game.chat_id,
+                    text=caption,
+                    parse_mode="HTML"
+                )
+
+            except Exception:
+                # boshqa xato bo‘lsa ham text yuboramiz
+                await send_safe_message(
+                    chat_id=game.chat_id,
+                    text=caption,
+                    parse_mode="HTML"
+                )
+
 
             await asyncio.sleep(1)
 
@@ -128,13 +148,34 @@ async def start_game(game_id):
 
 
             # ================= MORNING =================
+            caption = (
+                    f"<b>🏙 {day}-kun\n"
+                    "Quyosh chiqdi, ammo tun orqasida nima bo‘lganini faqat bir necha kishi biladi...</b>"
+                )
+            try:
+                await bot.send_video(
+                    chat_id=game.chat_id,
+                    video=sunrise,
+                    caption=caption,
+                    parse_mode="HTML"
+                )
 
-            await bot.send_video(
-                chat_id=game.chat_id,
-                video=sunrise,
-                caption=f"<b>🏙 {day}-kun \nQuyosh chiqdi, ammo tun orqasida nima bo‘lganini faqat bir necha kishi biladi...</b>",
-                parse_mode="HTML"
-            )
+            except TelegramRetryAfter as e:
+                # video limit — textga tushamiz
+                await send_safe_message(
+                    chat_id=game.chat_id,
+                    text=caption,
+                    parse_mode="HTML"
+                )
+
+            except Exception:
+                # boshqa xato bo‘lsa ham text yuboramiz
+                await send_safe_message(
+                    chat_id=game.chat_id,
+                    text=caption,
+                    parse_mode="HTML"
+                )
+
             day += 1
             await asyncio.sleep(1)
             
