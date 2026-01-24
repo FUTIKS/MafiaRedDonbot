@@ -17,7 +17,11 @@ from mafia_bot.handlers.game_handler import run_game_in_background
 from mafia_bot.handlers.callback_handlers import begin_instance_callback
 from mafia_bot.models import Game, GroupTrials, MostActiveUser,User,BotMessages,GameSettings, UserRole,default_end_date,BotCredentials,LoginAttempts
 from mafia_bot.utils import last_wishes,team_chat_sessions,game_tasks,group_users,stones_taken,gsend_taken,games_state,giveaways,notify_users,active_role_used
-from mafia_bot.handlers.main_functions import MAFIA_ROLES, find_game,create_main_messages, kill,  shuffle_roles ,check_bot_rights,role_label,is_group_admin,mute_user,has_link,parse_amount,get_game_by_chat_id,send_safe_message
+from mafia_bot.handlers.main_functions import (MAFIA_ROLES, find_game,create_main_messages,
+                                               kill, notify_new_don, promote_new_com_if_needed,
+                                               promote_new_don_if_needed,  shuffle_roles ,check_bot_rights,
+                                               role_label,is_group_admin,mute_user,has_link,parse_amount,get_game_by_chat_id,
+                                               send_safe_message,notify_new_com)
 from mafia_bot.buttons.inline import (admin_inline_btn, back_btn, giveaway_join_btn, group_profile_inline_btn, join_game_btn, 
                                       main_inline_btn, go_to_bot_inline_btn, cart_inline_btn, start_inline_btn, take_gsend_stone_btn,
                                       take_stone_btn,stones_to_premium_inline_btn)
@@ -442,6 +446,22 @@ async def leave(message: Message) -> None:
     if not user:
         return
     role = game.get("roles", {}).get(tg_id)
+    if role == "don":
+        new_don_id = promote_new_don_if_needed(game)
+        if new_don_id:
+            await notify_new_don( game,new_don_id)
+            await send_safe_message(
+                chat_id=game.chat_id,
+                text=f"🤵🏻 Don vafot etdi.\nMafialardan biri endi yangi Don "
+                    )
+    elif role == "com":
+        new_com_id = promote_new_com_if_needed(game)
+        if new_com_id:
+            await notify_new_com( game, new_com_id)
+            await send_safe_message(
+                        chat_id=game.chat_id,
+                        text=f"🕵🏻‍♂ Komissar vafot etdi.\nYangi Komissar tayinlandi."
+                    )
     role_label_text = role_label(role)
     await send_safe_message(chat_id=message.chat.id,text=f"<a href='tg://user?id={user.telegram_id}'> {user.first_name}</a>Bu shaharning yovuzliklariga chiday olmadi va o'zini osib qo'ydi. U {role_label_text} edi.")
     
@@ -676,12 +696,13 @@ async def auto_begin_game(chat_id: int):
     if not game_settings:
         return
     messages = BotMessages.objects.filter(game_id=game.id,is_main=True,is_deleted=False)
-    message_ids = [m.message_id for m in messages if m]
-    if message_ids:
-        try:
-            await bot.delete_messages(chat_id=chat_id,message_ids=message_ids)
-        except:
-            pass
+    if messages:
+        message_ids = [m.message_id for m in messages if m]
+        if message_ids:
+            try:
+                await bot.delete_messages(chat_id=chat_id,message_ids=message_ids)
+            except:
+                pass
     messages.update(is_deleted=True)
     msg = await send_safe_message(chat_id=chat_id,text="Ro'yxatdan o'tish boshlandi",reply_markup=join_game_btn(str(game.uuid)))
     await bot.pin_chat_message(chat_id=chat_id,message_id=msg.message_id)

@@ -494,7 +494,7 @@ async def com_callback(callback: CallbackQuery):
     elif action == "back":
         await callback.message.edit_text(
             text=ACTIONS.get("com_deside"),
-            reply_markup=com_inline_btn(game.id, game.chat_id,day=day)
+            reply_markup=com_inline_btn(game_id=int(parts[2]), chat_id=chat_id,day=day)
         )
         return
     

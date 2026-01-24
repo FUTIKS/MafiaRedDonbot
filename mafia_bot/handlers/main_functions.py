@@ -971,15 +971,21 @@ def compute_daydi_seen(game):
         visitor_id = int(visitor_id)
         house_id = int(house_id)
 
-        if house_id == daydi_house:
+        # Faqat daydi tanlagan uyga kelganlar
+        if house_id != daydi_house:
             continue
+
+        # Ko‘rinmaydigan visitorlar
         if visitor_id in invisible:
             continue
-        if visitor_id != daydi_house:
+
+        # Uy egasini o‘zi ko‘rmaydi
+        if visitor_id == daydi_house:
             continue
+
         if visitor_id not in seen:
             seen.append(visitor_id)
-        
+
     night_actions["daydi_seen"] = seen
     return seen
 
