@@ -3430,7 +3430,7 @@ async def day_attack_callback(callback: CallbackQuery):
     role = game["roles"].get(hero_id)
     if role not in ["sniper", "commissar", "don"]:
         return
-
+    role_target = game['roles'].get(target_id)
     game.setdefault("hero_damage", {})
     game["hero_damage"].setdefault(target_id, {"hits": 0, "hp_percent": 100})
 
@@ -3458,7 +3458,7 @@ async def day_attack_callback(callback: CallbackQuery):
         kill(game, target_id)
         await send_safe_message(
             chat_id=chat_id,
-            text=f"💀 <b>{target_name}</b> {role_label(role)} yana Geroy hujumiga uchradi va halok bo‘ldi!",
+            text=f"💀 <b>{target_name}</b> {role_label(role)} yana Geroy hujumiga uchradi va halok bo‘ldi!\nU {role_label(role_target)} edi.",
             parse_mode="HTML"
         )
         await callback.message.edit_text(
