@@ -671,6 +671,8 @@ def find_game(game_id, tg_id,chat_id,user):
         game["players"].append(tg_id)
         game["users_map"][tg_id]={"first_name":user.first_name,"protection":user.protection,"doc":user.docs,"tg_id":tg_id,"hero":user.is_hero}
         game["alive"].append(tg_id)
+        if len(game["players"])==max_players:
+            return {"message": "full"}
 
     return {"message": "joined"}
 

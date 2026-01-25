@@ -1074,7 +1074,7 @@ def geroy_inline_btn():
     keyboard1 = InlineKeyboardButton(text="🥷 Sotib olish 💎 50", callback_data="geroy_buy_50")
     keyboard2 = InlineKeyboardButton(text="🥷 Sotib olish 💵 50000", callback_data="geroy_buy_50000")
     keyboard3 = InlineKeyboardButton(text="✖️ Geroyni olib tashlash", callback_data="geroy_sold_0")
-    keyboard4 = InlineKeyboardButton(text="⬅️ Orqaga", callback_data="geroy_no_0")
+    keyboard4 = InlineKeyboardButton(text="⬅️ Orqaga", callback_data="back_profile")
     design = [
         [keyboard1],
         [keyboard2],

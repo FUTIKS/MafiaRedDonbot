@@ -3372,7 +3372,7 @@ async def hero_callback(callback: CallbackQuery):
         return
 
     role = game["roles"].get(hero_id)
-    user_map = game["user_map"]
+    user_map = game["users_map"]
 
 
     if hero_type == "attack":
