@@ -22,7 +22,7 @@ from mafia_bot.buttons.inline import (action_inline_btn,
     groupes_keyboard, groups_buy_stars, history_groupes_keyboard, money_case, pay_for_money_inline_btn, pay_using_stars_inline_btn, role_shop_inline_keyboard,
     shop_inline_btn, main_inline_btn, roles_inline_btn, com_inline_action_btn,pirate_steal_inline_btn,
     professor_gift_inline_btn,confirm_hang_inline_btn,groups_inline_btn,group_manage_btn,back_admin_btn,case_inline_btn,
-    stone_case,begin_instance_inline_btn, take_gsend_stone_btn, take_gsend_stone_btn, take_stone_btn,trial_groupes_keyboard,trial_group_manage_btn,privacy_inline_btn
+    stone_case,begin_instance_inline_btn, take_gsend_stone_btn, take_gsend_stone_btn, take_stone_btn,trial_groupes_keyboard,trial_group_manage_btn,privacy_inline_btn, use_hero_inline_btn
 )
 
 
@@ -1515,7 +1515,7 @@ async def professor_callback(callback: CallbackQuery):
     await send_safe_message(
         chat_id=int(target_id),
         text=f"🎩 Professor sizga 3 ta quticha bilan keldi!",
-        reply_markup=professor_gift_inline_btn(game_id=int(game_id),day=day,professor_id=professor_id)
+        reply_markup=professor_gift_inline_btn(game_id=int(game_id),day=day,professor_id=professor_id,chat_id=chat_id)
     )
     
     await callback.message.edit_text(text=f"{ACTIONS.get('professor_choose')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni tanladingiz")
@@ -1528,8 +1528,9 @@ async def prof_callback(callback: CallbackQuery):
     parts = callback.data.split("_")
     choose = str(parts[1])
     game_id = int(parts[2])
-    professor_id = int(parts[4])
     day = parts[3]
+    professor_id = int(parts[4])
+    chat_id = int(parts[5])
     prof_id = callback.from_user.id
     game = games_state.get(int(game_id))
     if not game:
@@ -1543,16 +1544,27 @@ async def prof_callback(callback: CallbackQuery):
     if choose == "die":
         reward = "⚰️ O'lim"
         game["night_actions"]["professor"]['chosen'] = "die"
-        mark_night_action_done(game, callback.from_user.id)
     elif choose == "empty":
         reward = "🥡 Bo'sh quti"
         game["night_actions"]["professor"]['chosen'] = "empty"
-        mark_night_action_done(game, callback.from_user.id)
         
     else:
         reward = "🥷 Geroydan foydalanish"
+        user = User.objects.filter(telegram_id=int(prof_id)).first()
+        if user and user.is_hero:
+             await send_safe_message(
+                chat_id=prof_id,
+                text="🥷 O'z tanlovingizni qiling",
+                reply_markup=use_hero_inline_btn(
+                    game_id=game_id,
+                    chat_id=chat_id,
+                    day=day
+                )
+            )
+            
         game["night_actions"]["professor"]['chosen'] = "hero"
-        mark_night_action_done(game, callback.from_user.id)
+    
+    mark_night_action_done(game, callback.from_user.id)
     
     await callback.message.edit_text(text=f"🎩 Professor sizga {reward}ni sovg'a qutisidan berdi!")
     await send_safe_message(

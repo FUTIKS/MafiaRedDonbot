@@ -645,28 +645,28 @@ def pirate_steal_inline_btn( pirate_id,game_id,day=None):
     return builder.as_markup()
 
 
-def professor_gift_inline_btn(game_id,day=None,professor_id=None):
+def professor_gift_inline_btn(game_id,day=None,professor_id=None,chat_id=None):
     bulider = InlineKeyboardBuilder()
     callbacks = ["die", "empty", "geroy"]
     random.shuffle(callbacks)
     bulider.add(
         InlineKeyboardButton(
             text="🎁 1-quti",
-            callback_data=f"prof_{callbacks[0]}_{game_id}_{day}_{professor_id}"
+            callback_data=f"prof_{callbacks[0]}_{game_id}_{day}_{professor_id}_{chat_id}"
         )
         
     )
     bulider.add(
         InlineKeyboardButton(
             text="🎁 2-quti",
-            callback_data=f"prof_{callbacks[1]}_{game_id}_{day}_{professor_id}"
+            callback_data=f"prof_{callbacks[1]}_{game_id}_{day}_{professor_id}_{chat_id}"
         )
         
     )
     bulider.add(
         InlineKeyboardButton(
             text="🎁 3-quti",
-            callback_data=f"prof_{callbacks[2]}_{game_id}_{day}_{professor_id}"
+            callback_data=f"prof_{callbacks[2]}_{game_id}_{day}_{professor_id}_{chat_id}"
         )
         
     )
