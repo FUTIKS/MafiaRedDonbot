@@ -131,8 +131,14 @@ async def start_game(game_id):
                 pass
             
             await asyncio.sleep(1)
+            is_don_alive = False
+            roles_map = games_state.get(game_id, {}).get("roles", {})
+            for tg_id in games_state[game_id]['alive']:
+                if roles_map.get(tg_id) == "don":
+                    is_don_alive = True
+                    break
             
-            if games_state[game_id]['night_actions']['don_kill_target'] is not None and games_state[game_id]['night_actions']['mafia_vote'] is not []:
+            if games_state[game_id]['night_actions']['don_kill_target'] is not None and games_state[game_id]['night_actions']['mafia_vote'] is not [] and is_don_alive:
                 await send_safe_message(
                     chat_id=game.chat_id,
                     text="🤵🏻 Mafia navbatdagi o'ljasini tanladi..."
