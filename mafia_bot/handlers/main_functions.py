@@ -1193,7 +1193,7 @@ async def hero_day_actions(game_id: int):
 
         role = roles.get(tg_id)
 
-        if role in ["don", "com", "sniper"]:
+        if role in ["don", "com", "snyper"]:
             await send_safe_message(
                 chat_id=tg_id,
                 text="🥷 O'z tanlovingizni qiling",
