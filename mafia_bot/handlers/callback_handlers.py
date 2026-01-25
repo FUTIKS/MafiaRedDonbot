@@ -1504,6 +1504,7 @@ async def professor_callback(callback: CallbackQuery):
     
     # ✅ night action saqlash
     game["night_actions"]["professor"]['target_id'] = int(target_id)
+    game["night_actions"]["professor"]['chosen'] = "die"
     add_visit(game=game, visitor_id=professor_id, house_id=target_id, invisible=False)
     
     await send_safe_message(

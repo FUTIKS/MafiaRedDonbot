@@ -37,14 +37,14 @@ async def start_game(game_id):
         game_data_bg = games_state.get(game_id)
         if not game_data_bg:
             return
-        game_data_bg['meta']["chat_id"] = game.chat_id
-        game_data_bg['meta']["uuid"] = str(game.uuid)
-        game_data_bg['meta']['is_active_game'] = True
-        game_data_bg['meta']['created_at'] = int(time.time())
+        games_state[game_id]['meta']["chat_id"] = game.chat_id
+        games_state[game_id]['meta']["uuid"] = str(game.uuid)
+        games_state[game_id]['meta']['is_active_game'] = True
+        games_state[game_id]['meta']['created_at'] = int(time.time())
         day = 1
         sunset = FSInputFile("mafia_bot/gifs/sunset.mp4")
         sunrise = FSInputFile("mafia_bot/gifs/sunrise.mp4")
-        users_map = game_data_bg.get("users_map", {})
+        users_map = games_state[game_id].get("users_map", {})
         while True:
             # ================= NIGHT START =================
             night_reset(game_id)
