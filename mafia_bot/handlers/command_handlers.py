@@ -44,7 +44,6 @@ async def start(message: Message) -> None:
         user.save(update_fields=["first_name","username"])
     if ' ' in message.text and message.chat.type == "private": 
         args = message.text.split(' ')[1]
-        print(args)
         if args == "true":
             return
         elif args.startswith("instance_"):
@@ -63,8 +62,8 @@ async def start(message: Message) -> None:
             return
             
             
-        game = Game.objects.filter(uuid=args).first()
-        if not game or game.is_started:
+        game = Game.objects.filter(uuid=args,is_active_game=True,is_started=False).first()
+        if not game :
             await message.reply(text="Kechirasiz, o'yin allaqachon boshlandi.")
             return
         
@@ -80,7 +79,7 @@ async def start(message: Message) -> None:
                 try:
                     await bot.edit_message_text(chat_id=game.chat_id,message_id=bot_message.message_id,text=result_2,reply_markup=join_game_btn(str(game.uuid)))
                 except Exception as e:
-                    print(f"Error editing message: {e}")
+                    pass
         if result.get("message") == "full":
             await stop_registration(game_id=game.id)
         return
@@ -648,7 +647,8 @@ async def game_command(message: Message) -> None:
             msg = await message.answer(text=text_begining,reply_markup=join_game_btn(str(game.uuid)))
             await bot.pin_chat_message(chat_id=chat_id,message_id=msg.message_id)
             BotMessages.objects.create(game_id=game.id,message_id=msg.message_id,is_main=True)
-            
+            return
+        if game.is_started:
             return
         user = User.objects.filter(telegram_id=message.from_user.id).first()
         if not user:
@@ -1003,7 +1003,7 @@ async def send_roles(game_id, chat_id):
                 parse_mode="HTML"
             )
         except Exception as e:
-            print(f"Xatolik yuz berdi: {e}")
+            pass
             
     await send_mafia_companions(int(game_id), chat_id)
     await sergant_send_companions(int(game_id), chat_id)
@@ -1027,11 +1027,14 @@ async def delete_not_alive_messages(message: Message):
     if writing_allowed_groups.get(chat_id) == "no":
         try:
             await message.delete()
+            await mute_user(chat_id,tg_id)
         except Exception:
             pass
         return
+    
     game = get_game_by_chat_id(chat_id)
     if not game or game.get("meta", {}).get("is_active_game") is not True:
+        print("No active game")
         return 
 
     
@@ -1041,6 +1044,7 @@ async def delete_not_alive_messages(message: Message):
     if lover_block_target == tg_id:
         try:
             await message.delete()
+            await mute_user(chat_id,tg_id)
             await send_safe_message(
                 chat_id=tg_id,
                 text="🥲 Siz Mashuqa bilan vaqtni chog' o'tkazing"

@@ -14,7 +14,7 @@ from core.constants import ROLES_BY_COUNT,ROLES_CHOICES, ACTIONS
 from mafia_bot.models import Game, GameSettings,User,MostActiveUser, UserRole
 from mafia_bot.utils import games_state, last_wishes,game_tasks, active_role_used,writing_allowed_groups
 from aiogram.types import ChatPermissions,ChatMemberAdministrator, ChatMemberOwner
-from mafia_bot.buttons.inline import cart_inline_btn, doc_btn, com_inline_btn, don_inline_btn, mafia_inline_btn, adv_inline_btn, spy_inline_btn, lab_inline_btn, action_inline_btn
+from mafia_bot.buttons.inline import cart_inline_btn, doc_btn, com_inline_btn, don_inline_btn, mafia_inline_btn, adv_inline_btn, spy_inline_btn, lab_inline_btn, action_inline_btn,use_hero_inline_btn
 
 lock = Lock()
 ROLE_LABELS = dict(ROLES_CHOICES)
@@ -358,7 +358,8 @@ def init_game(game_id: int, chat_id: int | None = None):
                 "traitor_target": None,
 
                 "snowball_target": None,
-
+                "hero_targets":{},
+                "hero_used":{},
                 "pirate": {
                     "pirate_id": None,
                     "target_id": None,
@@ -656,6 +657,7 @@ def is_alive(game, tg_id: int) -> bool:
 
 def find_game(game_id, tg_id,chat_id,user):
     init_game(game_id,chat_id)
+    tg_id = int(tg_id)
 
     with lock:
         game = games_state[game_id]
@@ -667,7 +669,7 @@ def find_game(game_id, tg_id,chat_id,user):
             return {"message": "full"}
 
         game["players"].append(tg_id)
-        game["users_map"][tg_id]={"first_name":user.first_name,"protection":user.protection,"doc":user.docs,"tg_id":tg_id}
+        game["users_map"][tg_id]={"first_name":user.first_name,"protection":user.protection,"doc":user.docs,"tg_id":tg_id,"hero":user.is_hero}
         game["alive"].append(tg_id)
 
     return {"message": "joined"}
@@ -1167,6 +1169,46 @@ def traitor_swap_roles(game: dict):
     return int(traitor_id), int(target_id), target_role
 
 
+async def hero_day_actions(game_id: int):
+    game = games_state.get(int(game_id))
+    if not game:
+        return
+
+    users_map = game.get("users_map", {})
+    roles = game.get("roles", {})
+    meta = game.get("meta", {})
+    chat_id = meta.get("chat_id")
+    day = meta.get("day")
+
+    for tg_id, user in users_map.items():
+        tg_id = int(tg_id)
+        if tg_id not in game.get("alive", []):
+            continue
+
+        is_hero = user.get("hero", False)
+        if not is_hero:
+            continue
+
+        role = roles.get(tg_id)
+
+        if role in ["don", "com", "sniper"]:
+            await send_safe_message(
+                chat_id=tg_id,
+                text="🥷 O'z tanlovingizni qiling",
+                reply_markup=use_hero_inline_btn(
+                    game_id=game_id,
+                    chat_id=chat_id,
+                    day=day
+                )
+            )
+        else:
+            await send_safe_message(
+                chat_id=tg_id,
+                text="🥷 Siz geroy orqali faqat o'zingizni himoyalay olasiz."
+            )
+
+
+
 
 async def apply_night_actions(game_id: int):
     game = games_state.get(game_id)
@@ -1293,6 +1335,8 @@ async def apply_night_actions(game_id: int):
     saved_tonight = []
 
     for target_id, intents in kill_intents.items():
+        if target_id is None:
+            continue
         intents.sort(key=lambda x: x[1], reverse=True)
         killer_by, pr = intents[0]
 
@@ -1304,6 +1348,7 @@ async def apply_night_actions(game_id: int):
         if target_id in protected:
             saved_tonight.append((target_id, protected[target_id], killer_by))
             continue
+        
         target_user = alive_users_map.get(int(target_id))
         if target_user and target_user.get("protection", 0) > 0:
             target_user_qs = User.objects.filter(telegram_id=int(target_id)).first()
@@ -1314,6 +1359,23 @@ async def apply_night_actions(game_id: int):
             saved_tonight.append((target_id, "protection", killer_by))
             continue
         
+
+        hero_used = game.setdefault("hero_used", {})
+        if target_user and target_user.get("hero", False):
+            if not hero_used.get(target_id):
+                hero_used[target_id] = True
+                saved_tonight.append((target_id, "hero_saved_once", killer_by))
+
+                await send_safe_message(
+                    chat_id=int(target_id),
+                    text=(
+                        "🥷 Sizni o'ldirishdi, lekin Geroy sizni bir marta o‘limdan saqlab qoldi!\n"
+                        "Keyingi safar siz halok bo‘lasiz."
+                    ),
+                    parse_mode="HTML"
+                )
+                continue
+
         if roles.get(int(target_id)) == "kam":
             killer_id = get_alive_role_id(game, killer_by)
             kill(game, killer_id)
@@ -1366,6 +1428,7 @@ async def apply_night_actions(game_id: int):
             game["allowed_to_send_message"].append(int(target_id))
             game_day = game.get('meta', {}).get('day', 1)
             last_wishes[int(target_id)] = (chat_id, game_day) 
+            
     if night_texts:
         await send_safe_message(
             chat_id=chat_id,
@@ -1375,17 +1438,7 @@ async def apply_night_actions(game_id: int):
             
     for target_id, protector_by, killer_by in saved_tonight:
         protector_role_label = role_label(protector_by)
-        if protector_by == "doc":
-            await send_safe_message(
-                chat_id=int(target_id),
-                text=(
-                    f"<b>Sizni {protector_role_label} qutqardi!</b>\n"
-                    "Siz tirik qoldingiz!"
-                ),
-                parse_mode="HTML"
-            )
-        elif protector_by == "adv":
-            await send_safe_message(
+        await send_safe_message(
                 chat_id=int(target_id),
                 text=(
                     f"<b>Sizni {protector_role_label} qutqardi!</b>\n"

@@ -57,6 +57,7 @@ DESCRIPTIONS = {
         "pirate":"👺 Qaroqchi Siz Yakka rollar tarafdasiz.\nSiz tunda istalgan foydalanuvchini uyiga borip undan pul undirishingiz mumkin, agarda pul berishdan bosh tortsa shu zahoti uni o'ldirishingiz mumkin.",
         "professor":"🎩 Professor Siz Yakka rollar tarafdasiz. Siz tunda tanlagan ishtirokchiga 3 ta sirli quti taklif qilasiz ularning ichida:\n⚰️ O'lim, 🥡 Bo'sh quti hamda 🥷 Geroydan foydalanish berkitilgan bo'ladi va u ishtirokchi o'z taqdirini o'zi xal qiladi.",
         "santa":"🎅 Santa Tinch axolilar tarafida. Siz har kecha bitta ishtirokchiga sovg'a berishingiz mumkin bu sovg'a unga himoya beradi va uni osilishdan saqlab qoladi.",
+        "hero":"🥷 Geroy - bu o‘yinda kun vaqtida ham o‘yinchilarni o‘ldirishga imkon beradigan, boshqa geroylar xujumidan ximoya qiladigan yordamchi personaj.",
     }
 
 
@@ -125,6 +126,7 @@ ACTIONS = {
 
     # Solo
     "killer_kill": "🔪 Kimni yo'q qilamiz?",
+    "hero":" 🥷 Geroydan foydalanasizmi?",
     "trap_place": "☠️ Kimning uyiga mina qo'yamiz?",
     "snyper_kill": "👨🏻‍🎤 Kimni yo'q qilamiz?",
     "kamikaze_blow": "💣 Kimni portlatamiz?",
@@ -212,7 +214,8 @@ ROLE_PRICES_IN_STONES = {
     "mafia":1,
     "serg":1,
     "killer":1,
-    "traitor":1}
+    "traitor":1,
+    "hero":50,}
 ROLE_PRICES_IN_MONEY = {
     "lover": 400,
     "daydi": 400,
@@ -220,5 +223,6 @@ ROLE_PRICES_IN_MONEY = {
     "spy": 350,
     "doc": 350,
     "peace": 200,
+    "hero":50000,
 }
     

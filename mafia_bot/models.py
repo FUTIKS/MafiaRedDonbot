@@ -25,6 +25,7 @@ class User(SafeBaseModel):
     active_role=models.IntegerField(default=0)
     role = models.CharField(max_length=50, choices=USER_ROLES, default='user')
     is_vip=models.BooleanField(default=False)
+    is_hero = models.BooleanField(default=False)
     
     
     def __str__(self):

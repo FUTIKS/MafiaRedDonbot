@@ -11,7 +11,7 @@ from aiogram.exceptions import TelegramRetryAfter
 from mafia_bot.buttons.inline import confirm_hang_inline_btn, go_to_bot_inline_btn,action_inline_btn
 from mafia_bot.handlers.main_functions import (can_hang, games_state, get_most_voted_id,night_reset,day_reset, notify_new_com, notify_new_don, prepare_confirm_pending,
                                                prepare_hang_pending, prepare_night_pending, promote_new_com_if_needed, promote_new_don_if_needed, punish_afk_night_players,send_night_actions_to_all,send_safe_message,
-                                               apply_night_actions,ROLE_LABELS, stop_game_if_needed,PEACE_ROLES,MAFIA_ROLES_LAB,SOLO_ROLES)
+                                               apply_night_actions,ROLE_LABELS, stop_game_if_needed,PEACE_ROLES,MAFIA_ROLES_LAB,SOLO_ROLES,hero_day_actions)
 
 
 
@@ -132,7 +132,7 @@ async def start_game(game_id):
             
             await asyncio.sleep(1)
             
-            if games_state[game_id]['night_actions']['don_kill_target'] is not None:
+            if games_state[game_id]['night_actions']['don_kill_target'] is not None and games_state[game_id]['night_actions']['mafia_vote'] is not []:
                 await send_safe_message(
                     chat_id=game.chat_id,
                     text="🤵🏻 Mafia navbatdagi o'ljasini tanladi..."
@@ -257,7 +257,7 @@ async def start_game(game_id):
             msg += f"<b>Yakka rollar - {len(solo_labels)}\n {format_role_list(solo_labels)}</b>"
 
             msg += "\n\n<b>Tunda bo'lgan xodisalarni muxokama qilishning ayni vaqti...</b>"
-
+            await hero_day_actions(game_id)
 
             await send_safe_message(
                 chat_id=game.chat_id,

@@ -1048,5 +1048,21 @@ def privacy_inline_btn():
         [keyboard2],
         [keyboard3],
     ]
+    
     keyboard = InlineKeyboardMarkup(inline_keyboard=design)
     return keyboard
+
+
+def use_hero_inline_btn(game_id, chat_id, day=None):
+    builder = InlineKeyboardBuilder()        
+    
+    builder.add(InlineKeyboardButton(
+                text="🥷 Hujum qilish",
+                callback_data=f"hero_attack_{game_id}_{chat_id}_{day}"
+            ))
+    builder.add(InlineKeyboardButton(
+                text="🛡 Himoyalanish",
+                callback_data=f"hero_protect_{game_id}_{chat_id}_{day}"
+            ))
+    builder.adjust(1)
+    return builder.as_markup()

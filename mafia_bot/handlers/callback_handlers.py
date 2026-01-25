@@ -15,9 +15,9 @@ from mafia_bot.utils import stones_taken,gsend_taken,giveaways,games_state
 from aiogram.types import Message, LabeledPrice, PreCheckoutQuery,CallbackQuery
 from mafia_bot.models import Game, MoneySendHistory, User,PremiumGroup,MostActiveUser,CasesOpened,GameSettings,GroupTrials,PriceStones, UserRole,BotCredentials
 from mafia_bot.state import AddGroupState, BeginInstanceState,SendMoneyState,ChangeStoneCostState,ChangeMoneyCostState,ExtendGroupState,QuestionState,Register,CredentialsState
-from mafia_bot.handlers.main_functions import (add_visit, get_mafia_members,get_first_name_from_players,send_safe_message,
+from mafia_bot.handlers.main_functions import (add_visit, get_mafia_members,get_first_name_from_players, kill,send_safe_message,
                                                mark_confirm_done, mark_hang_done,mark_night_action_done,get_week_range,get_month_range)
-from mafia_bot.buttons.inline import (
+from mafia_bot.buttons.inline import (action_inline_btn,
     admin_inline_btn, answer_admin, back_btn, cart_inline_btn, change_money_cost, change_stones_cost, com_inline_btn, end_talk_keyboard,  giveaway_join_btn, group_profile_inline_btn,
     groupes_keyboard, groups_buy_stars, history_groupes_keyboard, money_case, pay_for_money_inline_btn, pay_using_stars_inline_btn, role_shop_inline_keyboard,
     shop_inline_btn, main_inline_btn, roles_inline_btn, com_inline_action_btn,pirate_steal_inline_btn,
@@ -229,7 +229,7 @@ async def buy_role_callback(call: CallbackQuery, state: FSMContext):
     role_key = call.data.split("_")[1]
     price = int(call.data.split("_")[2])
     
-    if price<15:
+    if price<75:
         currency = "stones"
     else:
         currency = "money"
@@ -538,18 +538,14 @@ async def com_shoot_callback(callback: CallbackQuery):
         await callback.message.edit_text(text=f"{ACTIONS.get('com_shoot')}\n\nSiz kechikdingiz.", parse_mode="HTML")
         return
     if not com_id in game["alive"]:
-        print("com not alive")
         return
     
 
     game["night_actions"]["com_shoot_target"] = target_id
-    print("saved shoot target")
     add_visit(game, com_id, target_id, False)
-    print("added visit")
 
 
     target_name = get_first_name_from_players( target_id)
-    print("got target name")
 
     await callback.message.edit_text(
         text=f"{ACTIONS.get('com_shoot')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni otdingiz.",
@@ -579,13 +575,10 @@ async def com_protect_callback(callback: CallbackQuery):
 
     # ✅ Action saqlaymiz
     game["night_actions"]["com_check_target"] = target_id
-    print("saved check target")
     add_visit(game, com_id, target_id, False)
-    print("added visit")
 
 
     target_name = get_first_name_from_players( target_id)
-    print("got target name")
 
     await callback.message.edit_text(
         text=f"{ACTIONS.get('com_check')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni tekshirdingiz.",
@@ -893,7 +886,7 @@ async def don_callback(callback: CallbackQuery):
                 parse_mode="HTML"
             )
         except Exception as e:
-            print(e)
+            pass
     
     await callback.message.edit_text(text=f"{ACTIONS.get('don_kill')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni tanladingiz")
     
@@ -951,7 +944,7 @@ async def mafia_callback(callback: CallbackQuery):
                 parse_mode="HTML"
             )
         except Exception as e:
-            print(e)
+            pass
     
     await callback.message.edit_text(text=f"{ACTIONS.get('mafia_vote')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni tanladingiz")
 
@@ -1017,7 +1010,7 @@ async def adv_callback(callback: CallbackQuery):
                 parse_mode="HTML"
             )
         except Exception as e:
-            print(e)
+            pass
     
 
     await callback.message.edit_text(text=f"{ACTIONS.get('adv_mask')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni tanladingiz")
@@ -1082,7 +1075,7 @@ async def spy_callback(callback: CallbackQuery):
                 parse_mode="HTML"
             )
         except Exception as e:
-            print(e)
+            pass
     
     
     await callback.message.edit_text(text=f"{ACTIONS.get('spy_check')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni tanladingiz")
@@ -3350,3 +3343,97 @@ async def process_new_username(message: Message, state: FSMContext) -> None:
         reply_markup=admin_inline_btn()
     )
     await state.clear()
+    
+@dp.callback_query(F.data.startswith("hero_"))
+async def hero_callback(callback: CallbackQuery):
+    _, hero_type, game_id, chat_id, day = callback.data.split("_")
+    game_id = int(game_id)
+    hero_id = callback.from_user.id
+    day = int(day)
+
+    game = games_state.get(game_id)
+    if not game:
+        return
+
+    current_day = game['meta']['day']
+    if current_day != day:
+        await callback.message.edit_text(
+            f"{ACTIONS['hero']}\n\nSiz kechikdingiz.",
+            parse_mode="HTML"
+        )
+        return
+
+    if hero_id not in game["alive"]:
+        return
+
+    role = game["roles"].get(hero_id)
+    user_map = game["user_map"]
+
+
+    if hero_type == "attack":
+        if role in ["sniper", "commissar", "don"]:
+            await callback.message.edit_text(
+                f"{ACTIONS['hero']}",
+                reply_markup=action_inline_btn(action="day_attack", own_id=hero_id, players=user_map, game_id=game_id, chat_id=chat_id, day=current_day),
+                parse_mode="HTML"
+            )
+            return
+        
+    elif hero_type == "protect":
+       
+        await callback.message.edit_text(
+            f"{ACTIONS['hero']}\n\n🛡 Geroy bilan HIMOYALANDINGIZ!",
+            parse_mode="HTML"
+        )
+        
+@dp.callback_query(F.data.startswith("day_attack_"))
+async def day_attack_callback(callback: CallbackQuery):
+    _, target_id, game_id, chat_id, day = callback.data.split("_")
+    target_id = int(target_id)
+    game_id = int(game_id)
+    chat_id = int(chat_id)
+    day = int(day)
+    hero_id = callback.from_user.id
+
+    game = games_state.get(game_id)
+    if not game:
+        return
+
+    if game["meta"]["day"] != day:
+        await callback.message.edit_text(
+            f"{ACTIONS['hero_attack']}\n\nSiz kechikdingiz.",
+            parse_mode="HTML"
+        )
+        return
+
+    if hero_id not in game["alive"] or target_id not in game["alive"]:
+        return
+
+    role = game["roles"].get(hero_id)
+    if role not in ["sniper", "commissar", "don"]:
+        return
+
+    game.setdefault("hero_damage", {})
+    game["hero_damage"].setdefault(target_id, {"hits": 0, "hp_percent": 100})
+
+    data = game["hero_damage"][target_id]
+    target_name = game["users_map"].get(target_id, {}).get("first_name", "Noma'lum")
+
+    if data["hits"] == 0:
+        import random
+        damage = random.randint(50, 60)
+        data["hp_percent"] -= damage
+        data["hits"] += 1
+
+        await callback.message.edit_text(
+            f"🎯 <b>{target_name}</b> ga {ROLES_CHOICES.get(role)} o‘z ⚔️ Geroyi bilan hujum qildi "
+            f"va {damage}% jonini oldi.\n"
+            f"Hozirda uning {data['hp_percent']}% joni bor.",
+            parse_mode="HTML"
+        )
+    else:
+        kill(game, target_id)
+        await callback.message.edit_text(
+            f"💀 <b>{target_name}</b> {ROLES_CHOICES.get(role)} yana Geroy hujumiga uchradi va halok bo‘ldi!",
+            parse_mode="HTML"
+        )
