@@ -3,7 +3,7 @@ from decouple import config
 from django.utils import timezone
 from mafia_bot.utils import games_state
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from mafia_bot.models import Game, PriceStones,  User,PremiumGroup
+from mafia_bot.models import Game, PriceStones,  PremiumGroup
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from core.constants import ROLES_CHOICES,ROLE_PRICES_IN_MONEY,ROLE_PRICES_IN_STONES
 
@@ -161,11 +161,13 @@ def cart_inline_btn():
     keyboard1 = InlineKeyboardButton(text="🛒 Do'kon", callback_data="cart")
     keyboard2 = InlineKeyboardButton(text="💶 Sotib olish", callback_data="money_money")
     keyboard3 = InlineKeyboardButton(text="💎 Sotib olish", callback_data="money_stone")
+    keyboard6 = InlineKeyboardButton(text="🥷 Mening Geroyim", callback_data="geroy_no_0")
     keyboard4 = InlineKeyboardButton(text="⭐ Premium guruhlar", callback_data="groups")
     keyboard5 = InlineKeyboardButton(text="📦  Sandiqlar", callback_data="cases")
     design = [
         [keyboard1],
         [keyboard2,keyboard3],
+        [keyboard6],
         [keyboard4],
         [keyboard5],
     ]
@@ -1066,3 +1068,17 @@ def use_hero_inline_btn(game_id, chat_id, day=None):
             ))
     builder.adjust(1)
     return builder.as_markup()
+
+
+def geroy_inline_btn():
+    keyboard1 = InlineKeyboardButton(text="🥷 Sotib olish 💎 50", callback_data="geroy_buy_50")
+    keyboard2 = InlineKeyboardButton(text="🥷 Sotib olish 💵 50000", callback_data="geroy_buy_50000")
+    keyboard3 = InlineKeyboardButton(text="✖️ Geroyni olib tashlash", callback_data="geroy_sold_0")
+    keyboard4 = InlineKeyboardButton(text="⬅️ Orqaga", callback_data="geroy_no_0")
+    design = [
+        [keyboard1],
+        [keyboard2],
+        [keyboard3],
+        [keyboard4],
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=design)

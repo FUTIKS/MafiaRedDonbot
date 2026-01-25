@@ -18,7 +18,7 @@ from mafia_bot.state import AddGroupState, BeginInstanceState,SendMoneyState,Cha
 from mafia_bot.handlers.main_functions import (add_visit, get_mafia_members,get_first_name_from_players, kill,send_safe_message,
                                                mark_confirm_done, mark_hang_done,mark_night_action_done,get_week_range,get_month_range)
 from mafia_bot.buttons.inline import (action_inline_btn,
-    admin_inline_btn, answer_admin, back_btn, cart_inline_btn, change_money_cost, change_stones_cost, com_inline_btn, end_talk_keyboard,  giveaway_join_btn, group_profile_inline_btn,
+    admin_inline_btn, answer_admin, back_btn, cart_inline_btn, change_money_cost, change_stones_cost, com_inline_btn, end_talk_keyboard, geroy_inline_btn,  giveaway_join_btn, group_profile_inline_btn,
     groupes_keyboard, groups_buy_stars, history_groupes_keyboard, money_case, pay_for_money_inline_btn, pay_using_stars_inline_btn, role_shop_inline_keyboard,
     shop_inline_btn, main_inline_btn, roles_inline_btn, com_inline_action_btn,pirate_steal_inline_btn,
     professor_gift_inline_btn,confirm_hang_inline_btn,groups_inline_btn,group_manage_btn,back_admin_btn,case_inline_btn,
@@ -3437,3 +3437,37 @@ async def day_attack_callback(callback: CallbackQuery):
             f"💀 <b>{target_name}</b> {ROLES_CHOICES.get(role)} yana Geroy hujumiga uchradi va halok bo‘ldi!",
             parse_mode="HTML"
         )
+
+
+@dp.callback_query(F.data.startswith("geroy_"))
+async def geroy_callback(callback: CallbackQuery):
+    action = callback.data.split("_")[1]
+    money = int(callback.data.split("_")[2])
+    user_id = callback.from_user.id
+    user = User.objects.filter(telegram_id=user_id).first()
+    if not user:
+        user = User.objects.create(
+            first_name = callback.from_user.first_name,
+            username = callback.from_user.username,
+            telegram_id = user_id
+        )
+    if action == "no":
+        await callback.message.edit_text("🥷 Geroy - bu o‘yinda kun vaqtida ham o‘yinchilarni o‘ldirishga imkon beradigan, boshqa geroylar xujumidan ximoya qiladigan yordamchi personaj.\n\nAgar sizda 🥷 Geroy bo‘lsa va sizning o‘yindagi rolingiz:\n\n👨🏻‍🎤 Snayperchi, 🕵️‍ Komissar, 🤵🏻 Don rollaridan biri bolsangiz siz o'z geroyingiz bilan 🥷 Xujum qilish huquqiga ega bo‘lasiz. Agar siz boshqa rol egasi bolsangiz siz faqat geroy bilan ⚜️ Himoyalanish huquqiga egasiz.\n\n🥷 Geroy ni dokondan 💎 50  yoki 💵 50000 ga olishingiz mumkin.",reply_markup=geroy_inline_btn())
+    elif action == "buy":
+        if money == 50000:
+            if user.coin < 50000:
+                await callback.answer("❌ Sizda yetarli pul yo'q.")
+                return
+            user.coin -= 50000
+        elif money == 50:
+            if user.stones < 50:
+                await callback.answer("❌ Sizda yetarli olmos yo'q.")
+                return
+            user.stones -= 50
+        user.is_hero = True
+        user.save()
+        await callback.message.edit_text("✅ Siz muvaffaqiyatli geroyni oldingiz! Endi siz geroy xususiyatlaridan foydalana olasiz.",reply_markup=main_inline_btn())
+    elif action == "sold":
+        user.is_hero=False
+        user.save()
+        await callback.message.edit_text("✅ Siz geroyni olib tashladingiz. Endi siz geroy xususiyatlaridan foydalana olmaysiz.",reply_markup=main_inline_btn())
