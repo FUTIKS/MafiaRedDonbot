@@ -16,7 +16,7 @@ from aiogram.types import Message, LabeledPrice, PreCheckoutQuery,CallbackQuery
 from mafia_bot.models import Game, MoneySendHistory, User,PremiumGroup,MostActiveUser,CasesOpened,GameSettings,GroupTrials,PriceStones, UserRole,BotCredentials
 from mafia_bot.state import AddGroupState, BeginInstanceState,SendMoneyState,ChangeStoneCostState,ChangeMoneyCostState,ExtendGroupState,QuestionState,Register,CredentialsState
 from mafia_bot.handlers.main_functions import (add_visit, get_mafia_members,get_first_name_from_players, kill,send_safe_message,
-                                               mark_confirm_done, mark_hang_done,mark_night_action_done,get_week_range,get_month_range)
+                                               mark_confirm_done, mark_hang_done,mark_night_action_done,get_week_range,get_month_range,role_label)
 from mafia_bot.buttons.inline import (action_inline_btn,
     admin_inline_btn, answer_admin, back_btn, cart_inline_btn, change_money_cost, change_stones_cost, com_inline_btn, end_talk_keyboard, geroy_inline_btn,  giveaway_join_btn, group_profile_inline_btn,
     groupes_keyboard, groups_buy_stars, history_groupes_keyboard, money_case, pay_for_money_inline_btn, pay_using_stars_inline_btn, role_shop_inline_keyboard,
@@ -3372,14 +3372,15 @@ async def hero_callback(callback: CallbackQuery):
         return
 
     role = game["roles"].get(hero_id)
-    user_map = game["users_map"]
+    users_map = game["users_map"]
+    alive_users_qs = [users_map[tg_id] for tg_id in game["alive"] if tg_id in users_map]
 
 
     if hero_type == "attack":
         if role in ["sniper", "commissar", "don"]:
             await callback.message.edit_text(
                 f"{ACTIONS['hero']}",
-                reply_markup=action_inline_btn(action="day_attack", own_id=hero_id, players=user_map, game_id=game_id, chat_id=chat_id, day=current_day),
+                reply_markup=action_inline_btn(action="day_attack", own_id=hero_id, players=alive_users_qs, game_id=game_id, chat_id=chat_id, day=current_day),
                 parse_mode="HTML"
             )
             return
@@ -3393,7 +3394,7 @@ async def hero_callback(callback: CallbackQuery):
         
 @dp.callback_query(F.data.startswith("day_attack_"))
 async def day_attack_callback(callback: CallbackQuery):
-    _, target_id, game_id, chat_id, day = callback.data.split("_")
+    _, _, target_id, game_id, chat_id, day = callback.data.split("_")
     target_id = int(target_id)
     game_id = int(game_id)
     chat_id = int(chat_id)
@@ -3430,19 +3431,28 @@ async def day_attack_callback(callback: CallbackQuery):
         data["hp_percent"] -= damage
         data["hits"] += 1
 
-        await callback.message.edit_text(
-            f"🎯 <b>{target_name}</b> ga {ROLES_CHOICES.get(role)} o‘z ⚔️ Geroyi bilan hujum qildi "
+        await send_safe_message(
+            chat_id=chat_id,
+            text=f"🎯 <b>{target_name}</b> ga {role_label(role)} o‘z ⚔️ Geroyi bilan hujum qildi "
             f"va {damage}% jonini oldi.\n"
             f"Hozirda uning {data['hp_percent']}% joni bor.",
             parse_mode="HTML"
         )
-    else:
-        kill(game, target_id)
         await callback.message.edit_text(
-            f"💀 <b>{target_name}</b> {ROLES_CHOICES.get(role)} yana Geroy hujumiga uchradi va halok bo‘ldi!",
+            f"{ACTIONS['hero']}\n\n🎯 <b>{target_name}</b> ga birinchi hujum amalga oshirildi.",
             parse_mode="HTML"
         )
-
+    else:
+        kill(game, target_id)
+        await send_safe_message(
+            chat_id=chat_id,
+            text=f"💀 <b>{target_name}</b> {role_label(role)} yana Geroy hujumiga uchradi va halok bo‘ldi!",
+            parse_mode="HTML"
+        )
+        await callback.message.edit_text(
+            f"{ACTIONS['hero']}\n\n💀 <b>{target_name}</b> yana Geroy hujumiga uchradi va halok bo‘ldi!",
+            parse_mode="HTML"
+        )
 
 @dp.callback_query(F.data.startswith("geroy_"))
 async def geroy_callback(callback: CallbackQuery):
@@ -3457,7 +3467,7 @@ async def geroy_callback(callback: CallbackQuery):
             telegram_id = user_id
         )
     if action == "no":
-        await callback.message.edit_text("🥷 Geroy - bu o‘yinda kun vaqtida ham o‘yinchilarni o‘ldirishga imkon beradigan, boshqa geroylar xujumidan ximoya qiladigan yordamchi personaj.\n\nAgar sizda 🥷 Geroy bo‘lsa va sizning o‘yindagi rolingiz:\n\n👨🏻‍🎤 Snayperchi, 🕵️‍ Komissar, 🤵🏻 Don rollaridan biri bolsangiz siz o'z geroyingiz bilan 🥷 Xujum qilish huquqiga ega bo‘lasiz. Agar siz boshqa rol egasi bolsangiz siz faqat geroy bilan ⚜️ Himoyalanish huquqiga egasiz.\n\n🥷 Geroy ni dokondan 💎 50  yoki 💵 50000 ga olishingiz mumkin.",reply_markup=geroy_inline_btn())
+        await callback.message.edit_text("🥷 Geroy - bu o‘yinda kun vaqtida ham o‘yinchilarni o‘ldirishga imkon beradigan, boshqa geroylar xujumidan ximoya qiladigan yordamchi personaj.\n\nAgar sizda 🥷 Geroy bo‘lsa va sizning o‘yindagi rolingiz:\n\n👨🏻‍🎤 Snayperchi, 🕵️‍ Komissar, 🤵🏻 Don rollaridan biri bolsangiz siz o'z geroyingiz bilan 🥷 Xujum qilish huquqiga ega bo‘lasiz. Agar siz boshqa rol egasi bolsangiz siz faqat geroy bilan ⚜️ Himoyalanish huquqiga egasiz.\n\n🥷 Geroy ni dokondan 💎 50  yoki 💵 50000 ga olishingiz mumkin.",reply_markup=geroy_inline_btn(user.is_hero))
     elif action == "buy":
         if money == 50000:
             if user.coin < 50000:

@@ -1358,7 +1358,7 @@ async def apply_night_actions(game_id: int):
             target_user_qs.protection -= 1
             target_user_qs.save(update_fields=["protection"])
 
-            saved_tonight.append((target_id, "protection", killer_by))
+            saved_tonight.append((target_id, "himoya", killer_by))
             continue
         
 
@@ -1366,13 +1366,19 @@ async def apply_night_actions(game_id: int):
         if target_user and target_user.get("hero", False):
             if not hero_used.get(target_id):
                 hero_used[target_id] = True
-                saved_tonight.append((target_id, "hero_saved_once", killer_by))
 
                 await send_safe_message(
                     chat_id=int(target_id),
                     text=(
                         "🥷 Sizni o'ldirishdi, lekin Geroy sizni bir marta o‘limdan saqlab qoldi!\n"
                         "Keyingi safar siz halok bo‘lasiz."
+                    ),
+                    parse_mode="HTML"
+                )
+                await send_safe_message(
+                    chat_id=chat_id,
+                    text=(
+                        f"🥷 Geroy <a href='tg://user?id={target_id}'>{uname(target_id)}</a> ni o'limdan saqlab qoldi!"
                     ),
                     parse_mode="HTML"
                 )

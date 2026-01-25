@@ -512,7 +512,7 @@ def mafia_inline_btn(players, game_id,day=None):
         
         
         if role == "mafia":
-            text = f"🤵🏼 {first_name}"
+            continue
         elif role == "don":
             continue
         elif role == "spy":
@@ -1070,7 +1070,7 @@ def use_hero_inline_btn(game_id, chat_id, day=None):
     return builder.as_markup()
 
 
-def geroy_inline_btn():
+def geroy_inline_btn(is_geroy):
     keyboard1 = InlineKeyboardButton(text="🥷 Sotib olish 💎 50", callback_data="geroy_buy_50")
     keyboard2 = InlineKeyboardButton(text="🥷 Sotib olish 💵 50000", callback_data="geroy_buy_50000")
     keyboard3 = InlineKeyboardButton(text="✖️ Geroyni olib tashlash", callback_data="geroy_sold_0")
@@ -1081,4 +1081,9 @@ def geroy_inline_btn():
         [keyboard3],
         [keyboard4],
     ]
+    if is_geroy:
+        design = [
+            [keyboard3],
+            [keyboard4],
+        ]
     return InlineKeyboardMarkup(inline_keyboard=design)
