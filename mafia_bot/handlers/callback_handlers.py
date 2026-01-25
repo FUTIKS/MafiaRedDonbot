@@ -1484,7 +1484,7 @@ async def professor_callback(callback: CallbackQuery):
         return
     game_day = game['meta']['day']
     if not day == str(game_day):
-        await callback.message.edit_text(text=f"{ACTIONS.get('professor_action')}\n\nSiz kechikdingiz.", parse_mode="HTML")
+        await callback.message.edit_text(text=f"{ACTIONS.get('professor_choose')}\n\nSiz kechikdingiz.", parse_mode="HTML")
         return
     
     if not professor_id in game["alive"]:
@@ -1493,7 +1493,7 @@ async def professor_callback(callback: CallbackQuery):
     if target_id == "no":
         # hech narsa qilmaslik
         await callback.message.edit_text(
-            text=f"{ACTIONS.get('professor_action')}\n\nSiz hech kimni tanlamadingiz.",
+            text=f"{ACTIONS.get('professor_choose')}\n\nSiz hech kimni tanlamadingiz.",
             parse_mode="HTML"
         )
         await send_safe_message(
@@ -1515,10 +1515,10 @@ async def professor_callback(callback: CallbackQuery):
     await send_safe_message(
         chat_id=int(target_id),
         text=f"🎩 Professor sizga 3 ta quticha bilan keldi!",
-        reply_markup=professor_gift_inline_btn(game_id=int(game_id),day=day)
+        reply_markup=professor_gift_inline_btn(game_id=int(game_id),day=day,professor_id=professor_id)
     )
     
-    await callback.message.edit_text(text=f"{ACTIONS.get('professor_action')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni tanladingiz")
+    await callback.message.edit_text(text=f"{ACTIONS.get('professor_choose')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni tanladingiz")
 
 
 @dp.callback_query(F.data.startswith("prof_"))
@@ -1528,8 +1528,9 @@ async def prof_callback(callback: CallbackQuery):
     parts = callback.data.split("_")
     choose = str(parts[1])
     game_id = int(parts[2])
+    professor_id = int(parts[4])
     day = parts[3]
-    professor_id = callback.from_user.id
+    prof_id = callback.from_user.id
     game = games_state.get(int(game_id))
     if not game:
         return
@@ -1537,7 +1538,7 @@ async def prof_callback(callback: CallbackQuery):
     if not day == str(game_day):
         await callback.message.edit_text(text="🎩 Siz kechikdingiz.", parse_mode="HTML")
         return
-    if not professor_id in game["alive"]:
+    if not prof_id in game["alive"]:
         return
     if choose == "die":
         reward = "⚰️ O'lim"
@@ -1554,6 +1555,10 @@ async def prof_callback(callback: CallbackQuery):
         mark_night_action_done(game, callback.from_user.id)
     
     await callback.message.edit_text(text=f"🎩 Professor sizga {reward}ni sovg'a qutisidan berdi!")
+    await send_safe_message(
+        chat_id=professor_id,
+        text=f"<a href='tg://user?id={prof_id}'>{get_first_name_from_players(prof_id)}</a>  {reward}ni sovg'a qutisidan tanladi!",
+    )
 
 @dp.callback_query(F.data.startswith("hang_"))
 async def hang_callback(callback: CallbackQuery):
