@@ -12,20 +12,7 @@ from core.constants import ROLES_CHOICES,ROLE_PRICES_IN_MONEY,ROLE_PRICES_IN_STO
 
 def remove_prefix(text):
     return text.lstrip('@')
-def main_inline_btn():
-    keyboard1 = InlineKeyboardButton(text="➕ Botni guruhga qo'shish", url=f"https://t.me/{remove_prefix(config('BOT_USERNAME'))}?startgroup=true")
-    keyboard2 = InlineKeyboardButton(text="🌐 Til", callback_data="language")
-    keyboard5 = InlineKeyboardButton(text="⭐ Premium guruhlar", callback_data="groups")
-    keyboard3 = InlineKeyboardButton(text="👤 Profil", callback_data="profile")
-    keyboard4 = InlineKeyboardButton(text="🎭 Rollar", callback_data="role_menu")
-    design = [
-        [keyboard1],
-        [keyboard2 ],
-        [keyboard5],
-        [keyboard3,keyboard4]
-    ]
-    keyboard = InlineKeyboardMarkup(inline_keyboard=design)
-    return keyboard
+
 # Cart inline button
 
 def group_profile_inline_btn(has_stone, chat_id):
@@ -50,11 +37,15 @@ def start_inline_btn():
     keyboard2 = InlineKeyboardButton(text="☑️ Botni guruhga qo'shish haqida ma'lumot",url="https://t.me/MafiaRedDon_Roles/96")
     keyboard3 = InlineKeyboardButton(text="➕ Botni guruhga qo'shish", url=f"https://t.me/{remove_prefix(config('BOT_USERNAME'))}?startgroup=true")
     keyboard4 = InlineKeyboardButton(text="⭐ Premium guruhlar", callback_data="groups")
+    keyboard5 = InlineKeyboardButton(text="👤 Profil", callback_data="profile")
+    keyboard6 = InlineKeyboardButton(text="🎭 Rollar", callback_data="role_menu")
     design = [
         [keyboard1],
         [keyboard2],
         [keyboard3],
         [keyboard4],
+        [keyboard5],
+        [keyboard6],
     ]
     keyboard = InlineKeyboardMarkup(inline_keyboard=design)
     return keyboard
@@ -651,21 +642,21 @@ def professor_gift_inline_btn(game_id,day=None,professor_id=None,chat_id=None):
     random.shuffle(callbacks)
     bulider.add(
         InlineKeyboardButton(
-            text="🎁 1-quti",
+            text="📦 1-quti",
             callback_data=f"prof_{callbacks[0]}_{game_id}_{day}_{professor_id}_{chat_id}"
         )
         
     )
     bulider.add(
         InlineKeyboardButton(
-            text="🎁 2-quti",
+            text="📦 2-quti",
             callback_data=f"prof_{callbacks[1]}_{game_id}_{day}_{professor_id}_{chat_id}"
         )
         
     )
     bulider.add(
         InlineKeyboardButton(
-            text="🎁 3-quti",
+            text="📦 3-quti",
             callback_data=f"prof_{callbacks[2]}_{game_id}_{day}_{professor_id}_{chat_id}"
         )
         
@@ -1078,7 +1069,6 @@ def geroy_inline_btn(is_geroy):
     design = [
         [keyboard1],
         [keyboard2],
-        [keyboard3],
         [keyboard4],
     ]
     if is_geroy:

@@ -3,16 +3,16 @@ import random
 import asyncio
 from aiogram import F
 from dispatcher import dp,bot
-from datetime import  timedelta
+from datetime import timedelta
 from django.db.models import Sum  
 from django.utils import timezone
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.filters.command import Command
+from mafia_bot.state import CredentialsState
 from aiogram.types import Message,LabeledPrice
 from core.constants import DESCRIPTIONS,ROLES_CHOICES
 from django.contrib.auth.hashers import check_password
-from mafia_bot.state import CredentialsState
 from mafia_bot.handlers.game_handler import run_game_in_background
 from mafia_bot.handlers.callback_handlers import begin_instance_callback
 from mafia_bot.models import Game, GroupTrials, MostActiveUser,User,BotMessages,GameSettings, UserRole,default_end_date,BotCredentials,LoginAttempts
@@ -23,7 +23,7 @@ from mafia_bot.handlers.main_functions import (MAFIA_ROLES, find_game,create_mai
                                                role_label,is_group_admin,mute_user,has_link,parse_amount,get_game_by_chat_id,
                                                send_safe_message,notify_new_com)
 from mafia_bot.buttons.inline import (admin_inline_btn, back_btn, giveaway_join_btn, group_profile_inline_btn, join_game_btn, 
-                                      main_inline_btn, go_to_bot_inline_btn, cart_inline_btn, start_inline_btn, take_gsend_stone_btn,
+                                      start_inline_btn, go_to_bot_inline_btn, cart_inline_btn, take_gsend_stone_btn,
                                       take_stone_btn,stones_to_premium_inline_btn)
 
 
@@ -431,7 +431,8 @@ async def change_command(message: Message) -> None:
 async def leave(message: Message) -> None:
     await message.delete()
     tg_id = message.from_user.id
-    game_db = Game.objects.filter(chat_id=message.chat.id, is_active_game=True).first()
+    chat_id = message.chat.id
+    game_db = Game.objects.filter(chat_id=chat_id, is_active_game=True).first()
     if not game_db or not game_db.is_started:
         return
     
@@ -450,7 +451,7 @@ async def leave(message: Message) -> None:
         if new_don_id:
             await notify_new_don( game,new_don_id)
             await send_safe_message(
-                chat_id=game.chat_id,
+                chat_id=chat_id,
                 text=f"🤵🏻 Don vafot etdi.\nMafialardan biri endi yangi Don "
                     )
     elif role == "com":
@@ -458,11 +459,11 @@ async def leave(message: Message) -> None:
         if new_com_id:
             await notify_new_com( game, new_com_id)
             await send_safe_message(
-                        chat_id=game.chat_id,
+                        chat_id=chat_id,
                         text=f"🕵🏻‍♂ Komissar vafot etdi.\nYangi Komissar tayinlandi."
                     )
     role_label_text = role_label(role)
-    await send_safe_message(chat_id=message.chat.id,text=f"<a href='tg://user?id={user.telegram_id}'> {user.first_name}</a>Bu shaharning yovuzliklariga chiday olmadi va o'zini osib qo'ydi. U {role_label_text} edi.")
+    await send_safe_message(chat_id=chat_id,text=f"<a href='tg://user?id={user.telegram_id}'> {user.first_name}</a>Bu shaharning yovuzliklariga chiday olmadi va o'zini osib qo'ydi. U {role_label_text} edi.")
     
     
 
@@ -1251,12 +1252,12 @@ async def process_admin_password(message: Message, state: FSMContext) -> None:
 async def admin_logout(message: Message) -> None:
     user = User.objects.filter(telegram_id=message.from_user.id).first()
     if user and user.role != 'admin':
-        await message.answer(text="Siz admin emassiz!",reply_markup=main_inline_btn())
+        await message.answer(text="Siz admin emassiz!",reply_markup=start_inline_btn())
         return
     if user:
         user.role = 'user'
         user.save()
-    await message.answer(text="Siz endi admin emassiz!",reply_markup=main_inline_btn())
+    await message.answer(text="Siz endi admin emassiz!",reply_markup=start_inline_btn())
     
 
 

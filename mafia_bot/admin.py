@@ -12,9 +12,9 @@ from .models import (
 class UserAdmin(admin.ModelAdmin):
     list_display = (
         "id", "telegram_id", "username", "first_name", "role", "lang",
-        "coin", "stones", "is_vip"
+        "coin", "stones", "is_vip","is_hero",
     )
-    list_filter = ("role", "lang", "is_vip")
+    list_filter = ("role", "lang", "is_vip", "is_hero",)
     search_fields = ("telegram_id", "username", "first_name")
     ordering = ("-id",)
     readonly_fields = ("telegram_id",)
@@ -30,7 +30,7 @@ class UserAdmin(admin.ModelAdmin):
         base = [
             ("Asosiy", {"fields": ("telegram_id", "username", "first_name", "lang", "role")}),
             ("Balans", {"fields": ("coin", "stones")}),
-            ("Status", {"fields": ("is_vip", "active_role")}),
+            ("Status", {"fields": ("is_vip", "is_hero", "active_role")}),
             ("Qo‘shimcha", {"fields": ("protection", "docs")}),
         ]
         return base

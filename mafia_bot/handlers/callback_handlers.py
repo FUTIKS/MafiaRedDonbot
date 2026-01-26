@@ -3,14 +3,14 @@ import json
 import time
 import datetime
 from aiogram import F
-from datetime import timedelta
 from dispatcher import dp, bot
+from datetime import timedelta
 from django.db.models import Sum
 from django.utils import timezone
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext 
-from core.constants import DESCRIPTIONS,ACTIONS, ROLES_CHOICES
 from django.contrib.auth.hashers import make_password
+from core.constants import DESCRIPTIONS,ACTIONS, ROLES_CHOICES
 from mafia_bot.utils import stones_taken,gsend_taken,giveaways,games_state
 from aiogram.types import Message, LabeledPrice, PreCheckoutQuery,CallbackQuery
 from mafia_bot.models import Game, MoneySendHistory, User,PremiumGroup,MostActiveUser,CasesOpened,GameSettings,GroupTrials,PriceStones, UserRole,BotCredentials
@@ -20,7 +20,7 @@ from mafia_bot.handlers.main_functions import (add_visit, get_mafia_members,get_
 from mafia_bot.buttons.inline import (action_inline_btn,
     admin_inline_btn, answer_admin, back_btn, cart_inline_btn, change_money_cost, change_stones_cost, com_inline_btn, end_talk_keyboard, geroy_inline_btn,  giveaway_join_btn, group_profile_inline_btn,
     groupes_keyboard, groups_buy_stars, history_groupes_keyboard, money_case, pay_for_money_inline_btn, pay_using_stars_inline_btn, role_shop_inline_keyboard,
-    shop_inline_btn, main_inline_btn, roles_inline_btn, com_inline_action_btn,pirate_steal_inline_btn,
+    shop_inline_btn, start_inline_btn, roles_inline_btn, com_inline_action_btn,pirate_steal_inline_btn,
     professor_gift_inline_btn,confirm_hang_inline_btn,groups_inline_btn,group_manage_btn,back_admin_btn,case_inline_btn,
     stone_case,begin_instance_inline_btn, take_gsend_stone_btn, take_gsend_stone_btn, take_stone_btn,trial_groupes_keyboard,trial_group_manage_btn,privacy_inline_btn, use_hero_inline_btn
 )
@@ -69,14 +69,15 @@ async def back_callback_special(callback: CallbackQuery):
     await callback.message.edit_text(
     text=f"Salom! <code>{callback.from_user.first_name}</code>\nMen 🤵🏻Mafia o'yinini rasmiy botiman.",
     parse_mode="HTML",
-    reply_markup=main_inline_btn()
+    reply_markup=start_inline_btn()
 )
     
 @dp.callback_query(F.data == ("language"))
 async def language_callback(callback: CallbackQuery):
     await callback.answer()
     await callback.message.answer(
-        text = "Hozircha bu funksiya mavjud emas."
+        text = "Hozircha bu funksiya mavjud emas.",
+        reply_markup=start_inline_btn()
     )
     
    
@@ -1567,10 +1568,10 @@ async def prof_callback(callback: CallbackQuery):
     
     mark_night_action_done(game, callback.from_user.id)
     
-    await callback.message.edit_text(text=f"🎩 Professor sizga {reward}ni sovg'a qutisidan berdi!")
+    await callback.message.edit_text(text=f"🎩 Siz tanlagan professor qutisida {reward} bor edi!")
     await send_safe_message(
         chat_id=professor_id,
-        text=f"<a href='tg://user?id={prof_id}'>{get_first_name_from_players(prof_id)}</a>  {reward}ni sovg'a qutisidan tanladi!",
+        text=f"<a href='tg://user?id={prof_id}'>{get_first_name_from_players(prof_id)}</a> siz bergan qutidan {reward} ni oldi!",
     )
 
 @dp.callback_query(F.data.startswith("hang_"))
@@ -1597,9 +1598,9 @@ async def hang_callback(callback: CallbackQuery):
             text=f"🚷 <a href='tg://user?id={shooter_id}'>{shooter_name}</a> hech kimni osmaslikni taklif qildi"
         )
         return
+    
     game["day_actions"]['votes'].append(int(target_id))
     mark_hang_done(int(game_id), callback.from_user.id)
-    
     
     user_map = game.get("users_map",{})
     user = user_map.get(int(target_id))
@@ -2709,14 +2710,14 @@ async def begin_new_instance_callback(callback: CallbackQuery,state: FSMContext)
         if game_settings and not game_settings.begin_after_end:
             await callback.message.edit_text(
                 text="✅ O'yin avtomatik ravishda oldingi o'yin tugagandan so'ng boshlanishi yoqildi.",   
-                reply_markup=main_inline_btn()
+                reply_markup=start_inline_btn()
             )
             game_settings.begin_after_end = True
         else:
             game_settings.begin_after_end = False
             await callback.message.edit_text(
                 text="❌ O'yin avtomatik ravishda oldingi o'yin tugagandan so'ng boshlanishi o'chirildi.",   
-                reply_markup=main_inline_btn()
+                reply_markup=start_inline_btn()
             )
         game_settings.save()
         return
@@ -2746,11 +2747,11 @@ async def process_begin_instant_count(message: Message, state: FSMContext) -> No
             return
         game_settings.begin_instance = True
         game_settings.number_of_players = count
-        await message.answer(f"✅ Yangi o'yin ishtirokchilar soni {count} ga o'rnatildi.",reply_markup=main_inline_btn())
+        await message.answer(f"✅ Yangi o'yin ishtirokchilar soni {count} ga o'rnatildi.",reply_markup=start_inline_btn())
     elif action == "time":
         game_settings.begin_instance = False
         game_settings.begin_instance_time = count
-        await message.answer(f"✅ Yangi o'yin boshlanish vaqti {count} soniyaga o'rnatildi.",reply_markup=main_inline_btn())
+        await message.answer(f"✅ Yangi o'yin boshlanish vaqti {count} soniyaga o'rnatildi.",reply_markup=start_inline_btn())
     game_settings.save()
     await state.clear()
     
@@ -3494,8 +3495,8 @@ async def geroy_callback(callback: CallbackQuery):
             user.stones -= 50
         user.is_hero = True
         user.save()
-        await callback.message.edit_text("✅ Siz muvaffaqiyatli geroyni oldingiz! Endi siz geroy xususiyatlaridan foydalana olasiz.",reply_markup=main_inline_btn())
+        await callback.message.edit_text("✅ Siz muvaffaqiyatli geroyni oldingiz! Endi siz geroy xususiyatlaridan foydalana olasiz.",reply_markup=start_inline_btn())
     elif action == "sold":
         user.is_hero=False
         user.save()
-        await callback.message.edit_text("✅ Siz geroyni olib tashladingiz. Endi siz geroy xususiyatlaridan foydalana olmaysiz.",reply_markup=main_inline_btn())
+        await callback.message.edit_text("✅ Siz geroyni olib tashladingiz. Endi siz geroy xususiyatlaridan foydalana olmaysiz.",reply_markup=start_inline_btn())
