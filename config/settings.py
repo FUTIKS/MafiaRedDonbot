@@ -27,7 +27,6 @@ SECRET_KEY = 'django-insecure-3x9tm9gyn2zsjujw8(bob%e+d86h6y9ud3-3rx9opf)nx8sg1&
 CSRF_TRUSTED_ORIGINS = config("CSRF_TRUSTED_ORIGINS", "http://localhost").split(",")
 USE_X_FORWARDED_HOST = True
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
@@ -213,33 +212,6 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
-
-from celery.schedules import crontab
-
-CELERY_TIMEZONE = "Asia/Tashkent"
-
-CELERY_BEAT_SCHEDULE = {
-    "daily-top-2300": {
-        "task": "game.tasks.daily_top_prizes",
-        "schedule": crontab(hour=23, minute=0),
-    },
-    "weekly-top-sun-2200": {
-        "task": "game.tasks.weekly_top_prizes",
-        "schedule": crontab(day_of_week=0, hour=22, minute=0),
-    },
-    "monthly-top-28-2330": {
-        "task": "game.tasks.monthly_top_prizes",
-        "schedule": crontab(day_of_month=28, hour=23, minute=30),
-    },
-}
-
-
-
-
-
-CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL")
-CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND")
 
 
 CORS_ALLOW_ALL_ORIGINS = True
