@@ -166,15 +166,19 @@ def cart_inline_btn():
     return keyboard
 # Shop inline button
 def shop_inline_btn():
-    keyboard1 = InlineKeyboardButton(text="🛡 Ximoya - 250 tang", callback_data="buy_protection")
-    keyboard2 = InlineKeyboardButton(text="📂 Hujjatlar - 500 tang", callback_data="buy_docs")
-    keyboard3 = InlineKeyboardButton(text="🎭 Rol sotib olish", callback_data="buy_active_role")
-    keyboard4 = InlineKeyboardButton(text="⬅️ Orqaga", callback_data="back_profile")
+    keyboard1 = InlineKeyboardButton(text="🛡 Ximoya - 250 💵", callback_data="buy_protection_0")
+    keyboard2 = InlineKeyboardButton(text="📂 Hujjatlar - 500 💵", callback_data="buy_docs_0")
+    keyboard3 = InlineKeyboardButton(text="🎗️ Osilishdan ximoya  - 20000 💵", callback_data="buy_hangprotect_1")
+    keyboard4 = InlineKeyboardButton(text="🎗️ Osilishdan ximoya  - 20 💎", callback_data="buy_hangprotect_2")
+    keyboard5 = InlineKeyboardButton(text="🎭 Rol sotib olish", callback_data="buy_active_role")
+    keyboard6 = InlineKeyboardButton(text="⬅️ Orqaga", callback_data="back_profile")
     design = [
         [keyboard1],
         [keyboard2],
         [keyboard3],
         [keyboard4],
+        [keyboard5],
+        [keyboard6],
     ]
     keyboard = InlineKeyboardMarkup(inline_keyboard=design)
     return keyboard

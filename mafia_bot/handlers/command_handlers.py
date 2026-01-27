@@ -178,6 +178,7 @@ async def profile_command(message: Message):
             f"💶 Pullar: {user.coin}\n"
             f"💎 Olmoslar: {user.stones}\n\n"
             f"🛡 Ximoya: {user.protection}\n"
+            f"🎗️ Osilishdan ximoya: {user.hang_protect}\n"
             f"📂 Hujjatlar: {user.docs}\n"
             f"\n{ text }"
         ),

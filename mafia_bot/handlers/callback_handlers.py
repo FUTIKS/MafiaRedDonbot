@@ -50,6 +50,7 @@ async def profile_callback(callback: CallbackQuery):
             f"💶 Pullar: {user.coin}\n"
             f"💎 Olmoslar: {user.stones}\n\n"
             f"🛡 Ximoya: {user.protection}\n"
+            f"🎗️ Osilishdan ximoya: {user.hang_protect}\n"
             f"📂 Hujjatlar: {user.docs}\n"
             f"\n{ text }"
         ),
@@ -171,7 +172,8 @@ async def back_callback(callback: CallbackQuery, state: FSMContext):
 # Callbackdan kelganda
 @dp.callback_query(F.data.startswith("buy_"))
 async def buy_callback(callback: CallbackQuery):
-    thing_to_buy = callback.data.split("y_")[1]
+    thing_to_buy = callback.data.split("_")[1]
+    price = callback.data.split("_")[2]
     user = User.objects.filter(telegram_id=callback.from_user.id).first()
     if not user:
         user = User.objects.create(
@@ -192,6 +194,7 @@ async def buy_callback(callback: CallbackQuery):
                     f"💶 Pullar: {user.coin}\n"
                     f"💎 Olmoslar: {user.stones}\n\n"
                     f"🛡 Ximoya: {user.protection}\n"
+                    f"🎗️ Osilishdan ximoya: {user.hang_protect}\n"
                     f"📂 Hujjatlar: {user.docs}\n\n"
                 ),
                 parse_mode="HTML",
@@ -200,8 +203,8 @@ async def buy_callback(callback: CallbackQuery):
         else:
             await callback.answer(text="❌ Sizda pullar yetarli emas!", show_alert=True)
     elif thing_to_buy == "docs":
-        if user.coin >= 500:
-            user.coin -= 500
+        if user.coin >= 250:
+            user.coin -= 250
             user.docs += 1
             user.save()
             await callback.message.edit_text(
@@ -211,6 +214,29 @@ async def buy_callback(callback: CallbackQuery):
                     f"💶 Pullar: {user.coin}\n"
                     f"💎 Olmoslar: {user.stones}\n\n"
                     f"🛡 Ximoya: {user.protection}\n"
+                    f"🎗️ Osilishdan ximoya: {user.hang_protect}\n"
+                    f"📂 Hujjatlar: {user.docs}\n\n"
+                ),
+                parse_mode="HTML",
+                reply_markup=cart_inline_btn()
+            )
+    elif thing_to_buy == "hangprotect":
+        if price == "1" and user.coin >= 20000:
+            user.coin -= 20000
+            user.hang_protect += 1
+            user.save()
+        elif price == "2" and user.stones >= 20:
+            user.stones -= 20
+            user.hang_protect += 1
+            user.save()
+            await callback.message.edit_text(
+                text=(
+                    f"Sotib olindi: 🎗️ Osilishdan ximoya\n\n"
+                    f"👤 <code>{callback.from_user.first_name}</code>\n\n"
+                    f"💶 Pullar: {user.coin}\n"
+                    f"💎 Olmoslar: {user.stones}\n\n"
+                    f"🛡 Ximoya: {user.protection}\n"
+                    f"🎗️ Osilishdan ximoya: {user.hang_protect}\n"
                     f"📂 Hujjatlar: {user.docs}\n\n"
                 ),
                 parse_mode="HTML",

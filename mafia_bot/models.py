@@ -21,6 +21,7 @@ class User(SafeBaseModel):
     coin=models.IntegerField(default=0)
     stones = models.IntegerField(default=0)
     protection=models.IntegerField(default=0)
+    hang_protect=models.IntegerField(default=0)
     docs=models.IntegerField(default=0)
     active_role=models.IntegerField(default=0)
     role = models.CharField(max_length=50, choices=USER_ROLES, default='user')

@@ -4,7 +4,7 @@ import asyncio
 import traceback
 from dispatcher import bot
 from collections import Counter
-from mafia_bot.models import Game
+from mafia_bot.models import Game, User
 from aiogram.types import FSInputFile
 from aiogram.exceptions import TelegramRetryAfter
 from mafia_bot.utils import game_tasks,writing_allowed_groups
@@ -396,6 +396,23 @@ async def start_game(game_id):
                     parse_mode="HTML"
                 )
                 continue
+            if voted_user.get('hang_protect',0) >0:
+                voted_user['hang_protect'] -=1
+                user = User.objects.filter(telegram_id=voted_user.get('tg_id')).first()
+                if user:
+                    user.hang_protect -=1
+                    user.save()
+                await send_safe_message(
+                    chat_id=game.chat_id,
+                    text=(
+                        f"<b>Ovoz berish natijalari:\n\n"
+                        f"{yes} 👍  |  {no} 👎\n\n"
+                        f"<a href='tg://user?id={voted_user.get('tg_id')}'>{voted_user.get('first_name')}</a> - ni osishdan ximoyasi bor va u osilmadi! :)</b>"
+                    ),
+                    parse_mode="HTML"
+                )
+                continue
+            
 
             await send_safe_message(
                 chat_id=game.chat_id,
