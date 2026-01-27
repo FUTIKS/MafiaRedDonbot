@@ -181,8 +181,8 @@ async def buy_callback(callback: CallbackQuery):
             username=callback.from_user.username
         )
     if thing_to_buy == "protection":
-        if user.coin >= 100:
-            user.coin -= 100
+        if user.coin >= 250:
+            user.coin -= 250
             user.protection += 1
             user.save()
             await callback.message.edit_text(
@@ -200,8 +200,8 @@ async def buy_callback(callback: CallbackQuery):
         else:
             await callback.answer(text="❌ Sizda pullar yetarli emas!", show_alert=True)
     elif thing_to_buy == "docs":
-        if user.coin >= 150:
-            user.coin -= 150
+        if user.coin >= 500:
+            user.coin -= 500
             user.docs += 1
             user.save()
             await callback.message.edit_text(
