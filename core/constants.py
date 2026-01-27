@@ -31,34 +31,33 @@ LANGUAGE_CHOICES = [
         ('en', 'English'),
     ]
 
-
-DESCRIPTIONS = {
-        "peace": "👨🏼 Tinch aholi! Sizning vazifangiz mafiani topish va ovoz berish jarayonida ularni osish.",
-        "don": "🤵🏻 Don (Mafialar sardori)! Bu tunda kim o'lishini siz xal qilasiz.",
-        "mafia": "🤵🏼 Mafia Sizning donga bo'ysinasiz va sizga qarshilik qilganlarni o'dirasiz. Don o'lsa siz yangi Don bo'lishingiz mumkin.",
-        "com": "🕵🏻‍♂️ Komissar katani! Shaharning asosiy himoyachisi va mafia kushandasi...",
-        "serg": "👮🏻‍♂️ Serjant! 🕵🏻‍♂Komissarga yordam berish.  U sizni o'z harakatlaringiz to'g'risida xabardor qiladi va sizni voqealar to'g'risida xabardor qiladi.  Agar komissar vafot etsa, uning o'rnini egallaysiz.",
-        "doc": "👨🏼‍⚕️ Shifokor! Siz aholining birdan-bir umidisiz...",
-        "killer": "🔪 Qotil! Shaharda hamma o'lishi kerak...",
-        "lover": "💃🏻 Mashuqa! Bu shavqatsiz shaharda tirik qolishingiz kerak...",
-        "adv": "👨🏻‍💻 Advokat! Mafialar tarafdori. Advokat tanlagan mafiani 🕵️‍ Komissar Katani taniy olmaydi va unga 👨🏼 Tinch axoli bo'lib ko'rinadi.",
-        "suid": "🤦🏻‍♂️ Suidsid! Sizni osishsa siz yutasiz 😵",
-        "daydi": "🧙🏼‍♂️ Daydi! Siz shishsa olishga borganda qotillik guvohi bo'lishingiz mumkin.",
-        "lucky": "🫶🏻 Omadli! Tinch aholi orasida eng omadlisisiz...",
-        "kam": "💣 Kamikaze! Agar sizni osishsa bir kishini ozingiz bilan olib ketsangiz bo'ladi.",
-        "kaldun": "⚡️ Kaldun!  tinch axolilar tarafdori. Tunda tanlagan o'yinchi tinch axolilar tarafida bo'lsa uni tongda osilishdan saqlab qoladi.  agar u boshqa taraf o'yinchisi bo'lsa uni o'ldiradi.",
-        "spy": "🦇 Ayg'oqchi! Mafialar tarafdori. Tunda u xohlagan bitta o'yinchining ro'lini bilishi va uni mafialar uchun oshkor qilishi mumkin.",
-        "lab": "👨‍🔬 Labarant! Mafialar tarafdori. Tunda u tanlagan odam mafialar tarafida bo'lsa uni davolaydi agar mafia bo'lmasa uni o'ldiradi",
-        "trap": "☠️ Minior! Yakka rol. Tunda tanlagan odamini eshigi oldiga mina qo'yadi va u uyga o'sha tunda kelgan Miniordan boshqalar o'ladi.",
-        "snyper": "👨🏻‍🎤 Snayper! Yakka rol.\nU tunda tanlagan odamda himoya bo'lsa ham u o'ladi daydi ham snayperni ko'ra olmaydi va uni yakka taraf odamlari o'ldira olmaydi. \nEng kuchli ro'llardan biri.",
-        "arrow": "🏹 Kamonchi! Yakka rol. Kamonchi maxfiy qotil. Tunda u kimnidir o'ldirganini daydi sezmaydi.",
-        "traitor": "🦎 Sotqin! Yakka rol. U tinch axolilar tarafida bo'lib ko'rinadi lekin mafialar tarafdori. U har kecha bir marta mafialar bilan maslahatlashishi mumkin va ular bilan birga ovoz berishi mumkin.",
-        "snowball":"⛄️ Qorbola Tinch axolilar tarafida. \nSiz tunda istagan ishtirokchini qorbo'ron qilib nobud qilishingiz mumkin.",
-        "pirate":"👺 Qaroqchi Siz Yakka rollar tarafdasiz.\nSiz tunda istalgan foydalanuvchini uyiga borip undan pul undirishingiz mumkin, agarda pul berishdan bosh tortsa shu zahoti uni o'ldirishingiz mumkin.",
-        "professor":"🎩 Professor Siz Yakka rollar tarafdasiz. Siz tunda tanlagan ishtirokchiga 3 ta sirli quti taklif qilasiz ularning ichida:\n⚰️ O'lim, 🥡 Bo'sh quti hamda 🥷 Geroydan foydalanish berkitilgan bo'ladi va u ishtirokchi o'z taqdirini o'zi xal qiladi.",
-        "santa":"🎅 Santa Tinch axolilar tarafida. Siz har kecha bitta ishtirokchiga sovg'a berishingiz mumkin bu sovg'a unga himoya beradi va uni osilishdan saqlab qoladi.",
-        "hero":"🥷 Geroy - bu o‘yinda kun vaqtida ham o‘yinchilarni o‘ldirishga imkon beradigan, boshqa geroylar xujumidan ximoya qiladigan yordamchi personaj.",
-    }
+SHORT_DESCRIPTIONS = {
+    "peace": "🧑🏻 Tinch aholi. Sizning vazifangiz — mafiani topish va kunduzgi ovoz berishda ularni osishga yordam berish.",
+    "don": "🤵🏻 Don. Mafialar sardori. Har kecha qurbon tanlaysiz va butun mafia sizning qaroringizga bo'ysunadi.",
+    "mafia": "🤵🏼 Mafia. Don bilan birga ishlaysiz, kechalari qurbon tanlaysiz. Don o'lsa uning o'rnini egallashingiz mumkin.",
+    "com": "🕵🏻 Komissar. Har kecha o'yinchini tekshiradi, shubhali bo'lsa otishi ham mumkin. Tinch aholi himoyachisi.",
+    "serg": "👮🏻 Serjant. Komissarning yordamchisi. Komissar o'lsa uning vazifasini davom ettiradi.",
+    "doc": "🧑🏻‍⚕️ Doktor. Har kecha bitta o'yinchini o'limdan saqlab qolishi mumkin. Tinch aholi umidi.",
+    "killer": "🔪 Qotil. Yakka rol. Maqsadingiz — boshqalarning hammasi o'lib, faqat siz tirik qolishingiz.",
+    "lover": "💃🏻 Mashuqa. Tanlagan o'yinchini bir kechaga blok qiladi, u hech qanday harakat qila olmaydi.",
+    "adv": "👨🏻‍💼 Advokat. Mafialar tarafdori. Tanlagan mafiani Komissar ko'ziga tinch aholi qilib ko'rsatadi.",
+    "suid": "🤦🏻 Suidsid. Agar sizni kunduz osishsa, o'yin natijasidan qat’i nazar, darhol g'alaba qilasiz.",
+    "daydi": "🧙🏻 Daydi. Kechasi bir uyga borib u yerda sodir bo'lgan voqealarning guvohi bo'lishi mumkin.",
+    "lucky": "🫶🏻 Omadli. Tinch aholi orasida eng omadli rol, ba’zi xavflardan omon qolish ehtimoli yuqori.",
+    "kam": "💣 Kamikaze. Agar sizni osishsa, xohlagan bitta o'yinchini o'zingiz bilan olib ketishingiz mumkin.",
+    "kaldun": "⚡️ Kaldun. Tinch tomonda. Tanlagan tinchni himoya qiladi, boshqa tomonni esa o'ldiradi.",
+    "spy": "🦇 Ayg'oqchi. Mafialar uchun ishlaydi. Kechasi o'yinchi rolini bilib, mafialarga yetkazadi.",
+    "lab": "👨‍🔬 Labarant. Mafialar tarafida. Mafia bo'lsa davolaydi, bo'lmasa o'ldiradi.",
+    "trap": "☠️ Minior. Yakka rol. Tanlangan uy oldiga mina qo'yadi, kelganlar halok bo'lishi mumkin.",
+    "snyper": "🎯 Snayper. Yakka qotil. Himoyaga qaramay o'ldira oladi va ko'pchilik uni aniqlay olmaydi.",
+    "arrow": "🏹 Kamonchi. Yashirin qotil. O'ldirganini Daydi ham sezmaydi.",
+    "traitor": "🦎 Sotqin. Tashqi ko'rinishda tinch, aslida mafialar tarafida yashirin ishlaydi.",
+    "snowball": "⛄️ Qorbola. Tinch tomonda turadi, lekin kechasi o'yinchini muzlatib o'ldirishi mumkin.",
+    "pirate": "👺 Qaroqchi. Yakka rol. Pul talab qiladi, bermasa o'ldiradi.",
+    "professor": "🎩 Professor. Yakka rol. O'yinchiga sirli qutilar taklif qiladi va taqdirini o'zi hal qiladi.",
+    "santa": "🎅 Santa. Tinch tomonda. Kechasi sovg'a berib o'yinchini himoya qiladi.",
+    "hero": "🥷 Geroy. Kunduz ham o'ldira oladi va ba’zi hujumlardan himoyalangan maxsus rol.",
+}
 
 
 
@@ -136,7 +135,7 @@ ACTIONS = {
     "professor_choose": "🎩 Kimga 3 ta sirli quti taklif qilamiz?",
 
     # Pirate response
-    "pirate_pay": "👺 Sizdan pul so‘rayapti! Pul berasizmi?",
+    "pirate_pay": "👺 Sizdan pul so'rayapti! Pul berasizmi?",
     "pirate_pay_yes": "💰 Pul beraman",
     "pirate_pay_no": "❌ Pul bermayman",
 

@@ -580,7 +580,6 @@ def mark_confirm_done(game_id, voter_id: int):
         event.set()
 
 
-
 def get_most_voted_id(game_id: int):
     all_votes = games_state.get(game_id, {}).get("day_actions", {}).get("votes", [])
     if not all_votes:
@@ -589,13 +588,19 @@ def get_most_voted_id(game_id: int):
     counts = Counter(all_votes)
     max_votes = max(counts.values())
 
-    top_ids = [tg_id for tg_id, c in counts.items() if c == max_votes]
+    top = [v for v, c in counts.items() if c == max_votes]
 
-    if len(top_ids) == 1:
-        return top_ids[0]
+    # tie
+    if len(top) > 1:
+        return False
 
-    return False
+    result = top[0]
 
+    # hech kim osilmasin
+    if result == "no_lynch":
+        return False
+
+    return result
 def can_hang(game_id: int) -> bool:
     game = games_state.get(game_id)
     if not game:

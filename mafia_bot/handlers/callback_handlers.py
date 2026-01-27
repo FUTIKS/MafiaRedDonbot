@@ -1597,6 +1597,7 @@ async def hang_callback(callback: CallbackQuery):
             chat_id=chat_id,
             text=f"🚷 <a href='tg://user?id={shooter_id}'>{shooter_name}</a> hech kimni osmaslikni taklif qildi"
         )
+        game["day_actions"]['votes'].append("no_lynch")
         return
     
     game["day_actions"]['votes'].append(int(target_id))
