@@ -31,7 +31,7 @@ LANGUAGE_CHOICES = [
         ('en', 'English'),
     ]
 
-SHORT_DESCRIPTIONS = {
+DESCRIPTIONS = {
     "peace": "🧑🏻 Tinch aholi. Sizning vazifangiz — mafiani topish va kunduzgi ovoz berishda ularni osishga yordam berish.",
     "don": "🤵🏻 Don. Mafialar sardori. Har kecha qurbon tanlaysiz va butun mafia sizning qaroringizga bo'ysunadi.",
     "mafia": "🤵🏼 Mafia. Don bilan birga ishlaysiz, kechalari qurbon tanlaysiz. Don o'lsa uning o'rnini egallashingiz mumkin.",
