@@ -653,6 +653,22 @@ def parse_amount(text: str) -> int | None:
 
     return amount
 
+async def process_santa_reward(target_id, callback):
+    user = User.objects.filter(telegram_id=target_id).first()
+    if not user:
+        user = User.objects.create(
+            telegram_id=target_id,
+            lang='uz',
+            first_name=callback.from_user.first_name,
+            username=callback.from_user.username
+        )
+    user.coin += 20
+    user.save()
+
+    await send_safe_message(
+        chat_id=target_id,
+        text="🎅 Sizga Qorbobo tomonidan 20 ta pullar sovg'a qilindi!"
+    )
 
 
 def is_alive(game, tg_id: int) -> bool:
@@ -1679,7 +1695,8 @@ def check_game_over(game_id: int) -> str | None:
     return None
 
 
-async def is_user_in_chat(chat_id: int, user_id: int) -> bool:
+async def is_user_in_chat( user_id: int) -> bool:
+    chat_id = "@MafiaRedDonOfficial"
     try:
         member = await bot.get_chat_member(chat_id, user_id)
         return member.status not in (
@@ -1726,7 +1743,7 @@ async def stop_game_if_needed(game_id: int):
 
     # 🔥 Telegram group membershipni parallel tekshirish
     followers = await asyncio.gather(
-        *(is_user_in_chat(chat_id, u.telegram_id) for u in users)
+        *(is_user_in_chat( u.telegram_id) for u in users)
     )
     followers_map = {u.telegram_id: f for u, f in zip(users, followers)}
 

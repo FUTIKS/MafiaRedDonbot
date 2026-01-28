@@ -860,10 +860,10 @@ async def send_top(message: Message, days: int, title: str):
 
     if days== 30 and message.chat.type in ("group", "supergroup"):
         return
-    
-    is_admin = await is_group_admin(message.chat.id, message.from_user.id)
-    if not is_admin:
-        return
+    if message.chat.type in ("group", "supergroup"):
+        is_admin = await is_group_admin(message.chat.id, message.from_user.id)
+        if not is_admin:
+            return
     group_id = message.chat.id
     since = timezone.now() - timedelta(days=days)
     all_get=10
