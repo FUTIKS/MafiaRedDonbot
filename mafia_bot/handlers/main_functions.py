@@ -1363,26 +1363,6 @@ async def apply_night_actions(game_id: int):
         intents.sort(key=lambda x: x[1], reverse=True)
         killer_by, pr = intents[0]
 
-        if killer_by == "snyper":
-            kill(game, target_id)
-            dead_tonight.append((target_id, killer_by))
-            continue
-
-        if target_id in protected:
-            saved_tonight.append((target_id, protected[target_id], killer_by))
-            continue
-        
-        target_user = alive_users_map.get(int(target_id))
-        if target_user and target_user.get("protection", 0) > 0:
-            target_user_qs = User.objects.filter(telegram_id=int(target_id)).first()
-            target_user["protection"] -= 1
-            target_user_qs.protection -= 1
-            target_user_qs.save(update_fields=["protection"])
-
-            saved_tonight.append((target_id, "himoya", killer_by))
-            continue
-        
-
         hero_used = game.setdefault("hero_used", {})
         if target_user and target_user.get("hero", False):
             if not hero_used.get(target_id):
@@ -1404,6 +1384,27 @@ async def apply_night_actions(game_id: int):
                     parse_mode="HTML"
                 )
                 continue
+            
+        if killer_by == "snyper":
+            kill(game, target_id)
+            dead_tonight.append((target_id, killer_by))
+            continue
+
+        if target_id in protected:
+            saved_tonight.append((target_id, protected[target_id], killer_by))
+            continue
+        
+        target_user = alive_users_map.get(int(target_id))
+        if target_user and target_user.get("protection", 0) > 0:
+            target_user_qs = User.objects.filter(telegram_id=int(target_id)).first()
+            target_user["protection"] -= 1
+            target_user_qs.protection -= 1
+            target_user_qs.save(update_fields=["protection"])
+
+            saved_tonight.append((target_id, "himoya", killer_by))
+            continue
+        
+
 
         if roles.get(int(target_id)) == "kam":
             killer_id = get_alive_role_id(game, killer_by)
