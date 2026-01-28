@@ -1363,6 +1363,7 @@ async def apply_night_actions(game_id: int):
         intents.sort(key=lambda x: x[1], reverse=True)
         killer_by, pr = intents[0]
 
+        target_user = alive_users_map.get(int(target_id))
         hero_used = game.setdefault("hero_used", {})
         if target_user and target_user.get("hero", False):
             if not hero_used.get(target_id):
@@ -1394,7 +1395,6 @@ async def apply_night_actions(game_id: int):
             saved_tonight.append((target_id, protected[target_id], killer_by))
             continue
         
-        target_user = alive_users_map.get(int(target_id))
         if target_user and target_user.get("protection", 0) > 0:
             target_user_qs = User.objects.filter(telegram_id=int(target_id)).first()
             target_user["protection"] -= 1
