@@ -1,7 +1,6 @@
 import re
 import json
 import time
-import asyncio
 import datetime
 from aiogram import F
 from dispatcher import dp, bot
@@ -16,7 +15,7 @@ from mafia_bot.utils import stones_taken,gsend_taken,giveaways,games_state
 from aiogram.types import Message, LabeledPrice, PreCheckoutQuery,CallbackQuery
 from mafia_bot.models import Game, MoneySendHistory, User,PremiumGroup,MostActiveUser,CasesOpened,GameSettings,GroupTrials,PriceStones, UserRole,BotCredentials
 from mafia_bot.state import AddGroupState, BeginInstanceState,SendMoneyState,ChangeStoneCostState,ChangeMoneyCostState,ExtendGroupState,QuestionState,Register,CredentialsState
-from mafia_bot.handlers.main_functions import (add_visit, get_mafia_members,get_first_name_from_players, kill,send_safe_message,process_santa_reward,
+from mafia_bot.handlers.main_functions import (add_visit, get_mafia_members,get_first_name_from_players, kill,send_safe_message,
                                                mark_confirm_done, mark_hang_done,mark_night_action_done,get_week_range,get_month_range,role_label)
 from mafia_bot.buttons.inline import (action_inline_btn,
     admin_inline_btn, answer_admin, back_btn, cart_inline_btn, change_money_cost, change_stones_cost, com_inline_btn, end_talk_keyboard, geroy_inline_btn,  giveaway_join_btn, group_profile_inline_btn,
@@ -366,411 +365,260 @@ async def roles_specific_callback(callback: CallbackQuery):
         await callback.answer(text=DESCRIPTIONS[role_name], show_alert=True)
 
 
-@dp.callback_query(F.data.startswith("doc_"))
-async def doc_heal_callback(callback: CallbackQuery):
-    await callback.answer()  # instant ACK
 
-    parts = callback.data.split("_")
-    target_raw = parts[1]
-    game_id = int(parts[2])
-    chat_id = int(parts[3])
-    day = parts[4]
-    doctor_id = callback.from_user.id
-
-    game = games_state.get(game_id)
-    if not game:
-        return
-
-    if day != str(game['meta']['day']):
-        asyncio.create_task(
-            callback.message.edit_text(
-                f"{ACTIONS.get('doc_heal')}\n\nSiz kechikdingiz.",
-                parse_mode="HTML"
-            )
-        )
-        return
-
-    if doctor_id not in game["alive"]:
-        return
-
-    mark_night_action_done(game, doctor_id)
-
-    asyncio.create_task(callback.message.edit_reply_markup(None))
-
-    if target_raw == "no":
-        asyncio.create_task(
-            callback.message.edit_text(
-                f"{ACTIONS.get('doc_heal')}\n\nSiz hech kimni davolamadingiz.",
-                parse_mode="HTML"
-            )
-        )
-        asyncio.create_task(
-            send_safe_message(
-                chat_id=chat_id,
-                text="🚷 👨🏼‍⚕️ Shifokor hech qayoqqa bormaslikni afzal ko'rdi."
-            )
-        )
-        return
-
-    target_id = int(target_raw)
-
-    if target_id == doctor_id:
-        used_self = game["limits"]["doc_self_heal_used"]
-        if doctor_id in used_self:
-            return
-        used_self.add(doctor_id)
-
-    game["night_actions"]["doc_target"] = target_id
-    add_visit(game=game, visitor_id=doctor_id, house_id=target_id, invisible=False)
-    # username olish (players object bo'lsa)
-    target_name = get_first_name_from_players(target_id)
-
-    asyncio.create_task(
-        callback.message.edit_text(
-            f"{ACTIONS.get('doc_heal')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni davoladingiz.",
-            parse_mode="HTML"
-        )
-    )
-
-    asyncio.create_task(
-        send_safe_message(
-            chat_id=chat_id,
-            text="👨🏼‍⚕️ Shifokor tungi navbatchilikka ketdi..."
-        )
-    )
     
 
 @dp.callback_query(F.data.startswith("daydi_"))
 async def daydi_callback(callback: CallbackQuery):
     await callback.answer()
+    await callback.message.edit_reply_markup(None)
 
     parts = callback.data.split("_")
-    house_raw = parts[1]
-    game_id = int(parts[2])
+    house_id = parts[1]
     chat_id = int(parts[3])
     day = parts[4]
+
     daydi_id = callback.from_user.id
 
-    game = games_state.get(game_id)
+    game = games_state.get(int(parts[2]))
     if not game:
         return
-
-    if day != str(game['meta']['day']):
-        asyncio.create_task(
-            callback.message.edit_text(
-                f"{ACTIONS.get('daydi_watch')}\n\nSiz kechikdingiz.",
-                parse_mode="HTML"
-            )
-        )
+    game_day = game['meta']['day']
+    if not day == str(game_day):
+        await callback.message.edit_text(text=f"{ACTIONS.get('daydi_watch')}\n\nSiz kechikdingiz.", parse_mode="HTML")
         return
-
-    if daydi_id not in game["alive"]:
+    if not daydi_id in game["alive"]:
         return
-
-    mark_night_action_done(game, daydi_id)
-
-    asyncio.create_task(callback.message.edit_reply_markup(None))
-
-    if house_raw == "no":
-        asyncio.create_task(
-            callback.message.edit_text(
-                f"{ACTIONS.get('daydi_watch')}\n\nSiz hech kimning uyiga bormadingiz.",
-                parse_mode="HTML"
-            )
+    mark_night_action_done(game, callback.from_user.id)
+    if house_id == "no":
+        # hech narsa qilmaslik
+        await callback.message.edit_text(
+            text=f"{ACTIONS.get('daydi_watch')}\n\nSiz hech kimning uyiga bormadingiz.",
+            parse_mode="HTML"
         )
-        asyncio.create_task(
-            send_safe_message(
+        try:
+            await send_safe_message(
                 chat_id=chat_id,
                 text="🚷 🧙🏼‍♂️ Daydi hech qayoqqa bormaslikni afzal ko'rdi."
             )
-        )
+        except:
+            pass
         return
+    house_id = int(house_id)
 
-    house_id = int(house_raw)
-
+    # ✅ Daydi qayerga bordi
     game["night_actions"]["daydi_house"] = house_id
+    
 
+    # username topish (players object list bo‘lsa)
     target_name = get_first_name_from_players(house_id)
-
-    asyncio.create_task(
-        callback.message.edit_text(
-            f"{ACTIONS.get('daydi_watch')}\n\nSiz <a href='tg://user?id={house_id}'>{target_name}</a> uyiga shisha olgani bordingiz.",
-            parse_mode="HTML"
-        )
+    await callback.message.edit_text(
+        text=f"{ACTIONS.get('daydi_watch')}\n\nSiz <a href='tg://user?id={house_id}'>{target_name}</a> uyiga shisha olgani bordingiz.",
+        parse_mode="HTML"
     )
-
-    asyncio.create_task(
-        send_safe_message(
-            chat_id=chat_id,
-            text="🧙🏼‍♂️ Daydi kimnikigadir shisha olish uchun ketdi..."
-        )
-    )
+    try:
+        await send_safe_message(chat_id=chat_id, text="🧙🏼‍♂️ Daydi kimnikigadir shisha olish uchun ketdi...")
+    except:
+        pass
+    
 
 
 @dp.callback_query(F.data.startswith("com_"))
 async def com_callback(callback: CallbackQuery):
     await callback.answer()
+    await callback.message.edit_reply_markup(None)
 
     parts = callback.data.split("_")
-    action = parts[1]
-    game_id = int(parts[2])
+    action = parts[1]     
     chat_id = int(parts[3])
     day = parts[4]
     com_id = callback.from_user.id
-
-    game = games_state.get(game_id)
+    game = games_state.get(int(parts[2]))
     if not game:
         return
-
-    if com_id not in game["alive"]:
+    if not com_id in game["alive"]:
         return
-
-    if day != str(game['meta']['day']):
-        asyncio.create_task(
-            callback.message.edit_text(
-                f"{ACTIONS.get('com_deside')}\n\nSiz kechikdingiz.",
-                parse_mode="HTML"
-            )
-        )
+    game_day = game['meta']['day']
+    if not day == str(game_day):
+        await callback.message.edit_text(text=f"{ACTIONS.get('com_deside')}\n\nSiz kechikdingiz.", parse_mode="HTML")
         return
-
-    mark_night_action_done(game, com_id)
-
-    asyncio.create_task(callback.message.edit_reply_markup(None))
-
+    mark_night_action_done(game, callback.from_user.id)
     if action == "no":
-        asyncio.create_task(
-            callback.message.edit_text(
-                f"{ACTIONS.get('com_deside')}\n\nSiz hech narsa qilmaslikni tanladingiz.",
-                parse_mode="HTML"
-            )
+        # hech narsa qilmaslik
+        await callback.message.edit_text(
+            text=f"{ACTIONS.get('com_deside')}\n\nSiz hech narsa qilmaslikni tanladingiz.",
+            parse_mode="HTML"
         )
-        asyncio.create_task(
-            send_safe_message(
+        try:
+            await send_safe_message(
                 chat_id=chat_id,
                 text="🚷 🕵️‍ Komissar bugun dam olishni xohladi."
             )
+        except:
+            pass
+        return
+    elif action == "back":
+        await callback.message.edit_text(
+            text=ACTIONS.get("com_deside"),
+            reply_markup=com_inline_btn(game_id=int(parts[2]), chat_id=chat_id,day=day)
         )
         return
-
-    if action == "back":
-        asyncio.create_task(
-            callback.message.edit_text(
-                text=ACTIONS.get("com_deside"),
-                reply_markup=com_inline_btn(game_id=game_id, chat_id=chat_id, day=day)
-            )
-        )
-        return
-
+    
     if action == "shoot":
-        asyncio.create_task(
-            send_safe_message(
-                chat_id=chat_id,
-                text="🕵️‍ Komissar Katani pistoletini o'qladi..."
-            )
-        )
-        asyncio.create_task(
-            callback.message.edit_text(
-                text=ACTIONS.get("com_shoot"),
-                reply_markup=com_inline_action_btn(
-                    action="shoot",
-                    chat_id=chat_id,
-                    game_id=game_id,
-                    com_id=com_id,
-                    day=day
-                )
-            )
+        try:
+            await send_safe_message(chat_id=chat_id, text="🕵️‍ Komissar Katani pistoletini o'qladi...")
+        except:
+            pass
+        await callback.message.edit_text(
+            text=ACTIONS.get("com_shoot"),
+            reply_markup=com_inline_action_btn(action="shoot",chat_id=chat_id, game_id=int(parts[2]),com_id=com_id,day=day)
         )
         return
 
-    asyncio.create_task(
-        send_safe_message(
-            chat_id=chat_id,
-            text="🕵️‍ Komissar Katani yovuzlarni qidirishga ketdi..."
-        )
+    try:
+        await send_safe_message(chat_id=chat_id, text="🕵️‍ Komissar Katani yovuzlarni qidirishga ketdi...")
+    except:
+        pass
+    await callback.message.edit_text(
+        text=ACTIONS.get("com_check"),
+        reply_markup=com_inline_action_btn(action="search",chat_id=chat_id, game_id=int(parts[2]),com_id=com_id,day=day)
     )
-    asyncio.create_task(
-        callback.message.edit_text(
-            text=ACTIONS.get("com_check"),
-            reply_markup=com_inline_action_btn(
-                action="search",
-                chat_id=chat_id,
-                game_id=game_id,
-                com_id=com_id,
-                day=day
-            )
-        )
-    )
-
 
 
 @dp.callback_query(F.data.startswith("shoot_"))
 async def com_shoot_callback(callback: CallbackQuery):
     await callback.answer()
+    await callback.message.edit_reply_markup(None)
 
     parts = callback.data.split("_")
     target_id = int(parts[1])
-    game_id = int(parts[2])
-    day = parts[3]
+
     com_id = callback.from_user.id
 
-    game = games_state.get(game_id)
+    game = games_state.get(int(parts[2]))
+    day = parts[3]
     if not game:
         return
-
-    if day != str(game['meta']['day']):
-        asyncio.create_task(
-            callback.message.edit_text(
-                f"{ACTIONS.get('com_shoot')}\n\nSiz kechikdingiz.",
-                parse_mode="HTML"
-            )
-        )
+    game_day = game['meta']['day']
+    if not day == str(game_day):
+        await callback.message.edit_text(text=f"{ACTIONS.get('com_shoot')}\n\nSiz kechikdingiz.", parse_mode="HTML")
         return
-
-    if com_id not in game["alive"]:
+    if not com_id in game["alive"]:
         return
+    
 
     game["night_actions"]["com_shoot_target"] = target_id
     add_visit(game, com_id, target_id, False)
 
-    asyncio.create_task(callback.message.edit_reply_markup(None))
 
-    target_name = get_first_name_from_players(target_id)
+    target_name = get_first_name_from_players( target_id)
 
-    asyncio.create_task(
-        callback.message.edit_text(
-            f"{ACTIONS.get('com_shoot')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni otdingiz.",
-            parse_mode="HTML"
-        )
+    await callback.message.edit_text(
+        text=f"{ACTIONS.get('com_shoot')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni otdingiz.",
+        parse_mode="HTML"
     )
-
 
 @dp.callback_query(F.data.startswith("search_"))
 async def com_protect_callback(callback: CallbackQuery):
     await callback.answer()
+    await callback.message.edit_reply_markup(None)
 
     parts = callback.data.split("_")
     target_id = int(parts[1])
-    game_id = int(parts[2])
     day = parts[3]
     com_id = callback.from_user.id
 
-    game = games_state.get(game_id)
+    game = games_state.get(int(parts[2]))
     if not game:
         return
-
-    if day != str(game['meta']['day']):
-        asyncio.create_task(
-            callback.message.edit_text(
-                f"{ACTIONS.get('com_check')}\n\nSiz kechikdingiz.",
-                parse_mode="HTML"
-            )
-        )
+    game_day = game['meta']['day']
+    if not day == str(game_day):
+        await callback.message.edit_text(text=f"{ACTIONS.get('com_check')}\n\nSiz kechikdingiz.", parse_mode="HTML")
         return
-
-    if com_id not in game["alive"]:
+    if not com_id in game["alive"]:
         return
+   
 
+    # ✅ Action saqlaymiz
     game["night_actions"]["com_check_target"] = target_id
     add_visit(game, com_id, target_id, False)
 
-    asyncio.create_task(callback.message.edit_reply_markup(None))
 
-    target_name = get_first_name_from_players(target_id)
+    target_name = get_first_name_from_players( target_id)
 
-    asyncio.create_task(
-        callback.message.edit_text(
-            f"{ACTIONS.get('com_check')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni tekshirdingiz.",
-            parse_mode="HTML"
-        )
+    await callback.message.edit_text(
+        text=f"{ACTIONS.get('com_check')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni tekshirdingiz.",
+        parse_mode="HTML"
     )
-
 
 @dp.callback_query(F.data.startswith("kami_"))
 async def kamikaze_callback(callback: CallbackQuery):
     await callback.answer()
+    await callback.message.edit_reply_markup(None)
 
     parts = callback.data.split("_")
-    target_id = int(parts[1])
-    game_id = int(parts[2])
+    target_id = int(parts[1])  
     day = parts[4]
-    user_id = callback.from_user.id
 
-    game = games_state.get(game_id)
+    game = games_state.get(int(parts[2]))
     if not game:
         return
-
-    if day != str(game['meta']['day']):
-        asyncio.create_task(
-            callback.message.edit_text(
-                f"{ACTIONS.get('kamikaze_blow')}\n\nSiz kechikdingiz.",
-                parse_mode="HTML"
-            )
-        )
+    game_day = game['meta']['day']
+    if not day == str(game_day):
+        await callback.message.edit_text(text=f"{ACTIONS.get('kamikaze_blow')}\n\nSiz kechikdingiz.", parse_mode="HTML")
         return
-
+    
     game["day_actions"]["kamikaze_trigger"] = target_id
-    mark_night_action_done(game, user_id)
+    mark_night_action_done(game, callback.from_user.id)
 
-    asyncio.create_task(callback.message.edit_reply_markup(None))
 
+
+    # username olish (players object bo'lsa)
     target_name = get_first_name_from_players(target_id)
 
     text = f"{ACTIONS.get('kamikaze_blow')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni portlatdingiz."
 
-    asyncio.create_task(
-        callback.message.edit_text(text=text, parse_mode="HTML")
-    )
+    await callback.message.edit_text(text=text, parse_mode="HTML")
 
+    
     
 @dp.callback_query(F.data.startswith("lover_"))
 async def lover_callback(callback: CallbackQuery):
     await callback.answer()
+    await callback.message.edit_reply_markup(None)
 
     parts = callback.data.split("_")
-    target_raw = parts[1]
-    game_id = int(parts[2])
+    target_id = parts[1]
     chat_id = int(parts[3])
     day = parts[4]
     lover_id = callback.from_user.id
 
-    game = games_state.get(game_id)
+    game = games_state.get(int(parts[2]))
     if not game:
         return
-
-    if day != str(game['meta']['day']):
-        asyncio.create_task(
-            callback.message.edit_text(
-                f"{ACTIONS.get('lover_block')}\n\nSiz kechikdingiz.",
-                parse_mode="HTML"
-            )
-        )
+    game_day = game['meta']['day']
+    if not day == str(game_day):
+        await callback.message.edit_text(text=f"{ACTIONS.get('lover_block')}\n\nSiz kechikdingiz.", parse_mode="HTML")
         return
-
-    if lover_id not in game["alive"]:
+    if not lover_id in game["alive"]:
         return
-
-    mark_night_action_done(game, lover_id)
-
-    asyncio.create_task(callback.message.edit_reply_markup(None))
-
-    if target_raw == "no":
-        asyncio.create_task(
-            callback.message.edit_text(
-                f"{ACTIONS.get('lover_block')}\n\nSiz hech kimni tanlamadingiz.",
-                parse_mode="HTML"
-            )
+    mark_night_action_done(game, callback.from_user.id)
+    if target_id == "no":
+        # hech narsa qilmaslik
+        await callback.message.edit_text(
+            text=f"{ACTIONS.get('lover_block')}\n\nSiz hech kimni tanlamadingiz.",
+            parse_mode="HTML"
         )
-        asyncio.create_task(
-            send_safe_message(
+        try:
+            await send_safe_message(
                 chat_id=chat_id,
                 text="🚷 💃🏼 Ma'shuqa hech kimni kutmayapti."
             )
-        )
+        except:
+            pass
         return
-
-    target_id = int(target_raw)
-
+    target_id = int(target_id)
+    # ✅ lover action saqlash
     game["night_actions"]["lover_block_target"] = target_id
     add_visit(game=game, visitor_id=lover_id, house_id=target_id, invisible=False)
 
@@ -778,1432 +626,1024 @@ async def lover_callback(callback: CallbackQuery):
 
     text = f"{ACTIONS.get('lover_block')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a>ni tanladingiz."
 
-    asyncio.create_task(
-        callback.message.edit_text(text=text, parse_mode="HTML")
-    )
+    await callback.message.edit_text(text=text, parse_mode="HTML")
 
-    asyncio.create_task(
-        send_safe_message(
-            chat_id=chat_id,
-            text="💃🏼 Ma'shuqa qandaydir mehmonni kutayapti..."
-        )
+    await send_safe_message(
+        chat_id=chat_id,
+        text="💃🏼 Ma'shuqa qandaydir mehmonni kutayapti..."
     )
-
+    return
 
 @dp.callback_query(F.data.startswith("killer_"))
 async def killer_callback(callback: CallbackQuery):
     await callback.answer()
+    await callback.message.edit_reply_markup(None)
 
     parts = callback.data.split("_")
-    target_raw = parts[1]
-    game_id = int(parts[2])
+    target_id = parts[1]
     chat_id = int(parts[3])
     day = parts[4]
     killer_id = callback.from_user.id
 
-    game = games_state.get(game_id)
+    game = games_state.get(int(parts[2]))
     if not game:
         return
-
-    if day != str(game['meta']['day']):
-        asyncio.create_task(
-            callback.message.edit_text(
-                f"{ACTIONS.get('killer_kill')}\n\nSiz kechikdingiz.",
-                parse_mode="HTML"
-            )
+    game_day = game['meta']['day']
+    if not day == str(game_day):
+        await callback.message.edit_text(text=f"{ACTIONS.get('killer_kill')}\n\nSiz kechikdingiz.", parse_mode="HTML")
+        return
+    if not killer_id in game["alive"]:
+        return
+    mark_night_action_done(game, callback.from_user.id)
+    if target_id == "no":
+        # hech narsa qilmaslik
+        await callback.message.edit_text(
+            text=f"{ACTIONS.get('killer_kill')}\n\nSiz hech kimni o'ldirmadingiz.",
+            parse_mode="HTML"
+        )
+        await send_safe_message(
+            chat_id=chat_id,
+            text="🚷 🔪 Qotil hech kimni o'ldirmaslikni afzal ko'rdi."
         )
         return
-
-    if killer_id not in game["alive"]:
-        return
-
-    mark_night_action_done(game, killer_id)
-
-    asyncio.create_task(callback.message.edit_reply_markup(None))
-
-    if target_raw == "no":
-        asyncio.create_task(
-            callback.message.edit_text(
-                f"{ACTIONS.get('killer_kill')}\n\nSiz hech kimni o'ldirmadingiz.",
-                parse_mode="HTML"
-            )
-        )
-        asyncio.create_task(
-            send_safe_message(
-                chat_id=chat_id,
-                text="🚷 🔪 Qotil hech kimni o'ldirmaslikni afzal ko'rdi."
-            )
-        )
-        return
-
-    target_id = int(target_raw)
-
+    target_id = int(target_id)
+    # ✅ killer action saqlash
     game["night_actions"]["killer_target"].append(target_id)
-    add_visit(game=game, visitor_id=killer_id, house_id=target_id, invisible=False)
 
     target_name = get_first_name_from_players(target_id)
+    add_visit(game=game, visitor_id=killer_id, house_id=target_id, invisible=False)
 
     text = f"{ACTIONS.get('killer_kill')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni o'ldirdingiz."
 
-    asyncio.create_task(
-        callback.message.edit_text(text=text, parse_mode="HTML")
-    )
+    await callback.message.edit_text(text=text, parse_mode="HTML")
 
-    asyncio.create_task(
-        send_safe_message(
-            chat_id=chat_id,
-            text="🔪 Qotil butalar orasiga yashirinib oldi..."
-        )
+    await send_safe_message(
+        chat_id=chat_id,
+        text="🔪 Qotil butalar orasiga yashirinib oldi..."
     )
-
+    return
 
 @dp.callback_query(F.data.startswith("santa_"))
 async def santa_callback(callback: CallbackQuery):
     await callback.answer()
+    await callback.message.edit_reply_markup(None)
 
     parts = callback.data.split("_")
-    target_raw = parts[1]
-    game_id = int(parts[2])
+    target_id = parts[1]
     chat_id = int(parts[3])
     day = parts[4]
     santa_id = callback.from_user.id
 
-    game = games_state.get(game_id)
+    game = games_state.get(int(parts[2]))
     if not game:
         return
-
-    if day != str(game['meta']['day']):
-        asyncio.create_task(
-            callback.message.edit_text(
-                f"{ACTIONS.get('santa')}\n\nSiz kechikdingiz.",
-                parse_mode="HTML"
-            )
+    game_day = game['meta']['day']
+    if not day == str(game_day):
+        await callback.message.edit_text(text=f"{ACTIONS.get('santa')}\n\nSiz kechikdingiz.", parse_mode="HTML")
+        return
+    if not santa_id in game["alive"]:
+        return
+    mark_night_action_done(game, callback.from_user.id)
+    if target_id == "no":
+        # hech narsa qilmaslik
+        await callback.message.edit_text(
+            text=f"{ACTIONS.get('santa')}\n\nSiz hech kimni o'ldirmadingiz.",
+            parse_mode="HTML"
+        )
+        await send_safe_message(
+            chat_id=chat_id,
+            text="🚷 🎅 Santa hech kimga sovg'a bermaslikni afzal ko'rdi."
         )
         return
-
-    if santa_id not in game["alive"]:
-        return
-
-    mark_night_action_done(game, santa_id)
-
-    asyncio.create_task(callback.message.edit_reply_markup(None))
-
-    if target_raw == "no":
-        asyncio.create_task(
-            callback.message.edit_text(
-                f"{ACTIONS.get('santa')}\n\nSiz hech kimni tanlamadingiz.",
-                parse_mode="HTML"
-            )
+    target_id = int(target_id)
+    # ✅ killer action saqlash
+    user = User.objects.filter(telegram_id=target_id).first()
+    if not user:
+        user = User.objects.create(
+            telegram_id=target_id,
+            lang ='uz',
+            first_name=callback.from_user.first_name,
+            username=callback.from_user.username
         )
-        asyncio.create_task(
-            send_safe_message(
-                chat_id=chat_id,
-                text="🚷 🎅 Santa hech kimga sovg'a bermaslikni afzal ko'rdi."
-            )
-        )
-        return
-
-    target_id = int(target_raw)
-
-    # 🔥 DB ishini alohida taskga
-    asyncio.create_task(process_santa_reward(target_id, callback))
-
-    game["night_actions"].setdefault("santa_targets", []).append(target_id)
-    add_visit(game=game, visitor_id=santa_id, house_id=target_id, invisible=False)
-
+    user.coin += 20
+    user.save()
     target_name = get_first_name_from_players(target_id)
+    add_visit(game=game, visitor_id=santa_id, house_id=target_id, invisible=False)
 
     text = f"{ACTIONS.get('santa')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ga sovg'a berdingiz."
 
-    asyncio.create_task(callback.message.edit_text(text=text, parse_mode="HTML"))
-
-    asyncio.create_task(
-        send_safe_message(
-            chat_id=chat_id,
-            text="🎅 Qorbobo sovg'alarini tarqatmoqda..."
-        )
+    await callback.message.edit_text(text=text, parse_mode="HTML")
+    await send_safe_message(
+        chat_id=target_id,
+        text="🎅 Sizga Santa tomonidan 20 ta pullar sovg'a qilindi!"
     )
+    await send_safe_message(
+        chat_id=chat_id,
+        text="🎅 Santa sovg'alarini tarqatmoqda..."
+    )
+    return
 
 @dp.callback_query(F.data.startswith("kaldun_"))
 async def kaldun_callback(callback: CallbackQuery):
     await callback.answer()
+    await callback.message.edit_reply_markup(None)
 
     parts = callback.data.split("_")
-    target_raw = parts[1]
-    game_id = int(parts[2])
+    target_id = parts[1]
     chat_id = int(parts[3])
     day = parts[4]
     kaldun_id = callback.from_user.id
 
-    game = games_state.get(game_id)
+    game = games_state.get(int(parts[2]))
     if not game:
         return
-
-    if day != str(game['meta']['day']):
-        asyncio.create_task(
-            callback.message.edit_text(
-                f"{ACTIONS.get('kaldun_spell')}\n\nSiz kechikdingiz.",
-                parse_mode="HTML"
-            )
+    game_day = game['meta']['day']
+    if not day == str(game_day):
+        await callback.message.edit_text(text=f"{ACTIONS.get('kaldun_spell')}\n\nSiz kechikdingiz.", parse_mode="HTML")
+        return
+    if not kaldun_id in game["alive"]:
+        return
+    mark_night_action_done(game, callback.from_user.id)
+    if target_id == "no":
+        # hech narsa qilmaslik
+        await callback.message.edit_text(
+            text=f"{ACTIONS.get('kaldun_spell')}\n\nSiz hech kimni sehrlamadingiz.",
+            parse_mode="HTML"
+        )
+        await send_safe_message(
+            chat_id=chat_id,
+            text="🚷 ⚡️ Koldun hech kimni sehrlamaslikni afzal ko'rdi."
         )
         return
 
-    if kaldun_id not in game["alive"]:
-        return
+    target_id = int(target_id)
 
-    mark_night_action_done(game, kaldun_id)
-
-    asyncio.create_task(callback.message.edit_reply_markup(None))
-
-    if target_raw == "no":
-        asyncio.create_task(
-            callback.message.edit_text(
-                f"{ACTIONS.get('kaldun_spell')}\n\nSiz hech kimni sehrlamadingiz.",
-                parse_mode="HTML"
-            )
-        )
-        asyncio.create_task(
-            send_safe_message(
-                chat_id=chat_id,
-                text="🚷 ⚡️ Koldun hech kimni sehrlamaslikni afzal ko'rdi."
-            )
-        )
-        return
-
-    target_id = int(target_raw)
-
+    # ✅ kaldun action saqlash
     game["night_actions"]["kaldun_target"] = target_id
+    
     add_visit(game=game, visitor_id=kaldun_id, house_id=target_id, invisible=False)
-
     target_name = get_first_name_from_players(target_id)
 
     text = f"{ACTIONS.get('kaldun_spell')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni sehrladingiz."
 
-    asyncio.create_task(
-        callback.message.edit_text(text=text, parse_mode="HTML")
-    )
+    await callback.message.edit_text(text=text, parse_mode="HTML")
 
-    asyncio.create_task(
-        send_safe_message(
-            chat_id=chat_id,
-            text="⚡️ Koldun o'z sehrini ishga soldi."
-        )
+    await send_safe_message(
+        chat_id=chat_id,
+        text="⚡️ Koldun o'z sehrini ishga soldi."
     )
-
+    return
 
 
 
 @dp.callback_query(F.data.startswith("don_"))
 async def don_callback(callback: CallbackQuery):
     await callback.answer()
-
-    parts = callback.data.split("_")
-    target_raw = parts[1]
-    game_id = int(parts[2])
-    day = parts[4]
+    await callback.message.edit_reply_markup(None)
+    target_id = callback.data.split("_")[1]
+    game_id = callback.data.split("_")[2]
+    day = callback.data.split("_")[4]
+    
     don_id = callback.from_user.id
-
-    game = games_state.get(game_id)
+    
+    game = games_state.get(int(game_id))
+    
     if not game:
         return
-
-    if day != str(game['meta']['day']):
-        asyncio.create_task(
-            callback.message.edit_text(
-                f"{ACTIONS.get('don_kill')}\n\nSiz kechikdingiz.",
-                parse_mode="HTML"
-            )
+    game_day = game['meta']['day']
+    if not day == str(game_day):
+        await callback.message.edit_text(text=f"{ACTIONS.get('don_kill')}\n\nSiz kechikdingiz.", parse_mode="HTML")
+        return
+    
+    if not don_id in game["alive"]:
+        return
+    
+    mark_night_action_done(game, callback.from_user.id)
+    if target_id == "no":
+        # hech narsa qilmaslik
+        await callback.message.edit_text(
+            text=f"{ACTIONS.get('don_kill')}\n\nSiz hech kimni o'ldirmadingiz.",
+            parse_mode="HTML"
         )
+        
         return
-
-    if don_id not in game["alive"]:
-        return
-
-    mark_night_action_done(game, don_id)
-
-    asyncio.create_task(callback.message.edit_reply_markup(None))
-
-    if target_raw == "no":
-        asyncio.create_task(
-            callback.message.edit_text(
-                f"{ACTIONS.get('don_kill')}\n\nSiz hech kimni o'ldirmadingiz.",
-                parse_mode="HTML"
-            )
-        )
-        return
-
-    target_id = int(target_raw)
-
-    game["night_actions"]["don_kill_target"] = target_id
+    
+    # ✅ night action saqlash
+    game["night_actions"]["don_kill_target"] = int(target_id)
     add_visit(game=game, visitor_id=don_id, house_id=target_id, invisible=False)
-
-    target_name = get_first_name_from_players(target_id)
+    
+    
+    target_name = get_first_name_from_players(int(target_id))
     mafia_name = get_first_name_from_players(don_id)
-    mafia_members = get_mafia_members(game_id)
+    mafia_members = get_mafia_members(int(game_id))
+    
 
     text_for_mafia = (
-        f"🤵🏻 Don <a href='tg://user?id={don_id}'>{mafia_name}</a> - "
-        f"<a href='tg://user?id={target_id}'>{target_name}</a> uchun ovoz berdi"
+        f"🤵🏻 Don <a href='tg://user?id={don_id}'>{mafia_name}</a> - <a href='tg://user?id={target_id}'>{target_name}</a> uchun ovoz berdi"
     )
 
-    # 🔥 mafiya broadcastni fon rejimida parallel yuboramiz
     for member_id in mafia_members:
         if member_id == don_id:
             continue
-        asyncio.create_task(
-            send_safe_message(
+        try:
+            await send_safe_message(
                 chat_id=member_id,
                 text=text_for_mafia,
                 parse_mode="HTML"
             )
-        )
-
-    asyncio.create_task(
-        callback.message.edit_text(
-            f"{ACTIONS.get('don_kill')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni tanladingiz",
-            parse_mode="HTML"
-        )
-    )
-
+        except Exception as e:
+            pass
+    
+    await callback.message.edit_text(text=f"{ACTIONS.get('don_kill')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni tanladingiz")
+    
 
 @dp.callback_query(F.data.startswith("mafia_"))
 async def mafia_callback(callback: CallbackQuery):
     await callback.answer()
-
-    parts = callback.data.split("_")
-    target_raw = parts[1]
-    game_id = int(parts[2])
-    day = parts[3]
+    await callback.message.edit_reply_markup(None)
+    target_id = callback.data.split("_")[1]
+    game_id = callback.data.split("_")[2]
+    day = callback.data.split("_")[3]
+    
     mafia_id = callback.from_user.id
-
-    game = games_state.get(game_id)
+    
+    game = games_state.get(int(game_id))
     if not game:
         return
-
-    if day != str(game['meta']['day']):
-        asyncio.create_task(
-            callback.message.edit_text(
-                f"{ACTIONS.get('mafia_vote')}\n\nSiz kechikdingiz.",
-                parse_mode="HTML"
-            )
+    game_day = game['meta']['day']
+    if not day == str(game_day):
+        await callback.message.edit_text(text=f"{ACTIONS.get('mafia_vote')}\n\nSiz kechikdingiz.", parse_mode="HTML")
+        return
+    
+    if not mafia_id in game["alive"]:
+        return
+    mark_night_action_done(game, callback.from_user.id)
+    if target_id == "no":
+        # hech narsa qilmaslik
+        await callback.message.edit_text(
+            text=f"{ACTIONS.get('mafia_vote')}\n\nSiz hech kimni o'ldirmadingiz.",
+            parse_mode="HTML"
         )
         return
-
-    if mafia_id not in game["alive"]:
-        return
-
-    mark_night_action_done(game, mafia_id)
-
-    asyncio.create_task(callback.message.edit_reply_markup(None))
-
-    if target_raw == "no":
-        asyncio.create_task(
-            callback.message.edit_text(
-                f"{ACTIONS.get('mafia_vote')}\n\nSiz hech kimni o'ldirmadingiz.",
-                parse_mode="HTML"
-            )
-        )
-        return
-
-    target_id = int(target_raw)
-
-    game["night_actions"]["mafia_vote"].append(target_id)
+    # ✅ night action saqlash
+    game["night_actions"]["mafia_vote"].append(int(target_id))
     add_visit(game=game, visitor_id=mafia_id, house_id=target_id, invisible=False)
-
-    target_name = get_first_name_from_players(target_id)
+    
+    
+    target_name = get_first_name_from_players(int(target_id))
     mafia_name = get_first_name_from_players(mafia_id)
-    mafia_members = get_mafia_members(game_id)
+    mafia_members = get_mafia_members(int(game_id))
+    
 
     text_for_mafia = (
-        f"🤵🏼 Mafiya a'zosi <a href='tg://user?id={mafia_id}'>{mafia_name}</a> - "
-        f"<a href='tg://user?id={target_id}'>{target_name}</a> uchun ovoz berdi"
+        f"🤵🏼 Mafiya a'zosi <a href='tg://user?id={mafia_id}'>{mafia_name}</a> - <a href='tg://user?id={target_id}'>{target_name}</a> uchun ovoz berdi"
     )
 
     for member_id in mafia_members:
         if member_id == mafia_id:
             continue
-        asyncio.create_task(
-            send_safe_message(
+
+        try:
+            await send_safe_message(
                 chat_id=member_id,
                 text=text_for_mafia,
                 parse_mode="HTML"
             )
-        )
-
-    asyncio.create_task(
-        callback.message.edit_text(
-            f"{ACTIONS.get('mafia_vote')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni tanladingiz",
-            parse_mode="HTML"
-        )
-    )
+        except Exception as e:
+            pass
+    
+    await callback.message.edit_text(text=f"{ACTIONS.get('mafia_vote')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni tanladingiz")
 
 
 @dp.callback_query(F.data.startswith("adv_"))
 async def adv_callback(callback: CallbackQuery):
     await callback.answer()
-
-    parts = callback.data.split("_")
-    target_raw = parts[1]
-    game_id = int(parts[2])
-    chat_id = int(parts[3])
-    day = parts[4]
+    await callback.message.edit_reply_markup(None)
+    target_id = callback.data.split("_")[1]
+    game_id = int(callback.data.split("_")[2])
+    chat_id = int(callback.data.split("_")[3])
+    day = callback.data.split("_")[4]
     adv_id = callback.from_user.id
-
-    game = games_state.get(game_id)
+    
+    game = games_state.get(int(game_id))
     if not game:
         return
-
-    if day != str(game['meta']['day']):
-        asyncio.create_task(
-            callback.message.edit_text(
-                f"{ACTIONS.get('adv_mask')}\n\nSiz kechikdingiz.",
-                parse_mode="HTML"
-            )
+    game_day = game['meta']['day']
+    if not day == str(game_day):
+        await callback.message.edit_text(text=f"{ACTIONS.get('adv_mask')}\n\nSiz kechikdingiz.", parse_mode="HTML")
+        return
+    
+    if not adv_id in game["alive"]:
+        return
+    mark_night_action_done(game, callback.from_user.id)
+    if target_id == "no":
+        # hech narsa qilmaslik
+        await callback.message.edit_text(
+            text=f"{ACTIONS.get('adv_mask')}\n\nSiz hech kimni ximoya qilmadingiz.",
+            parse_mode="HTML"
+        )
+        await send_safe_message(
+            chat_id=int(chat_id),
+            text="🚷 ⚖️ Advokat hech kimni ximoya qilmaslikni afzal ko'rdi."
         )
         return
-
-    if adv_id not in game["alive"]:
-        return
-
-    mark_night_action_done(game, adv_id)
-
-    asyncio.create_task(callback.message.edit_reply_markup(None))
-
-    if target_raw == "no":
-        asyncio.create_task(
-            callback.message.edit_text(
-                f"{ACTIONS.get('adv_mask')}\n\nSiz hech kimni ximoya qilmadingiz.",
-                parse_mode="HTML"
-            )
-        )
-        asyncio.create_task(
-            send_safe_message(
-                chat_id=chat_id,
-                text="🚷 ⚖️ Advokat hech kimni ximoya qilmaslikni afzal ko'rdi."
-            )
-        )
-        return
-
-    target_id = int(target_raw)
-
-    game["night_actions"]["advokat_target"] = target_id
+    # ✅ night action saqlash
+    game["night_actions"]["advokat_target"] = int(target_id)
     add_visit(game=game, visitor_id=adv_id, house_id=target_id, invisible=False)
-
-    asyncio.create_task(
-        send_safe_message(
-            chat_id=chat_id,
-            text="👨🏼‍💼 Advokat ximoya qiluvchi Mafiani tanladi",
-        )
+    
+    await send_safe_message(
+        chat_id=int(chat_id),
+        text=f"👨🏼‍💼 Advokat ximoya qiluvchi Mafiani tanladi",
     )
-
-    target_name = get_first_name_from_players(target_id)
+    
+    target_name = get_first_name_from_players(int(target_id))
     adv_name = get_first_name_from_players(adv_id)
-    mafia_members = get_mafia_members(game_id)
+    mafia_members = get_mafia_members(int(game_id))
+    
 
     text_for_mafia = (
-        f"👨🏼‍💼 Advokat {adv_name} tanlovi: "
-        f"<a href='tg://user?id={target_id}'>{target_name}</a>"
+        f"👨🏼‍💼 Advokat {adv_name} tanlovi: <a href='tg://user?id={target_id}'>{target_name}</a>"
     )
 
     for member_id in mafia_members:
         if member_id == adv_id:
             continue
-        asyncio.create_task(
-            send_safe_message(
+
+        try:
+            await send_safe_message(
                 chat_id=member_id,
                 text=text_for_mafia,
                 parse_mode="HTML"
             )
-        )
+        except Exception as e:
+            pass
+    
 
-    asyncio.create_task(
-        callback.message.edit_text(
-            f"{ACTIONS.get('adv_mask')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni tanladingiz",
-            parse_mode="HTML"
-        )
-    )
+    await callback.message.edit_text(text=f"{ACTIONS.get('adv_mask')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni tanladingiz")
 
 
 @dp.callback_query(F.data.startswith("spy_"))
 async def spy_callback(callback: CallbackQuery):
     await callback.answer()
-
-    parts = callback.data.split("_")
-    target_raw = parts[1]
-    game_id = int(parts[2])
-    chat_id = int(parts[3])
-    day = parts[4]
+    await callback.message.edit_reply_markup(None)
+    target_id = callback.data.split("_")[1]
+    game_id = callback.data.split("_")[2]
+    chat_id = callback.data.split("_")[3]
+    day = callback.data.split("_")[4]
     spy_id = callback.from_user.id
-
-    game = games_state.get(game_id)
+    
+    game = games_state.get(int(game_id))
     if not game:
         return
-
-    if day != str(game['meta']['day']):
-        asyncio.create_task(
-            callback.message.edit_text(
-                f"{ACTIONS.get('spy_check')}\n\nSiz kechikdingiz.",
-                parse_mode="HTML"
-            )
+    game_day = game['meta']['day']
+    if not day == str(game_day):
+        await callback.message.edit_text(text=f"{ACTIONS.get('spy_check')}\n\nSiz kechikdingiz.", parse_mode="HTML")
+        return
+    
+    if not spy_id in game["alive"]:
+        return
+    mark_night_action_done(game, callback.from_user.id)
+    if target_id == "no":
+        # hech narsa qilmaslik
+        await callback.message.edit_text(
+            text=f"{ACTIONS.get('spy_check')}\n\nSiz hech kimni tekshirmadingiz.",
+            parse_mode="HTML"
+        )
+        await send_safe_message(
+            chat_id=int(chat_id),
+            text="🚷 🦇 Ayg'oqchi hech kimni tekshirmaslikni afzal ko'rdi."
         )
         return
-
-    if spy_id not in game["alive"]:
-        return
-
-    mark_night_action_done(game, spy_id)
-
-    asyncio.create_task(callback.message.edit_reply_markup(None))
-
-    if target_raw == "no":
-        asyncio.create_task(
-            callback.message.edit_text(
-                f"{ACTIONS.get('spy_check')}\n\nSiz hech kimni tekshirmadingiz.",
-                parse_mode="HTML"
-            )
-        )
-        asyncio.create_task(
-            send_safe_message(
-                chat_id=chat_id,
-                text="🚷 🦇 Ayg'oqchi hech kimni tekshirmaslikni afzal ko'rdi."
-            )
-        )
-        return
-
-    target_id = int(target_raw)
-
-    game["night_actions"]["spy_target"] = target_id
+    
+    # ✅ night action saqlash
+    game["night_actions"]["spy_target"] = int(target_id)
     add_visit(game=game, visitor_id=spy_id, house_id=target_id, invisible=False)
-
-    asyncio.create_task(
-        send_safe_message(
-            chat_id=chat_id,
-            text="🦇 Ayg'oqchi o'z harakatini boshladi",
-        )
+    
+    await send_safe_message(
+        chat_id=int(chat_id),
+        text=f"🦇 Ayg'oqchi o'z harakatini boshladi",
     )
-
-    target_name = get_first_name_from_players(target_id)
+    
+    target_name = get_first_name_from_players(int(target_id))
     spy_name = get_first_name_from_players(spy_id)
-    mafia_members = get_mafia_members(game_id)
-
+    mafia_members = get_mafia_members(int(game_id))
     text_for_mafia = (
-        f"🦇 Ayg'oqchi {spy_name} tanlovi: "
-        f"<a href='tg://user?id={target_id}'>{target_name}</a>"
+        f"🦇 Ayg'oqchi {spy_name} tanlovi: <a href='tg://user?id={target_id}'>{target_name}</a>"
     )
-
     for member_id in mafia_members:
         if member_id == spy_id:
             continue
-        asyncio.create_task(
-            send_safe_message(
+
+        try:
+            await send_safe_message(
                 chat_id=member_id,
                 text=text_for_mafia,
                 parse_mode="HTML"
             )
-        )
+        except Exception as e:
+            pass
+    
+    
+    await callback.message.edit_text(text=f"{ACTIONS.get('spy_check')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni tanladingiz")
 
-    asyncio.create_task(
-        callback.message.edit_text(
-            f"{ACTIONS.get('spy_check')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni tanladingiz",
-            parse_mode="HTML"
-        )
-    )
 
 @dp.callback_query(F.data.startswith("lab_"))
 async def lab_callback(callback: CallbackQuery):
     await callback.answer()
-
-    parts = callback.data.split("_")
-    target_raw = parts[1]
-    game_id = int(parts[2])
-    chat_id = int(parts[3])
-    day = parts[4]
+    await callback.message.edit_reply_markup(None)
+    target_id = callback.data.split("_")[1]
+    game_id = int(callback.data.split("_")[2])
+    chat_id = int(callback.data.split("_")[3])
+    day = callback.data.split("_")[4]
+    
     lab_id = callback.from_user.id
-
-    game = games_state.get(game_id)
+    
+    game = games_state.get(int(game_id))
     if not game:
         return
-
-    if day != str(game['meta']['day']):
-        asyncio.create_task(
-            callback.message.edit_text(
-                f"{ACTIONS.get('lab_action')}\n\nSiz kechikdingiz.",
-                parse_mode="HTML"
-            )
-        )
+    game_day = game['meta']['day']
+    if not day == str(game_day):
+        await callback.message.edit_text(text=f"{ACTIONS.get('lab_action')}\n\nSiz kechikdingiz.", parse_mode="HTML")
         return
-
-    if lab_id not in game["alive"]:
+    
+    if not lab_id in game["alive"]:
         return
-
-    mark_night_action_done(game, lab_id)
-
-    asyncio.create_task(callback.message.edit_reply_markup(None))
-
-    if target_raw == "no":
-        asyncio.create_task(
-            callback.message.edit_text(
-                f"{ACTIONS.get('lab_action')}\n\nSiz hech kimga o'lim eleksirini bermadingiz.",
-                parse_mode="HTML"
-            )
-        )
-        asyncio.create_task(
-            send_safe_message(
-                chat_id=chat_id,
-                text="🚷 👨‍🔬 Labarant hech kimga o'lim eleksirini bermaslikni afzal ko'rdi."
-            )
-        )
-        return
-
-    target_id = int(target_raw)
-
-    game["night_actions"]["lab_target"] = target_id
-    add_visit(game=game, visitor_id=lab_id, house_id=target_id, invisible=False)
-
-    asyncio.create_task(
-        send_safe_message(
-            chat_id=chat_id,
-            text="👨‍🔬 Labarant o'lim eleksirini ishga soldi",
-        )
-    )
-
-    target_name = get_first_name_from_players(target_id)
-
-    asyncio.create_task(
-        callback.message.edit_text(
-            f"{ACTIONS.get('lab_action')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni tanladingiz",
+    mark_night_action_done(game, callback.from_user.id)
+    if target_id == "no":
+        # hech narsa qilmaslik
+        await callback.message.edit_text(
+            text=f"{ACTIONS.get('lab_action')}\n\nSiz hech kimga o'lim eleksirini bermadingiz.",
             parse_mode="HTML"
         )
+        await send_safe_message(
+            chat_id=int(chat_id),
+            text="🚷 👨‍🔬 Labarant hech kimga o'lim eleksirini bermaslikni afzal ko'rdi."
+        )
+        return
+    
+    # ✅ night action saqlash
+    game["night_actions"]["lab_target"] = int(target_id)
+    add_visit(game=game, visitor_id=lab_id, house_id=target_id, invisible=False)
+    
+    await send_safe_message(
+        chat_id=int(chat_id),
+        text=f"👨‍🔬 Labarant o'lim eleksirini ishga soldi",
     )
+    
+    target_name = get_first_name_from_players(int(target_id))
+    
+    await callback.message.edit_text(text=f"{ACTIONS.get('lab_action')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni tanladingiz")
+
 
 @dp.callback_query(F.data.startswith("arrow_"))
 async def arrow_callback(callback: CallbackQuery):
     await callback.answer()
-
-    parts = callback.data.split("_")
-    target_raw = parts[1]
-    game_id = int(parts[2])
-    chat_id = int(parts[3])
-    day = parts[4]
+    await callback.message.edit_reply_markup(None)
+    target_id = callback.data.split("_")[1]
+    game_id = callback.data.split("_")[2]
+    chat_id = callback.data.split("_")[3]
+    day = callback.data.split("_")[4]
+    
     arrow_id = callback.from_user.id
-
-    game = games_state.get(game_id)
+    
+    game = games_state.get(int(game_id))
     if not game:
         return
-
-    if day != str(game['meta']['day']):
-        asyncio.create_task(
-            callback.message.edit_text(
-                f"{ACTIONS.get('arrow_kill')}\n\nSiz kechikdingiz.",
-                parse_mode="HTML"
-            )
-        )
+    game_day = game['meta']['day']
+    if not day == str(game_day):
+        await callback.message.edit_text(text=f"{ACTIONS.get('arrow_kill')}\n\nSiz kechikdingiz.", parse_mode="HTML")
         return
-
-    if arrow_id not in game["alive"]:
+    
+    if not arrow_id in game["alive"]:
         return
-
-    mark_night_action_done(game, arrow_id)
-
-    asyncio.create_task(callback.message.edit_reply_markup(None))
-
-    if target_raw == "no":
-        asyncio.create_task(
-            callback.message.edit_text(
-                f"{ACTIONS.get('arrow_kill')}\n\nSiz hech kimni o'ldirmadingiz.",
-                parse_mode="HTML"
-            )
-        )
-        asyncio.create_task(
-            send_safe_message(
-                chat_id=chat_id,
-                text="🚷 🏹 Kamonchi hech kimni o'ldirmaslikni afzal ko'rdi."
-            )
-        )
-        return
-
-    target_id = int(target_raw)
-
-    game["night_actions"]["arrow_target"] = target_id
-    add_visit(game=game, visitor_id=arrow_id, house_id=target_id, invisible=True)
-
-    asyncio.create_task(
-        send_safe_message(
-            chat_id=chat_id,
-            text="🏹 Kamonchi o'z nishonini tanlab oldi",
-        )
-    )
-
-    target_name = get_first_name_from_players(target_id)
-
-    asyncio.create_task(
-        callback.message.edit_text(
-            f"{ACTIONS.get('arrow_kill')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni tanladingiz",
+    
+    mark_night_action_done(game, callback.from_user.id)
+    if target_id == "no":
+        # hech narsa qilmaslik
+        await callback.message.edit_text(
+            text=f"{ACTIONS.get('arrow_kill')}\n\nSiz hech kimni o'ldirmadingiz.",
             parse_mode="HTML"
         )
+        await send_safe_message(
+            chat_id=int(chat_id),
+            text="🚷 🏹 Kamonchi hech kimni o'ldirmaslikni afzal ko'rdi."
+        )   
+        return
+    # ✅ night action saqlash
+    game["night_actions"]["arrow_target"] = int(target_id)
+    add_visit(game=game, visitor_id=arrow_id, house_id=target_id, invisible=True)
+    
+    await send_safe_message(
+        chat_id=int(chat_id),
+        text=f"🏹 Kamonchi o'z nishonini tanlab oldi",
     )
+    
+    target_name = get_first_name_from_players(int(target_id))
+    
+    await callback.message.edit_text(text=f"{ACTIONS.get('arrow_kill')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni tanladingiz")
 
 
 @dp.callback_query(F.data.startswith("trap_"))
 async def trap_callback(callback: CallbackQuery):
     await callback.answer()
-
-    parts = callback.data.split("_")
-    target_raw = parts[1]
-    game_id = int(parts[2])
-    chat_id = int(parts[3])
-    day = parts[4]
+    await callback.message.edit_reply_markup(None)
+    target_id = callback.data.split("_")[1]
+    game_id = callback.data.split("_")[2]
+    chat_id = callback.data.split("_")[3]
+    day = callback.data.split("_")[4]
+    
     trap_id = callback.from_user.id
-
-    game = games_state.get(game_id)
+    
+    game = games_state.get(int(game_id))
     if not game:
         return
-
-    if day != str(game['meta']['day']):
-        asyncio.create_task(
-            callback.message.edit_text(
-                f"{ACTIONS.get('trap_action')}\n\nSiz kechikdingiz.",
-                parse_mode="HTML"
-            )
-        )
+    game_day = game['meta']['day']
+    if not day == str(game_day):
+        await callback.message.edit_text(text=f"{ACTIONS.get('trap_action')}\n\nSiz kechikdingiz.", parse_mode="HTML")
         return
-
-    if trap_id not in game["alive"]:
+    
+    if not trap_id in game["alive"]:
         return
-
-    mark_night_action_done(game, trap_id)
-
-    asyncio.create_task(callback.message.edit_reply_markup(None))
-
-    if target_raw == "no":
-        asyncio.create_task(
-            callback.message.edit_text(
-                f"{ACTIONS.get('trap_action')}\n\nSiz hech kimning uyiga mina joylashtirmadingiz.",
-                parse_mode="HTML"
-            )
-        )
-        asyncio.create_task(
-            send_safe_message(
-                chat_id=chat_id,
-                text="🚷 ☠️ Minior hech kimning uyiga mina joylashtirmaslikni afzal ko'rdi."
-            )
-        )
-        return
-
-    target_id = int(target_raw)
-
-    game["night_actions"]["trap_house"] = target_id
-
-    asyncio.create_task(
-        send_safe_message(
-            chat_id=chat_id,
-            text="☠️ Minior o'z 🧨 minasini joylashtirdi",
-        )
-    )
-
-    target_name = get_first_name_from_players(target_id)
-
-    asyncio.create_task(
-        callback.message.edit_text(
-            f"{ACTIONS.get('trap_action')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni tanladingiz",
+    mark_night_action_done(game, callback.from_user.id)
+    if target_id == "no":
+        # hech narsa qilmaslik
+        await callback.message.edit_text(
+            text=f"{ACTIONS.get('trap_action')}\n\nSiz hech kimning uyiga mina joylashtirmadingiz.",
             parse_mode="HTML"
         )
+        await send_safe_message(
+            chat_id=int(chat_id),
+            text="🚷 ☠️ Minior hech kimning uyiga mina joylashtirmaslikni afzal ko'rdi."
+        )
+        return
+    
+    # ✅ night action saqlash
+    game["night_actions"]["trap_house"] = int(target_id)
+    
+    await send_safe_message(
+        chat_id=int(chat_id),
+        text=f"☠️ Minior o'z 🧨 minasini joylashtirdi",
     )
+    
+    target_name = get_first_name_from_players(int(target_id))
+    
+    await callback.message.edit_text(text=f"{ACTIONS.get('trap_action')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni tanladingiz")
 
 
 @dp.callback_query(F.data.startswith("snyper_"))
 async def snyper_callback(callback: CallbackQuery):
     await callback.answer()
-
-    parts = callback.data.split("_")
-    target_raw = parts[1]
-    game_id = int(parts[2])
-    chat_id = int(parts[3])
-    day = parts[4]
+    await callback.message.edit_reply_markup(None)
+    target_id = callback.data.split("_")[1]
+    game_id = callback.data.split("_")[2]
+    chat_id = callback.data.split("_")[3]
+    day = callback.data.split("_")[4]
+    
     snyper_id = callback.from_user.id
-
-    game = games_state.get(game_id)
+    
+    game = games_state.get(int(game_id))
     if not game:
         return
-
-    if day != str(game['meta']['day']):
-        asyncio.create_task(
-            callback.message.edit_text(
-                f"{ACTIONS.get('snyper_kill')}\n\nSiz kechikdingiz.",
-                parse_mode="HTML"
-            )
-        )
+    game_day = game['meta']['day']
+    if not day == str(game_day):
+        await callback.message.edit_text(text=f"{ACTIONS.get('snyper_kill')}\n\nSiz kechikdingiz.", parse_mode="HTML")
         return
-
-    if snyper_id not in game["alive"]:
+    
+    if not snyper_id in game["alive"]:
         return
-
-    mark_night_action_done(game, snyper_id)
-
-    asyncio.create_task(callback.message.edit_reply_markup(None))
-
-    if target_raw == "no":
-        asyncio.create_task(
-            callback.message.edit_text(
-                f"{ACTIONS.get('snyper_kill')}\n\nSiz hech kimni o'ldirmadingiz.",
-                parse_mode="HTML"
-            )
-        )
-        asyncio.create_task(
-            send_safe_message(
-                chat_id=chat_id,
-                text="🚷 👨🏻‍🎤 Snayper hech kimni o'ldirmaslikni afzal ko'rdi."
-            )
-        )
-        return
-
-    target_id = int(target_raw)
-
-    game["night_actions"]["snyper_target"] = target_id
-    add_visit(game=game, visitor_id=snyper_id, house_id=target_id, invisible=True)
-
-    asyncio.create_task(
-        send_safe_message(
-            chat_id=chat_id,
-            text="👨🏻‍🎤 Snayper nishonini tanladi va tepkini bosdi",
-        )
-    )
-
-    target_name = get_first_name_from_players(target_id)
-
-    asyncio.create_task(
-        callback.message.edit_text(
-            f"{ACTIONS.get('snyper_kill')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni tanladingiz",
+    
+    mark_night_action_done(game, callback.from_user.id)
+    if target_id == "no":
+        # hech narsa qilmaslik
+        await callback.message.edit_text(
+            text=f"{ACTIONS.get('snyper_kill')}\n\nSiz hech kimni o'ldirmadingiz.",
             parse_mode="HTML"
         )
+        await send_safe_message(
+            chat_id=int(chat_id),
+            text="🚷 👨🏻‍🎤 Snayper hech kimni o'ldirmaslikni afzal ko'rdi."
+        )   
+        return
+    
+    # ✅ night action saqlash
+    game["night_actions"]["snyper_target"] = int(target_id)
+    add_visit(game=game, visitor_id=snyper_id, house_id=target_id, invisible=True)
+    
+    await send_safe_message(
+        chat_id=int(chat_id),
+        text=f"👨🏻‍🎤 Snayper nishonini tanladi va tepkini bosdi",
     )
+    
+    target_name = get_first_name_from_players(int(target_id))
+    
+    await callback.message.edit_text(text=f"{ACTIONS.get('snyper_kill')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni tanladingiz")
+
 
 
 @dp.callback_query(F.data.startswith("traitor_"))
-async def traitor_callback(callback: CallbackQuery):
+async def spy_callback(callback: CallbackQuery):
     await callback.answer()
-
-    parts = callback.data.split("_")
-    target_raw = parts[1]
-    game_id = int(parts[2])
-    chat_id = int(parts[3])
-    day = parts[4]
+    await callback.message.edit_reply_markup(None)
+    target_id = callback.data.split("_")[1]
+    game_id = callback.data.split("_")[2]
+    chat_id = callback.data.split("_")[3]
+    day = callback.data.split("_")[4]
+    
     traitor_id = callback.from_user.id
-
-    game = games_state.get(game_id)
+    game = games_state.get(int(game_id))
     if not game:
         return
-
-    if day != str(game['meta']['day']):
-        asyncio.create_task(
-            callback.message.edit_text(
-                f"{ACTIONS.get('traitor_choose')}\n\nSiz kechikdingiz.",
-                parse_mode="HTML"
-            )
-        )
+    game_day = game['meta']['day']
+    if not day == str(game_day):
+        await callback.message.edit_text(text=f"{ACTIONS.get('traitor_choose')}\n\nSiz kechikdingiz.", parse_mode="HTML")
         return
-
-    if traitor_id not in game["alive"]:
+    if not traitor_id in game["alive"]:
         return
-
-    mark_night_action_done(game, traitor_id)
-
-    asyncio.create_task(callback.message.edit_reply_markup(None))
-
-    if target_raw == "no":
-        asyncio.create_task(
-            callback.message.edit_text(
-                f"{ACTIONS.get('traitor_choose')}\n\nSiz hech kimning rolini o'zlashtirmadingiz.",
-                parse_mode="HTML"
-            )
-        )
-        asyncio.create_task(
-            send_safe_message(
-                chat_id=chat_id,
-                text="🚷 🦎 Sotqin hech kimning rolini o'zlashtirmaslikni afzal ko'rdi."
-            )
-        )
-        return
-
-    target_id = int(target_raw)
-
-    game["night_actions"]["traitor_target"] = target_id
-    add_visit(game=game, visitor_id=traitor_id, house_id=target_id, invisible=False)
-
-    asyncio.create_task(
-        send_safe_message(
-            chat_id=chat_id,
-            text="🦎 Sotqin kimningdir rolini o'zlashtirdi",
-        )
-    )
-
-    target_name = get_first_name_from_players(target_id)
-
-    asyncio.create_task(
-        callback.message.edit_text(
-            f"{ACTIONS.get('traitor_choose')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni tanladingiz",
+    
+    mark_night_action_done(game, callback.from_user.id)
+    if target_id == "no":
+        # hech narsa qilmaslik
+        await callback.message.edit_text(
+            text=f"{ACTIONS.get('traitor_choose')}\n\nSiz hech kimning rolini o'zlashtirmadingiz.",
             parse_mode="HTML"
         )
+        await send_safe_message(
+            chat_id=int(chat_id),
+            text="🚷 🦎 Sotqin hech kimning rolini o'zlashtirmaslikni afzal ko'rdi."
+        )
+        return
+    
+    # ✅ night action saqlash
+    game["night_actions"]["traitor_target"] = int(target_id)
+    add_visit(game=game, visitor_id=traitor_id, house_id=target_id, invisible=False)
+    await send_safe_message(
+        chat_id=int(chat_id),
+        text=f"🦎 Sotqin kimningdir rolini o'zlashtirdi",
     )
+    target_name = get_first_name_from_players(int(target_id))
+    await callback.message.edit_text(text=f"{ACTIONS.get('traitor_choose')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni tanladingiz")
+    
 
 
 @dp.callback_query(F.data.startswith("snowball_"))
 async def snowball_callback(callback: CallbackQuery):
     await callback.answer()
-
-    parts = callback.data.split("_")
-    target_raw = parts[1]
-    game_id = int(parts[2])
-    chat_id = int(parts[3])
-    day = parts[4]
+    await callback.message.edit_reply_markup(None)
+    target_id = callback.data.split("_")[1]
+    game_id = callback.data.split("_")[2]
+    chat_id = callback.data.split("_")[3]
+    day = callback.data.split("_")[4]
+    
     snowball_id = callback.from_user.id
-
-    game = games_state.get(game_id)
+    game = games_state.get(int(game_id))
     if not game:
         return
-
-    if day != str(game['meta']['day']):
-        asyncio.create_task(
-            callback.message.edit_text(
-                f"{ACTIONS.get('snowball_kill')}\n\nSiz kechikdingiz.",
-                parse_mode="HTML"
-            )
-        )
+    game_day = game['meta']['day']
+    if not day == str(game_day):
+        await callback.message.edit_text(text=f"{ACTIONS.get('snowball_kill')}\n\nSiz kechikdingiz.", parse_mode="HTML")
         return
-
-    if snowball_id not in game["alive"]:
+    if not snowball_id in game["alive"]:
         return
-
-    mark_night_action_done(game, snowball_id)
-
-    asyncio.create_task(callback.message.edit_reply_markup(None))
-
-    if target_raw == "no":
-        asyncio.create_task(
-            callback.message.edit_text(
-                f"{ACTIONS.get('snowball_kill')}\n\nSiz hech kimni qor bilan to'ldirmadingiz.",
-                parse_mode="HTML"
-            )
-        )
-        asyncio.create_task(
-            send_safe_message(
-                chat_id=chat_id,
-                text="🚷 ❄️ Qorbola hech kimni qor bilan to'ldirmaslikni afzal ko'rdi."
-            )
-        )
-        return
-
-    target_id = int(target_raw)
-
-    game["night_actions"]["snowball_target"] = target_id
-    add_visit(game=game, visitor_id=snowball_id, house_id=target_id, invisible=False)
-
-    asyncio.create_task(
-        send_safe_message(
-            chat_id=chat_id,
-            text="❄️ Qorbola kimnidir qor bilan to'ldirdi",
-        )
-    )
-
-    target_name = get_first_name_from_players(target_id)
-
-    asyncio.create_task(
-        callback.message.edit_text(
-            f"{ACTIONS.get('snowball_kill')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni tanladingiz",
+    
+    mark_night_action_done(game, callback.from_user.id)
+    if target_id == "no":
+        # hech narsa qilmaslik
+        await callback.message.edit_text(
+            text=f"{ACTIONS.get('snowball_kill')}\n\nSiz hech kimni qor bilan to'ldirmadingiz.",
             parse_mode="HTML"
         )
+        await send_safe_message(
+            chat_id=int(chat_id),
+            text="🚷 ❄️ Qorbola hech kimni qor bilan to'ldirmaslikni afzal ko'rdi."
+        )
+        return
+    
+    # ✅ night action saqlash
+    game["night_actions"]["snowball_target"] = int(target_id)
+    add_visit(game=game, visitor_id=snowball_id, house_id=target_id, invisible=False)
+    await send_safe_message(
+        chat_id=int(chat_id),
+        text=f"❄️ Qorbola kimnidir qor bilan to'ldirdi",
     )
+    target_name = get_first_name_from_players(int(target_id))
+    await callback.message.edit_text(text=f"{ACTIONS.get('snowball_kill')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni tanladingiz")
 
 
 @dp.callback_query(F.data.startswith("pirate_"))
 async def pirate_callback(callback: CallbackQuery):
     await callback.answer()
-
-    parts = callback.data.split("_")
-    target_raw = parts[1]
-    game_id = int(parts[2])
-    chat_id = int(parts[3])
-    day = parts[4]
+    await callback.message.edit_reply_markup(None)
+    target_id = callback.data.split("_")[1]
+    game_id = callback.data.split("_")[2]
+    chat_id = callback.data.split("_")[3]
     pirate_id = callback.from_user.id
-
-    game = games_state.get(game_id)
+    day = callback.data.split("_")[4]
+    game = games_state.get(int(game_id))
     if not game:
         return
-
-    if day != str(game['meta']['day']):
-        asyncio.create_task(
-            callback.message.edit_text(
-                f"{ACTIONS.get('pirate_steal')}\n\nSiz kechikdingiz.",
-                parse_mode="HTML"
-            )
-        )
+    game_day = game['meta']['day']
+    if not day == str(game_day):
+        await callback.message.edit_text(text=f"{ACTIONS.get('pirate_steal')}\n\nSiz kechikdingiz.", parse_mode="HTML")
         return
-
-    if pirate_id not in game["alive"]:
+    if not pirate_id in game["alive"]:
         return
-
-    mark_night_action_done(game, pirate_id)
-
-    asyncio.create_task(callback.message.edit_reply_markup(None))
-
-    if target_raw == "no":
-        asyncio.create_task(
-            callback.message.edit_text(
-                f"{ACTIONS.get('pirate_steal')}\n\nSiz hech kimni o'g'irlamadingiz.",
-                parse_mode="HTML"
-            )
-        )
-        asyncio.create_task(
-            send_safe_message(
-                chat_id=chat_id,
-                text="🚷 👺 Qaroqchi hech kimni o'g'irlashni afzal ko'rdi."
-            )
-        )
-        return
-
-    target_id = int(target_raw)
-
-    game["night_actions"]["pirate"]['target_id'] = target_id
-    game["night_actions"]["pirate"]['pirate_id'] = pirate_id
-    add_visit(game=game, visitor_id=pirate_id, house_id=target_id, invisible=False)
-
-    asyncio.create_task(
-        send_safe_message(
-            chat_id=target_id,
-            text="👺 Qaroqchi sizning narsalaringizni o'g'irlash uchun keldi\nUnga 10💶 pul berasizmi!!!",
-            reply_markup=pirate_steal_inline_btn(
-                pirate_id=pirate_id,
-                game_id=game_id,
-                day=day
-            )
-        )
-    )
-
-    asyncio.create_task(
-        send_safe_message(
-            chat_id=chat_id,
-            text="👺 Qaroqchi kimnidir tunash uchun ovga chiqdi...",
-        )
-    )
-
-    target_name = get_first_name_from_players(target_id)
-
-    asyncio.create_task(
-        callback.message.edit_text(
-            f"{ACTIONS.get('pirate_steal')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni tanladingiz",
-            parse_mode="HTML"
-        )
-    )
-async def process_pirate_payment(callback, target_id, pirate_id, game):
-    target_player = User.objects.filter(telegram_id=target_id).first()
-    if not target_player:
-        target_player = User.objects.create(
-            telegram_id=target_id,
-            lang='uz',
-            first_name=callback.from_user.first_name,
-            username=callback.from_user.username
-        )
-
-    if target_player.coin < 10:
-        game['night_actions']['pirate']['result'] = "no_money"
-
+    
+    mark_night_action_done(game, callback.from_user.id)
+    if target_id == "no":
+        # hech narsa qilmaslik
         await callback.message.edit_text(
-            "👺 Sizda Qaroqchiga berish uchun 10💶 pulingiz yetarli emas va u endi sizni o'ldirishi mumkin!!!"
+            text=f"{ACTIONS.get('pirate_steal')}\n\nSiz hech kimni o'g'irlamangiz.",
+            parse_mode="HTML"
         )
         await send_safe_message(
-            chat_id=pirate_id,
-            text=f"<a href='tg://user?id={target_id}'>{get_first_name_from_players(target_id)}</a> sizga 10💶 berish uchun puli yetarli emas!",
-            parse_mode="HTML"
+            chat_id=int(chat_id),
+            text="🚷 👺 Qaroqchi hech kimni o'g'irlashni afzal ko'rdi."
         )
         return
+    
+    # ✅ night action saqlash
+    game["night_actions"]["pirate"]['target_id'] = int(target_id)
+    game["night_actions"]["pirate"]['pirate_id'] = int(pirate_id)
+    add_visit(game=game, visitor_id=pirate_id, house_id=target_id, invisible=False)
 
-    target_player.coin -= 10
-    target_player.save()
-
-    pirate_player = User.objects.filter(telegram_id=pirate_id).first()
-    pirate_player.coin += 10
-    pirate_player.save()
-
-    game['night_actions']['pirate']['result'] = "success"
-
-    await callback.message.edit_text("👺 Qaroqchi sizdan 10💶 pul so'radi va siz berdingiz")
+    await send_safe_message(
+        chat_id=int(target_id),
+        text=f"👺 Qaroqchi sizning narsalaringizni o'g'irlash uchun keldi\nUnga 10💶 pul berasizmi!!!",
+        reply_markup=pirate_steal_inline_btn(pirate_id=pirate_id,game_id=int(game_id),day=day)
+    )
+    await send_safe_message(
+        chat_id=int(chat_id),
+        text=f"👺 Qaroqchi kimnidir tunash uchun ovga chiqdi...",
+    )
+    target_name = get_first_name_from_players(int(target_id))
+    await callback.message.edit_text(text=f"{ACTIONS.get('pirate_steal')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni tanladingiz")
 
 
 @dp.callback_query(F.data.startswith("pirpay_"))
 async def pirpay_callback(callback: CallbackQuery):
     await callback.answer()
-
+    await callback.message.edit_reply_markup(None)
     parts = callback.data.split("_")
-    confirmation = parts[1]
+    confirmation = str(parts[1])
     pirate_id = int(parts[2])
     game_id = int(parts[3])
     day = parts[4]
-
-    game = games_state.get(game_id)
+    game = games_state.get(int(game_id))
     if not game:
         return
-
-    if day != str(game['meta']['day']):
-        asyncio.create_task(
-            callback.message.edit_text("👺 Siz kechikdingiz.", parse_mode="HTML")
-        )
+    game_day = game['meta']['day']
+    if not day == str(game_day):
+        await callback.message.edit_text(text="👺 Siz kechikdingiz.", parse_mode="HTML")
         return
-
-    if pirate_id not in game["alive"]:
+    if not pirate_id in game["alive"]:
         return
-
     target_id = callback.from_user.id
-    if target_id not in game["alive"]:
+    if not target_id in game["alive"]:
         return
-
-    target_name = get_first_name_from_players(target_id)
-
-    asyncio.create_task(callback.message.edit_reply_markup(None))
-
+    target_name = get_first_name_from_players(int(target_id))
     if confirmation == "no":
+        await callback.message.edit_text(text="👺 Siz Qaroqchiga pul bermadingiz va u endi sizni o'ldirishi mumkin!!!")
+        await send_safe_message(
+            chat_id=pirate_id,
+            text=f"<a href='tg://user?id={target_id}'>{target_name}</a> sizga 10💶 berishdan bosh tortdi!"
+        )
         game['night_actions']['pirate']['result'] = "no"
-
-        asyncio.create_task(
-            callback.message.edit_text(
-                "👺 Siz Qaroqchiga pul bermadingiz va u endi sizni o'ldirishi mumkin!!!"
-            )
-        )
-        asyncio.create_task(
-            send_safe_message(
-                chat_id=pirate_id,
-                text=f"<a href='tg://user?id={target_id}'>{target_name}</a> sizga 10💶 berishdan bosh tortdi!",
-                parse_mode="HTML"
-            )
-        )
         return
-
-    asyncio.create_task(process_pirate_payment(callback, target_id, pirate_id, game))
+    target_player = User.objects.filter(telegram_id=int(target_id)).first()
+    if not target_player:
+        target_player = User.objects.create(
+            telegram_id=target_id,
+            lang ='uz',
+            first_name=callback.from_user.first_name,
+            username=callback.from_user.username
+        )
+    if target_player.coin < 10:
+        await callback.message.edit_text(text="👺 Sizda Qaroqchiga berish uchun 10💶 pulingiz yetarli emas va u endi sizni o'ldirishi mumkin!!!")
+        await send_safe_message(
+            chat_id=pirate_id,
+            text=f"<a href='tg://user?id={target_id}'>{target_name}</a> sizga 10💶 berish uchun puli yetarli emas!"
+        )
+        game['night_actions']['pirate']['result'] = "no_money"
+        return
+    target_player.coin -= 10
+    target_player.save()
+    pirate_player = User.objects.filter(telegram_id=int(pirate_id)).first()
+    pirate_player.coin += 10
+    pirate_player.save()
+    game['night_actions']['pirate']['result'] = "success"
+    await callback.message.edit_text(text=f"👺 Qaroqchi sizdan 10💶 pul so'radi va siz berdingiz")
+    
 
 @dp.callback_query(F.data.startswith("professor_"))
 async def professor_callback(callback: CallbackQuery):
     await callback.answer()
-
-    parts = callback.data.split("_")
-    target_raw = parts[1]
-    game_id = int(parts[2])
-    chat_id = int(parts[3])
-    day = parts[4]
+    await callback.message.edit_reply_markup(None)
+    target_id = callback.data.split("_")[1]
+    game_id = int(callback.data.split("_")[2])
+    chat_id = int(callback.data.split("_")[3])
+    day = callback.data.split("_")[4]
+    
     professor_id = callback.from_user.id
-
-    game = games_state.get(game_id)
+    
+    game = games_state.get(int(game_id))
     if not game:
         return
-
-    if day != str(game['meta']['day']):
-        asyncio.create_task(
-            callback.message.edit_text(
-                f"{ACTIONS.get('professor_choose')}\n\nSiz kechikdingiz.",
-                parse_mode="HTML"
-            )
-        )
+    game_day = game['meta']['day']
+    if not day == str(game_day):
+        await callback.message.edit_text(text=f"{ACTIONS.get('professor_choose')}\n\nSiz kechikdingiz.", parse_mode="HTML")
         return
-
-    if professor_id not in game["alive"]:
+    
+    if not professor_id in game["alive"]:
         return
-
-    mark_night_action_done(game, professor_id)
-
-    asyncio.create_task(callback.message.edit_reply_markup(None))
-
-    if target_raw == "no":
-        asyncio.create_task(
-            callback.message.edit_text(
-                f"{ACTIONS.get('professor_choose')}\n\nSiz hech kimni tanlamadingiz.",
-                parse_mode="HTML"
-            )
-        )
-        asyncio.create_task(
-            send_safe_message(
-                chat_id=chat_id,
-                text="🚷 🎩 Professor hech kimga quti bermaslikni afzal ko'rdi."
-            )
-        )
-        return
-
-    target_id = int(target_raw)
-
-    game["night_actions"]["professor"]['target_id'] = target_id
-    game["night_actions"]["professor"]['chosen'] = "die"
-    add_visit(game=game, visitor_id=professor_id, house_id=target_id, invisible=False)
-
-    asyncio.create_task(
-        send_safe_message(
-            chat_id=chat_id,
-            text="🎩 Professor manzilini aniqlab yo‘lga otlandi...",
-        )
-    )
-
-    asyncio.create_task(
-        send_safe_message(
-            chat_id=target_id,
-            text="🎩 Professor sizga 3 ta quticha bilan keldi!",
-            reply_markup=professor_gift_inline_btn(
-                game_id=game_id,
-                day=day,
-                professor_id=professor_id,
-                chat_id=chat_id
-            )
-        )
-    )
-
-    target_name = get_first_name_from_players(target_id)
-
-    asyncio.create_task(
-        callback.message.edit_text(
-            f"{ACTIONS.get('professor_choose')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni tanladingiz",
+    mark_night_action_done(game, callback.from_user.id)
+    if target_id == "no":
+        # hech narsa qilmaslik
+        await callback.message.edit_text(
+            text=f"{ACTIONS.get('professor_choose')}\n\nSiz hech kimni tanlamadingiz.",
             parse_mode="HTML"
         )
-    )
-async def process_prof_hero_option(prof_id, game_id, chat_id, day):
-    user = User.objects.filter(telegram_id=prof_id).first()
-    if user and user.is_hero:
         await send_safe_message(
-            chat_id=prof_id,
-            text="🥷 O'z tanlovingizni qiling",
-            reply_markup=use_hero_inline_btn(
-                game_id=game_id,
-                chat_id=chat_id,
-                day=day
-            )
+            chat_id=int(chat_id),
+            text="🚷 🎩 Professor hech kimga quti bermaslikni afzal ko'rdi."
         )
+        return
+    
+    # ✅ night action saqlash
+    game["night_actions"]["professor"]['target_id'] = int(target_id)
+    game["night_actions"]["professor"]['chosen'] = "die"
+    add_visit(game=game, visitor_id=professor_id, house_id=target_id, invisible=False)
+    
+    await send_safe_message(
+        chat_id=int(chat_id),
+        text=f"🎩 Professor manzilini aniqlab yo‘lga otlandi...",
+    )
+    
+    target_name = get_first_name_from_players(int(target_id))
+    await send_safe_message(
+        chat_id=int(target_id),
+        text=f"🎩 Professor sizga 3 ta quticha bilan keldi!",
+        reply_markup=professor_gift_inline_btn(game_id=int(game_id),day=day,professor_id=professor_id,chat_id=chat_id)
+    )
+    
+    await callback.message.edit_text(text=f"{ACTIONS.get('professor_choose')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni tanladingiz")
 
 
 @dp.callback_query(F.data.startswith("prof_"))
 async def prof_callback(callback: CallbackQuery):
     await callback.answer()
-
+    await callback.message.edit_reply_markup(None)
     parts = callback.data.split("_")
-    choose = parts[1]
+    choose = str(parts[1])
     game_id = int(parts[2])
     day = parts[3]
     professor_id = int(parts[4])
     chat_id = int(parts[5])
     prof_id = callback.from_user.id
-
-    game = games_state.get(game_id)
+    game = games_state.get(int(game_id))
     if not game:
         return
-
-    if day != str(game['meta']['day']):
-        asyncio.create_task(
-            callback.message.edit_text("🎩 Siz kechikdingiz.", parse_mode="HTML")
-        )
+    game_day = game['meta']['day']
+    if not day == str(game_day):
+        await callback.message.edit_text(text="🎩 Siz kechikdingiz.", parse_mode="HTML")
         return
-
-    if prof_id not in game["alive"]:
+    if not prof_id in game["alive"]:
         return
-
-    asyncio.create_task(callback.message.edit_reply_markup(None))
-
     if choose == "die":
         reward = "⚰️ O'lim"
         game["night_actions"]["professor"]['chosen'] = "die"
-
     elif choose == "empty":
         reward = "🥡 Bo'sh quti"
         game["night_actions"]["professor"]['chosen'] = "empty"
-
+        
     else:
         reward = "🥷 Geroydan foydalanish"
+        user = User.objects.filter(telegram_id=int(prof_id)).first()
+        if user and user.is_hero:
+             await send_safe_message(
+                chat_id=prof_id,
+                text="🥷 O'z tanlovingizni qiling",
+                reply_markup=use_hero_inline_btn(
+                    game_id=game_id,
+                    chat_id=chat_id,
+                    day=day
+                )
+            )
+            
         game["night_actions"]["professor"]['chosen'] = "hero"
-        asyncio.create_task(process_prof_hero_option(prof_id, game_id, chat_id, day))
-
-    mark_night_action_done(game, prof_id)
-
-    asyncio.create_task(
-        callback.message.edit_text(
-            f"🎩 Siz tanlagan professor qutisida {reward} bor edi!"
-        )
-    )
-
-    asyncio.create_task(
-        send_safe_message(
-            chat_id=professor_id,
-            text=f"<a href='tg://user?id={prof_id}'>{get_first_name_from_players(prof_id)}</a> siz bergan qutidan {reward} ni oldi!",
-            parse_mode="HTML"
-        )
+    
+    mark_night_action_done(game, callback.from_user.id)
+    
+    await callback.message.edit_text(text=f"🎩 Siz tanlagan professor qutisida {reward} bor edi!")
+    await send_safe_message(
+        chat_id=professor_id,
+        text=f"<a href='tg://user?id={prof_id}'>{get_first_name_from_players(prof_id)}</a> siz bergan qutidan {reward} ni oldi!",
     )
 
 @dp.callback_query(F.data.startswith("hang_"))
 async def hang_callback(callback: CallbackQuery):
     await callback.answer()
-
-    parts = callback.data.split("_")
-    target_raw = parts[1]
-    game_id = int(parts[2])
-    chat_id = int(parts[3])
-    day = parts[4]
+    await callback.message.edit_reply_markup(None)
+    target_id = callback.data.split("_")[1]
+    game_id = callback.data.split("_")[2]
+    chat_id = callback.data.split("_")[3]
+    day = callback.data.split("_")[4]
     shooter_id = callback.from_user.id
     shooter_name = callback.from_user.first_name
-
-    game = games_state.get(game_id)
+    game = games_state.get(int(game_id))
     if not game:
         return
-
-    if day != str(game['meta']['day']):
-        asyncio.create_task(
-            callback.message.edit_text(
-                "Aybdorlarni izlash vaqti keldi!\nKimni osishni xohlaysiz?\n\nSiz kechikdingiz.",
-                parse_mode="HTML"
-            )
-        )
+    game_day = game['meta']['day']
+    if not day == str(game_day):
+        await callback.message.edit_text(text=f"Aybdorlarni izlash vaqti keldi!\nKimni osishni xohlaysiz?\n\nSiz kechikdingiz.", parse_mode="HTML")
         return
-
-    asyncio.create_task(callback.message.edit_reply_markup(None))
-
-    if target_raw == "no":
-        game["day_actions"]['votes'].append("no_lynch")
-
-        asyncio.create_task(
-            callback.message.edit_text(
-                "Aybdorlarni izlash vaqti keldi!\nKimni osishni xohlaysiz?\n\nSiz hech kimni osmadingiz."
-            )
-        )
-        asyncio.create_task(
-            send_safe_message(
-                chat_id=chat_id,
-                text=f"🚷 <a href='tg://user?id={shooter_id}'>{shooter_name}</a> hech kimni osmaslikni taklif qildi",
-                parse_mode="HTML"
-            )
-        )
-        return
-
-    target_id = int(target_raw)
-
-    game["day_actions"]['votes'].append(target_id)
-    mark_hang_done(game_id, shooter_id)
-
-    user_map = game.get("users_map", {})
-    user = user_map.get(target_id, {})
-    target_name = user.get("first_name", "Player")
-
-    asyncio.create_task(
-        callback.message.edit_text(
-            f"Aybdorlarni izlash vaqti keldi!\nKimni osishni xohlaysiz?\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni tanladingiz",
-            parse_mode="HTML"
-        )
-    )
-
-    asyncio.create_task(
-        send_safe_message(
+    if target_id == "no":
+        await callback.message.edit_text(text=f"Aybdorlarni izlash vaqti keldi!\nKimni osishni xohlaysiz?\n\nSiz hech kimni osmadingiz.")
+        await send_safe_message(
             chat_id=chat_id,
-            text=f"<a href='tg://user?id={shooter_id}'>{shooter_name}</a> -> <a href='tg://user?id={target_id}'>{target_name}</a> ga ovoz berdi",
-            parse_mode="HTML"
+            text=f"🚷 <a href='tg://user?id={shooter_id}'>{shooter_name}</a> hech kimni osmaslikni taklif qildi"
         )
+        game["day_actions"]['votes'].append("no_lynch")
+        return
+    
+    game["day_actions"]['votes'].append(int(target_id))
+    mark_hang_done(int(game_id), callback.from_user.id)
+    
+    user_map = game.get("users_map",{})
+    user = user_map.get(int(target_id))
+    await callback.message.edit_text(text=f"Aybdorlarni izlash vaqti keldi!\nKimni osishni xohlaysiz?\n\nSiz <a href='tg://user?id={target_id}'>{user.get('first_name')}</a> ni tanladingiz")
+    await send_safe_message(
+        chat_id=chat_id,
+        text=f"<a href='tg://user?id={shooter_id}'>{shooter_name}</a> -> <a href='tg://user?id={target_id}'>{user.get('first_name')}</a> ga ovoz berdi"
     )
 
+        
 @dp.callback_query(F.data.startswith("con_"))
 async def confirm_callback(callback: CallbackQuery):
     parts = callback.data.split("_")
-    confirmation = parts[1]
+    confirmation = str(parts[1])
     target_id = int(parts[2])
     game_id = int(parts[3])
     chat_id = int(parts[4])
     voter_id = callback.from_user.id
-
-    game = games_state.get(game_id)
+    game = games_state.get(int(game_id))
     if not game:
         return
-
-    if voter_id not in game["alive"]:
+    if not voter_id in game["alive"]:
         if voter_id in game["dead"]:
             await callback.answer(text="❌ O'liklar ovoz bera olmaydi!")
             return
         if voter_id not in game["players"]:
             await callback.answer(text="❌ Siz ushbu o'yinda ishtirok etmayapsiz!")
         return
-
     if target_id == voter_id:
         await callback.answer(text="❌ O'zingizga ovoz bera olmaysiz!")
         return
-
     if voter_id == game["night_actions"]["lover_block_target"]:
         await callback.answer(text="❌ Sizni sevgilingiz kutmoqda, ovoz bera olmaysiz!")
         return
-
-    if target_id not in game["alive"]:
+    
+    if not target_id in game["alive"]:
         return
-
     if confirmation == "yes":
         if voter_id not in game["day_actions"]["hang_yes"]:
             game["day_actions"]["hang_yes"].append(voter_id)
         else:
             game["day_actions"]["hang_yes"].remove(voter_id)
-
         if voter_id in game["day_actions"]["hang_no"]:
             game["day_actions"]["hang_no"].remove(voter_id)
-
+        
     else:
         if voter_id not in game["day_actions"]["hang_no"]:
             game["day_actions"]["hang_no"].append(voter_id)
         else:
             game["day_actions"]["hang_no"].remove(voter_id)
-
         if voter_id in game["day_actions"]["hang_yes"]:
             game["day_actions"]["hang_yes"].remove(voter_id)
-
-    mark_confirm_done(game_id, voter_id)
-
+    
+    mark_confirm_done(int(game_id), voter_id)
+    
+    
     await callback.answer(text="👍 Ovozingiz qabul qilindi.")
-
     yes = len(game["day_actions"]["hang_yes"])
     no = len(game["day_actions"]["hang_no"])
-
-    asyncio.create_task(
-        update_hang_votes(
-            voter_id=target_id,
-            game_id=game_id,
-            chat_id=chat_id,
-            yes=yes,
-            no=no
-        )
-    )
-
-hang_update_locks = {}
-
-
-async def update_hang_votes(voter_id, game_id: int, chat_id: int, yes: int, no: int):
-    game = games_state.get(game_id)
+    
+    await update_hang_votes(voter_id=target_id,game_id=int(game_id),chat_id=chat_id,yes=yes,no=no)
+    
+    
+async def update_hang_votes(voter_id,game_id: int, chat_id: int, yes: int, no: int):
+    game = games_state.get(int(game_id))
     if not game:
         return
-
-    msg_id = game['day_actions'].get('hang_confirm_msg_id')
-    if not msg_id:
-        return
-
-    key = (game_id, msg_id)
-
-    # Agar update allaqachon ketayotgan bo‘lsa — skip
-    if hang_update_locks.get(key):
-        return
-
-    hang_update_locks[key] = True
-
+    msg_id = game['day_actions']['hang_confirm_msg_id']
     try:
-        await asyncio.sleep(0.3)  # kichik debounce (spamni yutadi)
-
         await bot.edit_message_reply_markup(
-            chat_id=chat_id,
-            message_id=msg_id,
-            reply_markup=confirm_hang_inline_btn(
-                voted_user_id=voter_id,
-                game_id=game_id,
-                chat_id=chat_id,
-                yes=yes,
-                no=no
-            )
-        )
-    except Exception:
+        chat_id=chat_id,
+        message_id=msg_id,
+        reply_markup=confirm_hang_inline_btn(voted_user_id=voter_id,game_id=int(game_id),chat_id=chat_id,yes=yes,no=no)
+    )
+    except Exception as e:
         pass
-    finally:
-        hang_update_locks.pop(key, None)
-
-
+    
 @dp.pre_checkout_query()
 async def pre_checkout(pre_checkout_query: PreCheckoutQuery):
     await pre_checkout_query.answer(ok=True)
