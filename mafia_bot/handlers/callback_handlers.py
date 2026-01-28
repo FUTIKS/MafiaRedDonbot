@@ -365,7 +365,69 @@ async def roles_specific_callback(callback: CallbackQuery):
         await callback.answer(text=DESCRIPTIONS[role_name], show_alert=True)
 
 
+@dp.callback_query(F.data.startswith("doc_"))
+async def doc_heal_callback(callback: CallbackQuery):
+    await callback.answer()
+    await callback.message.edit_reply_markup(None)
 
+    parts = callback.data.split("_")    
+    target_id = parts[1]  
+    chat_id = int(parts[3])
+    day = parts[4]
+    doctor_id = callback.from_user.id
+
+    game = games_state.get(int(parts[2]))
+    if not game:
+        return
+    game_day = game['meta']['day']
+    if not day == str(game_day):
+        await callback.message.edit_text(text=f"{ACTIONS.get('doc_heal')}\n\nSiz kechikdingiz.", parse_mode="HTML")
+        return
+    if not doctor_id in game["alive"]:
+        return
+    
+    mark_night_action_done(game, callback.from_user.id)
+    if target_id == "no":
+        # hech narsa qilmaslik
+        await callback.message.edit_text(
+            text=f"{ACTIONS.get('doc_heal')}\n\nSiz hech kimni davolamadingiz.",
+            parse_mode="HTML"
+        )
+        try:
+            await send_safe_message(
+            chat_id=chat_id,
+            text="🚷 👨🏼‍⚕️ Shifokor hech qayoqqa bormaslikni afzal ko'rdi."
+        )
+        except:
+            pass
+        return
+    
+    target_id = int(target_id)
+    # doc o'zini 1 martadan ko'p heal qila olmaydi
+    if target_id == doctor_id:
+        used_self = game["limits"]["doc_self_heal_used"]
+        if doctor_id in used_self:
+            return
+        used_self.add(doctor_id)
+
+    # ✅ night action saqlash
+    game["night_actions"]["doc_target"] = target_id
+    add_visit(game=game, visitor_id=doctor_id, house_id=target_id, invisible=False)
+
+
+    # username olish (players object bo'lsa)
+    target_name = get_first_name_from_players(target_id)
+
+    text = f"{ACTIONS.get('doc_heal')}\n\nSiz <a href='tg://user?id={target_id}'>{target_name}</a> ni davoladingiz."
+
+    await callback.message.edit_text(text=text, parse_mode="HTML")
+    try:
+        await send_safe_message(
+            chat_id=chat_id,
+            text="👨🏼‍⚕️ Shifokor tungi navbatchilikka ketdi..."
+        )
+    except:
+        pass
     
 
 @dp.callback_query(F.data.startswith("daydi_"))
