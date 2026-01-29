@@ -245,7 +245,7 @@ async def buy_callback(callback: CallbackQuery):
                 parse_mode="HTML",
                 reply_markup=cart_inline_btn()
             )
-    elif thing_to_buy == "active_role":
+    elif thing_to_buy == "activerole":
         await callback.message.edit_text(
             text="🎭 Rol sotib olish uchun quyidagi ro'llardan birini tanlang:",
             reply_markup=role_shop_inline_keyboard()
@@ -1426,6 +1426,7 @@ async def pirate_callback(callback: CallbackQuery):
     # ✅ night action saqlash
     game["night_actions"]["pirate"]['target_id'] = int(target_id)
     game["night_actions"]["pirate"]['pirate_id'] = int(pirate_id)
+    game["night_actions"]["pirate"]['result'] = "no"
     add_visit(game=game, visitor_id=pirate_id, house_id=target_id, invisible=False)
 
     await send_safe_message(
@@ -3419,7 +3420,7 @@ async def hero_callback(callback: CallbackQuery):
 
 
     if hero_type == "attack":
-        if role in ["sniper", "commissar", "don"]:
+        if role in ["snyper", "commissar", "don"]:
             await callback.message.edit_text(
                 f"{ACTIONS['hero']}",
                 reply_markup=action_inline_btn(action="day_attack", own_id=hero_id, players=alive_users_qs, game_id=game_id, chat_id=chat_id, day=current_day),
