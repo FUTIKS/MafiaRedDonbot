@@ -949,7 +949,6 @@ async def mafia_callback(callback: CallbackQuery):
         return
     # ✅ night action saqlash
     game["night_actions"]["mafia_vote"].append(int(target_id))
-    add_visit(game=game, visitor_id=mafia_id, house_id=target_id, invisible=False)
     
     
     target_name = get_first_name_from_players(int(target_id))

@@ -292,7 +292,7 @@ async def gsend_command(message: Message) -> None:
     
 
 
-@dp.message(Command("send"), F.chat.type.in_({"group", "supergroup"}), StateFilter(None))
+@dp.message(Command("send"), F.chat.type.in_({"group", "supergroup","channel"}), StateFilter(None))
 async def money_command(message: Message) -> None:
     await message.delete()
     if not message.reply_to_message or not message.reply_to_message.from_user:
