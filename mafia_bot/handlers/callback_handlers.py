@@ -3280,19 +3280,24 @@ async def process_broadcast_message(message: Message, state: FSMContext) -> None
     users = User.objects.all()
     success_count = 0
     fail_count = 0
+    try:
+   
+        for user in users:
+            try:
+                await send_safe_message(
+                    chat_id=user.telegram_id,
+                    text=f"📢 Botdan umumiy xabar:\n\n{text}"
+                )
+                success_count += 1
+            except Exception:
+                fail_count += 1
 
-    for user in users:
-        try:
-            await send_safe_message(
-                chat_id=user.telegram_id,
-                text=f"📢 Botdan umumiy xabar:\n\n{text}"
-            )
-            success_count += 1
-        except Exception:
-            fail_count += 1
-
-    await message.answer(f"📢 Xabar yuborildi.\nMuvaffaqiyatli: {success_count}\nMuvaffaqiyatsiz: {fail_count}",reply_markup=admin_inline_btn())
-    await state.clear()
+    except Exception as e:
+        await message.answer(f"❗️ Xatolik yuz berdi: {str(e)}")
+        return
+    finally:
+        await message.answer(f"📢 Xabar yuborildi.\nMuvaffaqiyatli: {success_count}\nMuvaffaqiyatsiz: {fail_count}",reply_markup=admin_inline_btn())
+        await state.clear()
 
 
 @dp.callback_query(F.data == "close")
