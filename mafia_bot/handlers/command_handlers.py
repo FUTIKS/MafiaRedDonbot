@@ -215,6 +215,8 @@ async def money_command(message: Message) -> None:
     if sender_user.coin < amount:
         return
     target_id = message.reply_to_message.from_user.id
+    if target_id == sender_id:
+        return
 
     target_user = User.objects.filter(telegram_id=target_id).first()
     if not target_user:
@@ -349,10 +351,11 @@ async def money_command(message: Message) -> None:
             username=message.from_user.username
         )
     if sender_user.stones < amount:
-        
-    
         return
+    
     target_id = message.reply_to_message.from_user.id
+    if target_id == sender_id:
+        return
     
     target_user = User.objects.filter(telegram_id=target_id).first()
     if not target_user:

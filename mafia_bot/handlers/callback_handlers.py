@@ -3281,7 +3281,6 @@ async def process_broadcast_message(message: Message, state: FSMContext) -> None
     success_count = 0
     fail_count = 0
     try:
-   
         for user in users:
             try:
                 await send_safe_message(
