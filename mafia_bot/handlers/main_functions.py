@@ -1408,13 +1408,18 @@ async def apply_night_actions(game_id: int):
 
         if roles.get(int(target_id)) == "kam":
             killer_id = get_alive_role_id(game, killer_by)
-            kill(game, killer_id)
-            dead_tonight.append((killer_id, "kam"))
+            if killer_id and is_alive(game, killer_id):
+                kill(game, killer_id)
+                dead_tonight.append((killer_id, "kam"))
+
 
         kill(game, target_id)
         dead_tonight.append((target_id, killer_by))
     night_texts = []
     for target_id, killer_by in dead_tonight:
+        if not isinstance(target_id, int):
+            continue
+
         target_role = roles.get(int(target_id))
         killer_role_label = role_label(killer_by)
         victim_role_label = role_label(target_role)
