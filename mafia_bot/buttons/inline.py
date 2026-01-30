@@ -77,7 +77,8 @@ def admin_inline_btn():
     keyboard10 = InlineKeyboardButton(text=" 💰 Pul narxini o'zgartirish",callback_data="change_money")
     keyboard11 = InlineKeyboardButton(text=" 💎 Olmos narxini o'zgartirish",callback_data="change_stone")
     keyboard12 = InlineKeyboardButton(text=" 💳 O'tkazmalar tarixi",callback_data="transfer_history")
-    keyboard13 = InlineKeyboardButton(text=" 🔒 Xavsizlik sozlamalari", callback_data="privacy")
+    keyboard13 = InlineKeyboardButton(text="📥 Users Excel", callback_data="export_users_excel")
+    keyboard14 = InlineKeyboardButton(text=" 🔒 Xavsizlik sozlamalari", callback_data="privacy")
     design = [
         [keyboard1],
         [keyboard2],
@@ -90,6 +91,7 @@ def admin_inline_btn():
         [keyboard11],
         [keyboard12],
         [keyboard13],
+        [keyboard14],
     ]
     keyboard = InlineKeyboardMarkup(inline_keyboard=design)
     return keyboard

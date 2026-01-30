@@ -3542,3 +3542,60 @@ async def geroy_callback(callback: CallbackQuery):
         user.is_hero=False
         user.save()
         await callback.message.edit_text("✅ Siz geroyni olib tashladingiz. Endi siz geroy xususiyatlaridan foydalana olmaysiz.",reply_markup=start_inline_btn())
+        
+import openpyxl
+from aiogram.types import FSInputFile
+
+        
+@dp.callback_query(F.data == "export_users_excel")
+async def export_users_excel(callback: CallbackQuery):
+    await callback.answer()
+    file_path = "/tmp/users.xlsx"
+
+    users = User.objects.all().values(
+        "telegram_id",
+        "first_name",
+        "username",
+        "lang",
+        "coin",
+        "stones",
+        "protection",
+        "hang_protect",
+        "docs",
+        "active_role",
+        "role",
+        "is_vip",
+        "is_hero"
+    )
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Users"
+
+    headers = [
+        "Telegram ID","First Name","Username","Lang","Coin","Stones",
+        "Protection","Hang Protect","Docs","Active Role",
+        "Role","VIP","Hero"
+    ]
+    ws.append(headers)
+
+    for u in users:
+        ws.append([
+            u["telegram_id"],
+            u["first_name"],
+            u["username"],
+            u["lang"],
+            u["coin"],
+            u["stones"],
+            u["protection"],
+            u["hang_protect"],
+            u["docs"],
+            u["active_role"],
+            u["role"],
+            u["is_vip"],
+            u["is_hero"]
+        ])
+
+    wb.save(file_path)
+
+    await callback.message.answer_document(FSInputFile(file_path))
