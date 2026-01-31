@@ -1048,7 +1048,7 @@ async def send_roles(game_id, chat_id):
         try:
             await send_safe_message(
                 chat_id=tg_id,
-                text=f"Siz - {role_text}",
+                text=f"{role_text}",
                 parse_mode="HTML"
             )
         except Exception as e:

@@ -493,7 +493,7 @@ async def punish_afk_night_players(game_id):
             
             role_label = get_role_labels_lang(chat_id).get(role, role)
             t=get_lang_text(chat_id)
-            night_text.append(text=t["punish_afk"].format(name=name, role_label=role_label,pid=pid))
+            night_text.append(t["punish_afk"].format(name=name, role_label=role_label,pid=pid))
     try:
         await send_safe_message(
         chat_id=int(chat_id),

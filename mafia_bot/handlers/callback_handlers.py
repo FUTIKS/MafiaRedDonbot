@@ -3493,6 +3493,7 @@ async def day_attack_callback(callback: CallbackQuery):
     if not game:
         return
     t = get_lang_text(hero_id)
+    tu = get_lang_text(chat_id)
     if game["meta"]["day"] != day:
         await callback.message.edit_text(
             f"{get_actions_lang(hero_id)['hero_attack']}\n\n{t['late']}",
@@ -3521,7 +3522,7 @@ async def day_attack_callback(callback: CallbackQuery):
         hp_data = data['hp_percent']
         await send_safe_message(
             chat_id=chat_id,
-            text=t['hero_attack'].format(target_name=target_name, damage=damage, hp_data=hp_data),
+            text=tu['hero_attack'].format(target_name=target_name, damage=damage, hp_data=hp_data),
             parse_mode="HTML"
         )
         await callback.message.edit_text(
@@ -3533,7 +3534,7 @@ async def day_attack_callback(callback: CallbackQuery):
         role_target = role_label(role_target,chat_id)
         await send_safe_message(
             chat_id=chat_id,
-            text=t['hero_killed'].format(target_name=target_name, role_target=role_target),
+            text=tu['hero_killed'].format(target_name=target_name, role_target=role_target),
             parse_mode="HTML"
         )
         await callback.message.edit_text(
