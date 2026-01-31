@@ -1659,7 +1659,7 @@ def get_game_by_chat_id(chat_id: int):
     for game in games_state.values():
         if game.get("meta", {}).get("chat_id") == chat_id:
             return game
-    return None    
+    return False    
                 
 def get_alive_teams(game):
     roles = game.get("roles", {})
