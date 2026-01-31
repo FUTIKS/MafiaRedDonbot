@@ -1312,12 +1312,12 @@ async def apply_night_actions(game_id: int):
         if  mafia_target:
             add_intent(mafia_target, "don", priority=1)
             mafia_ids = get_mafia_members(game_id)
+            mafia_target_name = uname(mafia_target)
             for mafia in mafia_ids:
                 t= get_lang_text(int(mafia))
-                mafia_target = uname(mafia_target)
                 await send_safe_message(
                 chat_id=int(mafia),
-                text=t['mafia_target'].format(mafia_target=mafia_target)
+                text=t['mafia_target'].format(mafia_target=mafia_target_name)
             )
 
     killer_id = get_alive_role_id(game, "killer")

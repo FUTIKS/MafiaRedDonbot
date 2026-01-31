@@ -31,7 +31,7 @@ async def start(message: Message) -> None:
     tg_id = message.from_user.id
     t= get_lang_text(tg_id)
     user = User.objects.filter(telegram_id=tg_id).first()
-    if not user:
+    if user is None:
         await message.answer(
             text=t['greating_message'].format(first_name=message.from_user.first_name),
             parse_mode="HTML",
@@ -500,6 +500,9 @@ async def admin_command(message: Message) -> None:
 
 @dp.message(Command("language"), StateFilter(None))
 async def language(message: Message):
+    if message.chat.type != "private":
+        await message.delete()
+        return
     await message.answer(
         "🌐 Tilni tanlang:",
         reply_markup=language_keyboard()
