@@ -1159,7 +1159,7 @@ async def private_router(message: Message,state: FSMContext) -> None:
             await send_safe_message(
                 chat_id=int(chat_id),
                 text=t['last_wish_message'].format(
-                    telegram_id=int(tg_id),
+                    tg_id=int(tg_id),
                     first_name=target_name,
                     role_label_text=role,
                     text=text
