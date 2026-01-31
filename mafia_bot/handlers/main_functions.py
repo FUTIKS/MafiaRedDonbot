@@ -1661,6 +1661,7 @@ def get_game_by_chat_id(chat_id: int):
             return game
     return False    
                 
+                
 def get_alive_teams(game):
     roles = game.get("roles", {})
     alive = game.get("alive", [])
