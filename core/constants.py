@@ -884,7 +884,7 @@ en_texts ={
 "hero_bought":"🥷 You bought the Hero role! Now you can kill during the day and are protected from some attacks.",
 "hero_remove":"✅ You removed Hero. You can no longer use Hero abilities.",
 "hero_info":"🥷 Hero — a special character that allows killing during the day and protects from other Hero attacks.\n\nIf you have 🥷 Hero and your role is:\n\n👨🏻‍🎤 Sniper, 🕵️ Commissioner, 🤵🏻 Don — you can use 🥷 Attack ability. Other roles can only use 🛡 Protection.\n\n🥷 Hero can be bought in the shop for 💎 50 or 💵 50000.",
-"giveway_continue":"💎 <b>Giveaway is ongoing!</b>\n\n💎 Reward: <b>{amount} diamonds</b>\n⏳ Time left: <b>{minut} minutes {second} seconds</b>\n\n✅ <b>Participants:</b>\n\n",
+"giveway_continue":"💎 <b>Giveaway is ongoing!</b>\n\n💎 Reward: <b>{amount} diamonds</b>\n⏳ Time left: <b>{minut} minutes {second} seconds</b>\n\n✅ <b>Participants:</b>{users}\n\n",
 "giveway_joined":"✅ You successfully joined the giveaway!",
 "giveway_already_joined":"⚠️ You have already joined!",
 "giveway_not_active":"❌ Giveaway is not active right now!",

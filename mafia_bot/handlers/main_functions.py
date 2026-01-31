@@ -1314,7 +1314,7 @@ async def apply_night_actions(game_id: int):
             mafia_ids = get_mafia_members(game_id)
             for mafia in mafia_ids:
                 t= get_lang_text(int(mafia))
-                mafia_target = uname(mafia_target),
+                mafia_target = uname(mafia_target)
                 await send_safe_message(
                 chat_id=int(mafia),
                 text=t['mafia_target'].format(mafia_target=mafia_target)

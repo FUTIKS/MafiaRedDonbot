@@ -620,7 +620,7 @@ async def com_protect_callback(callback: CallbackQuery):
     if not game:
         return
     game_day = game['meta']['day']
-    t = get_actions_lang(callback.from_user.id)
+    t = get_lang_text(callback.from_user.id)
     if not day == str(game_day):
         await callback.message.edit_text(text=f"{get_actions_lang(callback.from_user.id).get('com_check')}\n\n{t['late']}", parse_mode="HTML")
         return
@@ -3204,7 +3204,8 @@ async def giveaway_join(callback: CallbackQuery):
             for i, user in enumerate(users_qs)
         ]
     amount =gw['amount']
-    text = t['giveway_continue'].format(amount=amount, minute=minut, second=second, users="\n".join(line), )
+    
+    text = t['giveway_continue'].format(amount=amount, minut=minut, second=second, users="\n".join(line), )
     await callback.message.edit_text(text, reply_markup=giveaway_join_btn(chat_id), parse_mode="HTML")
     await callback.answer(tu['giveway_joined'])
 
@@ -3671,7 +3672,7 @@ async def set_language_callback(callback: CallbackQuery):
         "tr": "✅ Dil Türkçe olarak değiştirildi",
     }
     if callback.message.chat.type == "private":
-        await callback.message.edit_text(texts.get(lang, texts["uz"]),reply_markup=start_inline_btn())
+        await callback.message.edit_text(texts.get(lang, texts["uz"]),reply_markup=start_inline_btn(callback.from_user.id))
         return
     await callback.message.edit_text(texts.get(lang, texts["uz"]),reply_markup=group_profile_inline_btn(True,callback.message.chat.id))
     await callback.answer()
