@@ -2800,6 +2800,8 @@ async def process_begin_instant_count(message: Message, state: FSMContext) -> No
     action = data.get("action")
     chat_id = data.get("chat_id")
     game_settings = GameSettings.objects.filter(group_id=chat_id).first()
+    if not game_settings:
+        return
     if action == "instance":
         if count < 4 or count > 30:
             await message.answer(

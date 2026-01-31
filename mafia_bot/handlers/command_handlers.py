@@ -1152,35 +1152,33 @@ async def private_router(message: Message,state: FSMContext) -> None:
         game = get_game_by_chat_id(int(chat_id))
         print(game)
         if game:
-            dead = set(game.get("dead", []))
-            if tg_id in dead:
-                if has_link(text):
-                    print("Link detected in last wish")
-                    return
-                user = game.get("users_map", {}).get(tg_id)
-                if user:
+            if has_link(text):
+                print("Link detected in last wish")
+                return
+            user = game.get("users_map", {}).get(tg_id)
+            if user:
+                
+                try:
+                    role = game.get("roles", {}).get(tg_id, "unknown")
+                    role_label_text = role_label(role,chat_id)
+                    user_tg_id = user.get("tg_id")
+                    first_name = user.get("first_name")
+                    t = get_lang_text(chat_id)
+                    await send_safe_message(
+                        chat_id=int(chat_id),
+                        text=t['last_wish_message'].format(
+                            telegram_id=user_tg_id,
+                            first_name=first_name,
+                            role_label_text=role_label_text,
+                            text=text
+                        ),
+                        parse_mode="HTML"
+                    )
                     
-                    try:
-                        role = game.get("roles", {}).get(tg_id, "unknown")
-                        role_label_text = role_label(role,chat_id)
-                        user_tg_id = user.get("tg_id")
-                        first_name = user.get("first_name")
-                        t = get_lang_text(chat_id)
-                        await send_safe_message(
-                            chat_id=int(chat_id),
-                            text=t['last_wish_message'].format(
-                                telegram_id=user_tg_id,
-                                first_name=first_name,
-                                role_label_text=role_label_text,
-                                text=text
-                            ),
-                            parse_mode="HTML"
-                        )
-                        
-                        await message.answer(text=t['last_wish_send'])
-                        last_wishes.pop(tg_id, None)
-                    except Exception:
-                        pass
+                    await message.answer(text=t['last_wish_send'])
+                    last_wishes.pop(tg_id, None)
+                except Exception:
+                    pass
 
                       
         return
