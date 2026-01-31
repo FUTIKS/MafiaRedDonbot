@@ -1145,39 +1145,32 @@ async def private_router(message: Message,state: FSMContext) -> None:
     # =========================================
     # 1) LAST WISH (o'lganlar xabari)
     # =========================================
-    chat_id = last_wishes.get(tg_id)
-    print(chat_id)
-    if chat_id:
-        print('kirdi')
-        game = get_game_by_chat_id(int(chat_id))
-        if game:
-            if has_link(text):
-                print("Link detected in last wish")
-                return
-            user = game.get("users_map", {}).get(int(tg_id))
-            print(user)
-            if user:
-                try:
-                    role = game.get("roles", {}).get(int(tg_id), "unknown")
-                    role_label_text = role_label(role,chat_id)
-                    user_tg_id = user.get("tg_id")
-                    first_name = user.get("first_name")
-                    t = get_lang_text(chat_id)
-                    await send_safe_message(
-                        chat_id=int(chat_id),
-                        text=t['last_wish_message'].format(
-                            telegram_id=user_tg_id,
-                            first_name=first_name,
-                            role_label_text=role_label_text,
-                            text=text
-                        ),
-                        parse_mode="HTML"
-                    )
-                    
-                    await message.answer(text=t['last_wish_send'])
-                    last_wishes.pop(tg_id, None)
-                except Exception:
-                    pass
+    data = last_wishes.get(tg_id)
+    print(data)
+    if data:
+        chat_id = data.get("chat_id")
+        target_name = data.get("target_name")
+        role = data.get("victim_role_label")
+        if has_link(text):
+            print("Link detected in last wish")
+            return
+        try:
+            t = get_lang_text(chat_id)
+            await send_safe_message(
+                chat_id=int(chat_id),
+                text=t['last_wish_message'].format(
+                    telegram_id=int(tg_id),
+                    first_name=target_name,
+                    role_label_text=role,
+                    text=text
+                ),
+                parse_mode="HTML"
+            )
+            
+            await message.answer(text=t['last_wish_send'])
+            last_wishes.pop(tg_id, None)
+        except Exception:
+            pass
 
                       
         return

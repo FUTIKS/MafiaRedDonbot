@@ -1487,7 +1487,11 @@ async def apply_night_actions(game_id: int):
 
         if int(target_id) not in game["allowed_to_send_message"]:
             game["allowed_to_send_message"].append(int(target_id))
-            last_wishes[int(target_id)] = chat_id
+            last_wishes[int(target_id)] = {
+                "chat_id": chat_id,
+                "target_name": target_name,
+                "victim_role_label": victim_role_label
+            }
             
     if night_texts:
         await send_safe_message(
