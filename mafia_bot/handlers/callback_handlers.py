@@ -3,6 +3,7 @@ import json
 import time
 import datetime
 from aiogram import F
+from asyncio import sleep
 from dispatcher import dp, bot
 from datetime import timedelta
 from django.db.models import Sum
@@ -10,6 +11,7 @@ from django.utils import timezone
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext 
 from django.contrib.auth.hashers import make_password
+from aiogram.exceptions import TelegramForbiddenError, TelegramRetryAfter
 from mafia_bot.utils import stones_taken,gsend_taken,giveaways,games_state,USER_LANG_CACHE
 from aiogram.types import Message, LabeledPrice, PreCheckoutQuery,CallbackQuery
 from mafia_bot.models import Game, MoneySendHistory, User,PremiumGroup,MostActiveUser,CasesOpened,GameSettings,GroupTrials,PriceStones, UserRole,BotCredentials
@@ -3301,34 +3303,55 @@ async def broadcast_message(callback_query: CallbackQuery, state: FSMContext) ->
     await callback_query.message.answer("📢 Iltimos, bot foydalanuvchilariga jo'natiladigan xabar matnini kiriting:",reply_markup=back_admin_btn())
     await state.set_state(Register.every_one)
     
+BATCH_SIZE = 25
+DELAY = 0.03
+
 @dp.message(StateFilter(Register.every_one))
-async def process_broadcast_message(message: Message, state: FSMContext) -> None:
+async def process_broadcast_message(message: Message, state: FSMContext):
     text = message.text.strip() if message.text else None
     if not text:
         await message.answer("❗️ Iltimos, xabar matnini kiriting.")
         return
 
-    users = User.objects.all()
-    success_count = 0
-    fail_count = 0
-    try:
-        for user in users:
-            try:
-                await send_safe_message(
-                    chat_id=user.telegram_id,
-                    text=f"📢 Botdan umumiy xabar:\n\n{text}"
-                )
-                success_count += 1
-            except Exception:
-                fail_count += 1
+    await message.answer("⏳ Xabar yuborilmoqda...")
 
-    except Exception as e:
-        await message.answer(f"❗️ Xatolik yuz berdi: {str(e)}")
-        return
-    finally:
-        await message.answer(f"📢 Xabar yuborildi.\nMuvaffaqiyatli: {success_count}\nMuvaffaqiyatsiz: {fail_count}",reply_markup=admin_inline_btn())
-        await state.clear()
+    success = 0
+    fail = 0
 
+    users = User.objects.all().values_list("telegram_id", flat=True)
+
+    batch = []
+    for tg_id in users.iterator():
+        batch.append(tg_id)
+
+        if len(batch) >= BATCH_SIZE:
+            for uid in batch:
+                try:
+                    await send_safe_message(uid, f"📢 Botdan umumiy xabar:\n\n{text}")
+                    success += 1
+                    await sleep(DELAY)
+                except TelegramForbiddenError:
+                    fail += 1
+                except TelegramRetryAfter as e:
+                    await sleep(e.retry_after)
+                except:
+                    fail += 1
+            batch.clear()
+
+    for uid in batch:
+        try:
+            await send_safe_message(uid, f"📢 Botdan umumiy xabar:\n\n{text}")
+            success += 1
+            await sleep(DELAY)
+        except:
+            fail += 1
+
+    await message.answer(
+        f"📢 Xabar yuborildi.\n\n✅ Muvaffaqiyatli: {success}\n❌ Muvaffaqiyatsiz: {fail}",
+        reply_markup=admin_inline_btn()
+    )
+
+    await state.clear()
 
 @dp.callback_query(F.data == "close")
 async def close_callback(callback: CallbackQuery):

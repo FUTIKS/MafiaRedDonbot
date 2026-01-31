@@ -37,6 +37,7 @@ async def start(message: Message) -> None:
             parse_mode="HTML",
             reply_markup=language_keyboard()
         )
+        return
     if message.from_user.first_name != user.first_name or message.from_user.username != user.username:
         user.first_name = message.from_user.first_name
         user.username = message.from_user.username
