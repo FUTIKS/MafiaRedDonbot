@@ -432,7 +432,8 @@ async def change_command(message: Message) -> None:
     t = get_lang_text(message.chat.id)
     group_change = t['giveaway_join'].format(
         amount=amount,
-        minut=minut
+        minut=minut,
+        sekund=duration % 60
     )
 
     sent = await message.answer(group_change, reply_markup=giveaway_join_btn(chat_id), parse_mode="HTML")
@@ -608,7 +609,7 @@ async def stop_registration(game_id=None, chat_id=None, instant=False):
         await send_safe_message(
             chat_id=game.chat_id,
             text=t["game_started"],
-            reply_markup=go_to_bot_inline_btn(chat_id)
+            reply_markup=go_to_bot_inline_btn(game.chat_id)
         )
         shuffle_roles(game.id)
         await send_roles(game_id=game.id, chat_id=game.chat_id)
