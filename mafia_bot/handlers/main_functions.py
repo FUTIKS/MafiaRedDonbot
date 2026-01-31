@@ -10,14 +10,48 @@ from django.db import transaction
 from aiogram.types import Message
 from django.db.models import F as DF
 from aiogram.enums import ChatMemberStatus
-from core.constants import ROLES_BY_COUNT,ROLES_CHOICES, ACTIONS
-from mafia_bot.models import Game, GameSettings,User,MostActiveUser, UserRole
+from core.constants import uz_texts,ROLES_BY_COUNT,ru_texts,en_texts,tr_texts
+from mafia_bot.models import Game, GameSettings,User,MostActiveUser, UserRole, GroupTrials
 from aiogram.types import ChatPermissions,ChatMemberAdministrator, ChatMemberOwner
-from mafia_bot.utils import games_state, last_wishes,game_tasks, active_role_used,writing_allowed_groups
+from mafia_bot.utils import games_state, last_wishes,game_tasks, active_role_used,writing_allowed_groups,USER_LANG_CACHE
 from mafia_bot.buttons.inline import cart_inline_btn, doc_btn, com_inline_btn, don_inline_btn, mafia_inline_btn, adv_inline_btn, spy_inline_btn, lab_inline_btn, action_inline_btn,use_hero_inline_btn
 
 lock = Lock()
-ROLE_LABELS = dict(ROLES_CHOICES)
+LANG_TEXTS = {
+    "uz": uz_texts,
+    "ru": ru_texts,
+    "en": en_texts,
+    "tr": tr_texts,
+}
+
+ROLE_LABELS = {
+    "uz": dict(uz_texts["ROLES_CHOICES"]),
+    "ru": dict(ru_texts["ROLES_CHOICES"]),
+    "en": dict(en_texts["ROLES_CHOICES"]),
+    "tr": dict(tr_texts["ROLES_CHOICES"]),
+}
+
+ACTIONS = {
+    "uz": dict(uz_texts["ACTIONS"]),
+    "ru": dict(ru_texts["ACTIONS"]),
+    "en": dict(en_texts["ACTIONS"]),
+    "tr": dict(tr_texts["ACTIONS"]),
+}
+
+WINNER_LABELS = {
+    "uz": uz_texts["WINNER_LABEL"],
+    "ru": ru_texts["WINNER_LABEL"],
+    "en": en_texts["WINNER_LABEL"],
+    "tr": tr_texts["WINNER_LABEL"],
+}
+
+DESCRIPTIONS = {
+    "uz": uz_texts["DESCRIPTIONS"],
+    "ru": ru_texts["DESCRIPTIONS"],
+    "en": en_texts["DESCRIPTIONS"],
+    "tr": tr_texts["DESCRIPTIONS"],
+}
+
 
 
 MAFIA_ROLES = {"don", "mafia", "adv", "spy"}
@@ -40,11 +74,8 @@ LINK_RE = re.compile(
     r")",
     re.IGNORECASE
 )
-WINNER_LABEL = {
-    "peace": "👨🏼  Tinch axoli",
-    "mafia": "🤵🏻 Mafialar",
-    "solo": "🎩  Yakka rollar",
-}
+
+
 
 ROLE_TEAM = {
     "peace": "peace",
@@ -88,14 +119,14 @@ async def send_night_action( tg_id, role, game_id, game, users_after_night, day)
     elif role == "doc":
         await send_safe_message(
             chat_id=tg_id,
-            text=ACTIONS.get("doc_heal"),
+            text=get_actions_lang(tg_id).get("doc_heal"),
             reply_markup=doc_btn(players=users_after_night, doctor_id=tg_id, game_id=game.id, chat_id=game.chat_id,day=day)
         )
         return
     elif role == "daydi":
         await send_safe_message(
             chat_id=tg_id,
-            text=ACTIONS.get("daydi_watch"),
+            text=get_actions_lang(tg_id).get("daydi_watch"),
             reply_markup=action_inline_btn(action="daydi", own_id=tg_id, players=users_after_night, game_id=game.id, chat_id=game.chat_id,day=day)
         )
         return
@@ -104,7 +135,7 @@ async def send_night_action( tg_id, role, game_id, game, users_after_night, day)
         await send_safe_message(
         
             chat_id=tg_id,
-            text=ACTIONS.get("com_deside"),
+            text=get_actions_lang(tg_id).get("com_deside"),
             reply_markup=com_inline_btn(game.id, game.chat_id,day=day)
         )
         return
@@ -112,7 +143,7 @@ async def send_night_action( tg_id, role, game_id, game, users_after_night, day)
         await send_safe_message(
         
             chat_id=tg_id,
-            text=ACTIONS.get("santa"),
+            text=get_actions_lang(tg_id).get("santa"),
             reply_markup=action_inline_btn(action="santa", own_id=tg_id, players=users_after_night, game_id=game.id, chat_id=game.chat_id,day=day)
         )
         return
@@ -120,14 +151,14 @@ async def send_night_action( tg_id, role, game_id, game, users_after_night, day)
         await send_safe_message(
         
             chat_id=tg_id,
-            text=ACTIONS.get("killer_kill"),
+            text=get_actions_lang(tg_id).get("killer_kill"),
             reply_markup=action_inline_btn(action="killer", own_id=tg_id, players=users_after_night, game_id=game.id, chat_id=game.chat_id,day=day)
         )
         return
     elif role == "lover":
         await send_safe_message(
             chat_id=tg_id,
-            text=ACTIONS.get("lover_block"),
+            text=get_actions_lang(tg_id).get("lover_block"),
             reply_markup=action_inline_btn(action="lover", own_id=tg_id, players=users_after_night, game_id=game.id, chat_id=game.chat_id,day=day)
         )
         return
@@ -135,7 +166,7 @@ async def send_night_action( tg_id, role, game_id, game, users_after_night, day)
         await send_safe_message(
         
             chat_id=tg_id,
-            text=ACTIONS.get("kaldun_spell"),
+            text=get_actions_lang(tg_id).get("kaldun_spell"),
             reply_markup=action_inline_btn(action="kaldun", own_id=tg_id, players=users_after_night, game_id=game.id, chat_id=game.chat_id,day=day)
         )
         return
@@ -144,7 +175,7 @@ async def send_night_action( tg_id, role, game_id, game, users_after_night, day)
         await send_safe_message(
         
             chat_id=tg_id,
-            text=ACTIONS.get("don_kill"),
+            text=get_actions_lang(tg_id).get("don_kill"),
             reply_markup=don_inline_btn(players=users_after_night, game_id=game.id, chat_id=game.chat_id, don_id=tg_id, day=day)
         )
         return
@@ -153,7 +184,7 @@ async def send_night_action( tg_id, role, game_id, game, users_after_night, day)
         await send_safe_message(
         
             chat_id=tg_id,
-            text=ACTIONS.get("mafia_vote"),
+            text=get_actions_lang(tg_id).get("mafia_vote"),
             reply_markup=mafia_inline_btn(players=users_after_night, game_id=game.id,day=day)
         )
         return
@@ -161,7 +192,7 @@ async def send_night_action( tg_id, role, game_id, game, users_after_night, day)
         await send_safe_message(
         
             chat_id=tg_id,
-            text=ACTIONS.get("adv_mask"),
+            text=get_actions_lang(tg_id).get("adv_mask"),
             reply_markup=adv_inline_btn(players=users_after_night, game_id=game.id, chat_id=game.chat_id,day=day)
         )
         return
@@ -169,7 +200,7 @@ async def send_night_action( tg_id, role, game_id, game, users_after_night, day)
         await send_safe_message(
         
             chat_id=tg_id,
-            text=ACTIONS.get("spy_check"),
+            text=get_actions_lang(tg_id).get("spy_check"),
             reply_markup=spy_inline_btn(players=users_after_night, game_id=game.id, chat_id=game.chat_id,day=day,spy_id=tg_id)
         )
         return
@@ -177,7 +208,7 @@ async def send_night_action( tg_id, role, game_id, game, users_after_night, day)
         await send_safe_message(
         
             chat_id=tg_id,
-            text=ACTIONS.get("lab_action"),
+            text=get_actions_lang(tg_id).get("lab_action"),
             reply_markup=lab_inline_btn(players=users_after_night, game_id=game.id, chat_id=game.chat_id,day=day,lab_id=tg_id)
         )
         return
@@ -185,7 +216,7 @@ async def send_night_action( tg_id, role, game_id, game, users_after_night, day)
         await send_safe_message(
         
             chat_id=tg_id,
-            text=ACTIONS.get("trap_place"),
+            text=get_actions_lang(tg_id).get("trap_place"),
             reply_markup=action_inline_btn(action="trap", own_id=tg_id, players=users_after_night, game_id=game.id, chat_id=game.chat_id,day=day)
         )
         return
@@ -193,7 +224,7 @@ async def send_night_action( tg_id, role, game_id, game, users_after_night, day)
         await send_safe_message(
         
             chat_id=tg_id,
-            text=ACTIONS.get("snyper_kill"),
+            text=get_actions_lang(tg_id).get("snyper_kill"),
             reply_markup=action_inline_btn(action="snyper", own_id=tg_id, players=users_after_night, game_id=game.id, chat_id=game.chat_id,day=day)
         )
         return
@@ -201,7 +232,7 @@ async def send_night_action( tg_id, role, game_id, game, users_after_night, day)
         await send_safe_message(
         
             chat_id=tg_id,
-            text=ACTIONS.get("arrow_kill"),
+            text=get_actions_lang(tg_id).get("arrow_kill"),
             reply_markup=action_inline_btn(action="arrow", own_id=tg_id, players=users_after_night, game_id=game.id, chat_id=game.chat_id, day=day)
         )
         return
@@ -209,7 +240,7 @@ async def send_night_action( tg_id, role, game_id, game, users_after_night, day)
         await send_safe_message(
         
             chat_id=tg_id,
-            text=ACTIONS.get("traitor_choose"),
+            text=get_actions_lang(tg_id).get("traitor_choose"),
             reply_markup=action_inline_btn(action="traitor", own_id=tg_id, players=users_after_night, game_id=game.id, chat_id=game.chat_id, day=day)
         )
         return
@@ -217,7 +248,7 @@ async def send_night_action( tg_id, role, game_id, game, users_after_night, day)
         await send_safe_message(
         
             chat_id=tg_id,
-            text=ACTIONS.get("pirate_rob"),
+            text=get_actions_lang(tg_id).get("pirate_rob"),
             reply_markup=action_inline_btn(action="pirate", own_id=tg_id, players=users_after_night, game_id=game.id, chat_id=game.chat_id, day=day)
         )
         return
@@ -225,7 +256,7 @@ async def send_night_action( tg_id, role, game_id, game, users_after_night, day)
         await send_safe_message(
         
             chat_id=tg_id,
-            text=ACTIONS.get("professor_choose"),
+            text=get_actions_lang(tg_id).get("professor_choose"),
             reply_markup=action_inline_btn(action="professor", own_id=tg_id, players=users_after_night, game_id=game.id, chat_id=game.chat_id, day=day)
         )
         return
@@ -234,7 +265,7 @@ async def send_night_action( tg_id, role, game_id, game, users_after_night, day)
         await send_safe_message(
         
             chat_id=tg_id,
-            text=ACTIONS.get("snowball_kill"),
+            text=get_actions_lang(tg_id).get("snowball_kill"),
             reply_markup=action_inline_btn(action="snowball", own_id=tg_id, players=users_after_night, game_id=game.id, chat_id=game.chat_id, day=day)
         )
         return
@@ -454,14 +485,15 @@ async def punish_afk_night_players(game_id):
             elif role == "com":
                 new_com_id = promote_new_com_if_needed(game)
                 if new_com_id:
-                    await notify_new_com( game, new_com_id)
+                    await notify_new_com(  new_com_id)
                     await send_safe_message(
                                 chat_id=chat_id,
                                 text=f"🕵🏻‍♂ Komissar vafot etdi.\nYangi Komissar tayinlandi."
                             )
-                
-            role_label = ROLE_LABELS.get(role, role)
-            night_text.append(f"Tunda {role_label} <a href='tg://user?id={pid}'>{name}</a> vahshiylarcha o‘ldirildi...\nU o‘lim oldidan shunday so‘z qoldirdi:\n'Men o‘yin paytida boshqa uxlamayma-a-a-a-a-a-an!'")
+            
+            role_label = get_role_labels_lang(chat_id).get(role, role)
+            t=get_lang_text(chat_id)
+            night_text.append(text=t["punish_afk"].format(name=name, role_label=role_label))
     try:
         await send_safe_message(
         chat_id=int(chat_id),
@@ -620,13 +652,7 @@ def get_mafia_members(game_id):
 
     members = []
     for tg_id, role in roles_map.items():
-        if tg_id in alive and role == "mafia":
-            members.append(tg_id)
-        if tg_id in alive and role == "don":
-            members.append(tg_id)
-        if tg_id in alive and role == "adv":
-            members.append(tg_id)
-        if tg_id in alive and role == "spy":
+        if tg_id in alive and role in MAFIA_ROLES:
             members.append(tg_id)
     return members
 
@@ -664,10 +690,10 @@ async def process_santa_reward(target_id, callback):
         )
     user.coin += 20
     user.save()
-
+    t= get_lang_text(target_id)
     await send_safe_message(
         chat_id=target_id,
-        text="🎅 Sizga Qorbobo tomonidan 20 ta pullar sovg'a qilindi!"
+        text=t["santa_gift"]
     )
 
 
@@ -699,13 +725,14 @@ def find_game(game_id, tg_id,chat_id,user):
 
 
 
-def create_main_messages(game_id):
+def create_main_messages(game_id, tg_id_for_lang):
     tg_ids = games_state.get(game_id, {}).get("players", [])
+    t = get_lang_text(tg_id_for_lang)
 
-    msg = "Ro'yxatdan o'tish boshlandi\n\nRo'yxatdan o'tganlar:\n"
+    msg = f"{t['reg_started']}\n\n{t['reg_list']}\n"
 
     if not tg_ids:
-        return msg + "\n\nJami 0ta odam"
+        return msg + f"\n\n{t['no_players']}"
 
     users_map = games_state.get(game_id, {}).get("users_map", {})
     
@@ -717,8 +744,9 @@ def create_main_messages(game_id):
         msg += f'<a href="tg://user?id={tg_id}">{user.get("first_name")}</a>, '
         count += 1
 
-    msg += f"\n\nJami {count}ta odam"
+    msg += f"\n\n{t['total'].format(count=count)}"
     return msg
+
 
 
 
@@ -902,21 +930,15 @@ def add_visit(game: dict, visitor_id: int, house_id: int, invisible: bool = Fals
 
 
 
-def check_bot_rights(bot_member) -> str | bool:
-    message_text = (
-        "⚠️ Botga yetarli admin huquqlari berilmagan!\n"
-        "Salom! Men Mafia o'yinini rasmiy botiman.\n\n"
-        "Quyidagi ruxsatlar kerak:\n"
-    )
+def check_bot_rights(bot_member,chat_id) -> str | bool:
+    t= get_lang_text(chat_id)
+    message_text = t["bot_no_rights"] 
 
     # Bot admin emas bo‘lsa — hammasini so‘raymiz
     if bot_member.status not in ("administrator", "creator"):
         return (
             message_text +
-            "☑️ Admin qilish\n"
-            "☑️ Xabarlarni o‘chirish\n"
-            "☑️ A’zolarni cheklash\n"
-            "☑️ Xabarlarni qadash\n"
+            t['bot_no_rights_add']
         )
 
     # Owner bo‘lsa hammasiga ruxsat bor
@@ -928,15 +950,15 @@ def check_bot_rights(bot_member) -> str | bool:
         no_all_rights = False
 
         if not bot_member.can_delete_messages:
-            message_text += "☑️ Xabarlarni o‘chirish\n"
+            message_text += t['bot_no_rights_delete']
             no_all_rights = True
 
         if not bot_member.can_restrict_members:
-            message_text += "☑️ A’zolarni cheklash\n"
+            message_text += t['bot_no_rights_restrict']
             no_all_rights = True
 
         if not bot_member.can_pin_messages:
-            message_text += "☑️ Xabarlarni qadash\n"
+            message_text += t['bot_no_rights_pin']
             no_all_rights = True
 
         if not no_all_rights:
@@ -982,8 +1004,8 @@ def has_link(text: str) -> bool:
 
 
 
-def role_label(role_key: str):
-    return ROLE_LABELS.get(role_key, role_key or "")
+def role_label(role_key: str,chat_id:int):
+    return get_role_labels_lang(chat_id).get(role_key, role_key or "")
         
         
 def kill(game, tg_id: int):
@@ -1100,6 +1122,7 @@ async def notify_new_don(game: dict, new_don_id: int):
     roles = game.get("roles", {})
     alive = set(game.get("alive", []))
     user_map = game.get("users_map", {})    
+    t = get_lang_text(int(new_don_id))
 
     mafia_members = [
         tid for tid in alive
@@ -1108,17 +1131,18 @@ async def notify_new_don(game: dict, new_don_id: int):
     
     await send_safe_message(
         chat_id=int(new_don_id),
-        text="🤵🏻 Sizning Don vafot etdi.\nEndi siz yangi Don bo'ldingiz!",
+        text=t['don_killed'],
     )
 
     for member_id in mafia_members:
         if member_id == int(new_don_id):
             continue
+        t = get_lang_text(int(member_id))
         try:
             user = user_map.get(int(new_don_id))
             await send_safe_message(
                 chat_id=int(member_id),
-                text=f"🤵🏻 Sizning yangi Don: <a href='tg://user?id={new_don_id}'>{user.get('first_name')}</a>",
+                text=t['don_notify'].format(new_don_id=new_don_id, first_name=user.get("first_name","")),
                 parse_mode="HTML"
             )
         except Exception:
@@ -1144,12 +1168,13 @@ def promote_new_com_if_needed(game: dict):
     game["roles"] = roles
     return int(serg_id)
 
-async def notify_new_com(game: dict, new_com_id: int):
+async def notify_new_com(new_com_id: int):
     # serjantning o'ziga
+    t= get_lang_text(int(new_com_id))
     try:
         await send_safe_message(
             chat_id=int(new_com_id),
-            text="🕵🏻‍♂ Komissar vafot etdi.\nEndi siz Komissar bo'ldingiz!",
+            text=t['com_killed'],
         )
         
     except Exception:
@@ -1214,20 +1239,22 @@ async def hero_day_actions(game_id: int):
 
         role = roles.get(tg_id)
 
+        t = get_lang_text(tg_id)
         if role in ["don", "com", "snyper"]:
             await send_safe_message(
                 chat_id=tg_id,
-                text="🥷 O'z tanlovingizni qiling",
+                text=t['hero_day_action'],
                 reply_markup=use_hero_inline_btn(
                     game_id=game_id,
                     chat_id=chat_id,
+                    tg_id=tg_id,
                     day=day
                 )
             )
         else:
             await send_safe_message(
                 chat_id=tg_id,
-                text="🥷 Siz geroy orqali faqat o'zingizni himoyalay olasiz."
+                text=t['hero_protect']
             )
 
 
@@ -1286,10 +1313,12 @@ async def apply_night_actions(game_id: int):
             add_intent(mafia_target, "don", priority=1)
             mafia_ids = get_mafia_members(game_id)
             for mafia in mafia_ids:
+                t= get_lang_text(int(mafia))
+                mafia_target = uname(mafia_target),
                 await send_safe_message(
-            chat_id=int(mafia),
-            text=f"Mafiyaning ovoz berishi yakunlandi\nMafialar {uname(mafia_target)} 💀 shavqatsizlarcha o'ldirdi."
-        )
+                chat_id=int(mafia),
+                text=t['mafia_target'].format(mafia_target=mafia_target)
+            )
 
     killer_id = get_alive_role_id(game, "killer")
     if killer_id:
@@ -1368,20 +1397,16 @@ async def apply_night_actions(game_id: int):
         if target_user and target_user.get("hero", False):
             if not hero_used.get(target_id):
                 hero_used[target_id] = True
-
+                t= get_lang_text(int(target_id))
                 await send_safe_message(
                     chat_id=int(target_id),
-                    text=(
-                        "🥷 Sizni o'ldirishdi, lekin Geroy sizni bir marta o‘limdan saqlab qoldi!\n"
-                        "Keyingi safar siz halok bo‘lasiz."
-                    ),
+                    text=t['hero_half_protect'],
                     parse_mode="HTML"
                 )
+                target_name = uname(target_id)
                 await send_safe_message(
                     chat_id=chat_id,
-                    text=(
-                        f"🥷 Geroy <a href='tg://user?id={target_id}'>{uname(target_id)}</a> ni o'limdan saqlab qoldi!"
-                    ),
+                    text=t['hero_saved'].format(target_name=target_name,target_id=target_id),
                     parse_mode="HTML"
                 )
                 continue
@@ -1421,13 +1446,16 @@ async def apply_night_actions(game_id: int):
             continue
 
         target_role = roles.get(int(target_id))
-        killer_role_label = role_label(killer_by)
-        victim_role_label = role_label(target_role)
-
+        killer_role_label = role_label(killer_by, chat_id)
+        victim_role_label = role_label(target_role, chat_id)
+        target_name = uname(target_id)
+        t = get_lang_text(int(chat_id))
         night_texts.append(
-                f"Tunda {victim_role_label} <a href='tg://user?id={target_id}'>{uname(target_id)}</a> "
-                f"vahshiylarcha o'ldirildi...\n"
-                f"Aytishlaricha u {killer_role_label} tomonidan o‘ldirilgan."
+               t['night_kills'].format(
+                    target_name=target_name,
+                    victim_role_label=victim_role_label,
+                    killer_role_label=killer_role_label,
+                    target_id=target_id)
             )
             
         
@@ -1437,32 +1465,28 @@ async def apply_night_actions(game_id: int):
                 await notify_new_don( game, new_don_id)
                 await send_safe_message(
                     chat_id=chat_id,
-                    text=f"🤵🏻 Don vafot etdi.\nMafialardan biri endi yangi Don "
+                    text=t['don_killed']
                 )
                 
         if target_role == "com":
             new_com_id = promote_new_com_if_needed(game)
             if new_com_id:
-                await notify_new_com( game, new_com_id)
+                await notify_new_com(new_com_id)
                 await send_safe_message(
                     chat_id=chat_id,
-                    text=f"🕵🏻‍♂ Komissar vafot etdi.\nYangi Komissar tayinlandi."
+                    text=t['com_killed']
                 )
 
-
+        t = get_lang_text(int(target_id))
         await send_safe_message(
             chat_id=int(target_id),
-            text=(
-                "<b>Sizni o'ldirishdi :(</b>\n"
-                "Siz bu yerdan o'lim oldi xabar qoldirishingiz mumkin\n\n"
-            ),
+            text=t['u_killed'],
             parse_mode="HTML"
         )
 
         if int(target_id) not in game["allowed_to_send_message"]:
             game["allowed_to_send_message"].append(int(target_id))
-            game_day = game.get('meta', {}).get('day', 1)
-            last_wishes[int(target_id)] = (chat_id, game_day) 
+            last_wishes[int(target_id)] = chat_id
             
     if night_texts:
         await send_safe_message(
@@ -1472,13 +1496,11 @@ async def apply_night_actions(game_id: int):
         )           
             
     for target_id, protector_by, killer_by in saved_tonight:
-        protector_role_label = role_label(protector_by)
+        protector_role_label = role_label(protector_by,int(target_id))
+        t = get_lang_text(int(target_id))
         await send_safe_message(
                 chat_id=int(target_id),
-                text=(
-                    f"<b>Sizni {protector_role_label} qutqardi!</b>\n"
-                    "Siz tirik qoldingiz!"
-                ),
+                text=t['u_saved'].format(protector_role_label=protector_role_label),
                 parse_mode="HTML"
             )
             
@@ -1492,16 +1514,19 @@ async def apply_night_actions(game_id: int):
         target_name = target_user.get("first_name") if target_user else str(com_check_target)
 
         visible_role_key = get_visible_role_for_com(game, int(com_check_target), alive_users_map)
-        visible_role_text = ROLE_LABELS.get(visible_role_key, "👨🏼 Tinch axoli")
-
+        visible_role_text = get_role_labels_lang(int(com_check_target)).get(visible_role_key, "👨🏼 Tinch axoli")
+        t= get_lang_text(int(com_check_target))
         try:
             await send_safe_message(
                 chat_id=int(com_check_target),
-                text="Kimdir rolingizga qiziqdi..."
+                text=t["someone_interested"]
             )
-            text = (
-                    f"<a href='tg://user?id={com_check_target}'>{target_name}</a> - {visible_role_text}"
-                )
+            t= get_lang_text(int(com_id))
+            text = t['com_check_result'].format(
+                target_name=target_name,
+                visible_role_text=visible_role_text,
+                target_id=com_check_target
+            )
             await send_safe_message(
                 chat_id=com_id,
                 text=text,
@@ -1524,32 +1549,35 @@ async def apply_night_actions(game_id: int):
         target_name = target_user.get("first_name") if target_user else str(spy_target)
 
         real_role_key = roles.get(int(spy_target))
-        real_role_text = ROLE_LABELS.get(real_role_key, "Unknown")
+        real_role_text = get_role_labels_lang(int(spy_target)).get(real_role_key, "Unknown")
 
         try:
             await send_safe_message(
                 chat_id=int(spy_target),
-                text="Kimdir rolingizga qiziqdi..."
+                text=t["someone_interested"]
             )
             
             mafia_members = get_mafia_members(game_id)
             for member_id in mafia_members:
+                t = get_lang_text(int(member_id))
                 if member_id == int(spy_id):
                     continue
                 await send_safe_message(
                     chat_id=int(member_id),
-                    text=(
-                        f"Sizning ayg'oqchingiz <a href='tg://user?id={spy_target}'>{target_name}</a> ni "
-                        f"tekshirdi va uning roli: {real_role_text}"
+                    text=t['spy_notify'].format(
+                        target_name=target_name,
+                        real_role_text=real_role_text,
+                        target_id=spy_target
                     ),
                     parse_mode="HTML"
                 )
+            t= get_lang_text(int(spy_id))
             await send_safe_message(
                 chat_id=int(spy_id),
-                text=(
-                    f"🦇 Siz tekshirgan odam:\n"
-                    f"<a href='tg://user?id={spy_target}'>{target_name}</a>\n\n"
-                    f"Uning roli: {real_role_text}"
+                text=t['spy_found'].format(
+                        target_name=target_name,
+                        real_role_text=real_role_text,
+                        target_id=spy_target
                 ),
                 parse_mode="HTML"
             )
@@ -1571,18 +1599,20 @@ async def apply_night_actions(game_id: int):
             lines = []
             for vid in daydi_seen:
                 role = roles.get(int(vid))
-                lines.append(f"{role_label(role)} <a href='tg://user?id={vid}'>{uname(vid)}</a>")
-
+                lines.append(f"{role_label(role, daydi_id)} <a href='tg://user?id={vid}'>{uname(vid)}</a>")
+            t = get_lang_text(int(daydi_id))
             if lines:
-                text = (
-                    f"🧙🏼‍♂️ Tunda siz shisha uchun "
-                    f"<a href='tg://user?id={daydi_house_id}'>{house_owner}</a> ga keldingiz "
-                    f"va u yerda {', '.join(lines)} ni ko'rdingiz."
+                text =t['daydi_report'].format(
+                    house_owner=house_owner,
+                    daydi_house_id=daydi_house_id,
+                    visitors=" ".join(lines)
                 )
             else:
                 text = (
-                    f"🧙🏼‍♂️ Tunda siz "
-                    f"<a href='tg://user?id={daydi_house_id}'>{house_owner}</a> dan shishalarni oldingiz va orqangizga qaytdingiz. Shubxali narsa sodir bo'lmadi."
+                    t['daydi_report_no_visitors'].format(
+                        house_owner=house_owner,
+                        daydi_house_id=daydi_house_id
+                    )
                 )
 
             await send_safe_message(
@@ -1592,10 +1622,11 @@ async def apply_night_actions(game_id: int):
             )
     lover_target = night_actions.get("lover_block_target")
     if lover_target and is_alive(game, lover_target):
+        t = get_lang_text(int(lover_target))
         try:
             await send_safe_message(
                 chat_id=int(lover_target),
-                text="'Sen men bilan hamma narsani unut...', - deya kuyladi 💃🏼 <b>Ma'shuqa</b>",
+                text=t['lover_blocked'],
                 parse_mode="HTML"
             )
         except Exception:
@@ -1605,17 +1636,19 @@ async def apply_night_actions(game_id: int):
         traitor_id, target_id, new_role = swap_result
 
         try:
+            new_name = get_role_labels_lang(int(traitor_id)).get(new_role, new_role)
             await send_safe_message(
                 chat_id=traitor_id,
-                text=f"🦎 Siz rolingizni almashtirdingiz! Endi siz: {ROLE_LABELS.get(new_role, new_role)}"
+                text=t['traitor_changed'].format(new_name=new_name)
             )
         except Exception:
             pass
 
         try:
+            t= get_lang_text(int(target_id))
             await send_safe_message(
                 chat_id=target_id,
-                text="⚠️ Sizning rolingiz Sotqin bilan almashdi!"
+                text=t['traitor_swapped']
             )
         except Exception:
             pass
@@ -1760,6 +1793,7 @@ async def stop_game_if_needed(game_id: int):
         users_to_update = []
 
         for u in users:
+            t = get_lang_text(int(u.telegram_id))
             is_winner = u.telegram_id in winners
             is_group_follower = followers_map.get(u.telegram_id, False)
 
@@ -1783,31 +1817,28 @@ async def stop_game_if_needed(game_id: int):
             )
 
             role_key = roles_map.get(u.telegram_id)
-            role_text = ROLE_LABELS.get(role_key, "Unknown")
+            role_text = get_role_labels_lang(int(u.telegram_id)).get(role_key, "Unknown")
             user_link = f"<a href='tg://user?id={u.telegram_id}'>{u.first_name}</a>"
 
             if is_winner:
-                text = (
-                    "🏆 O'yin tugadi!\n"
-                    f"{role_text} rolida g‘alaba qozondingiz!\n"
-                    f"💵 Mukofot: {reward}\n\n"
-                    f"{user_link}\n\n"
-                    f"💵 Pullar: {u.coin}\n"
-                    f"💎 Toshlar: {u.stones}\n"
-                    f"🛡 Ximoya: {u.protection}\n"
-                    f"📂 Hujjatlar: {u.docs}\n\n"
-                    "@MafiaRedDonOfficial obunachilari 2x bonus oladi!"
+                text = t['win_report'].format(
+                    reward=reward,
+                    user_link=user_link,
+                    role_text=role_text,
+                    coins=u.coin,
+                    stones=u.stones,
+                    protection=u.protection,
+                    docs=u.docs
                 )
             else:
-                text = (
-                    "🎮 O'yin tugadi!\n"
-                    f"Ishtirok uchun mukofot: {reward} 💵\n\n"
-                    f"{user_link}\n\n"
-                    f"💵 Pullar: {u.coin}\n"
-                    f"💎 Toshlar: {u.stones}\n"
-                    f"🛡 Ximoya: {u.protection}\n"
-                    f"📂 Hujjatlar: {u.docs}\n\n"
-                    "@MafiaRedDonOfficial obunachilari 2x bonus oladi!"
+                text = t['lose_report'].format(
+                    reward=reward,
+                    user_link=user_link,
+                    role_text=role_text,
+                    coins=u.coin,
+                    stones=u.stones,
+                    protection=u.protection,
+                    docs=u.docs
                 )
 
             dm_payload.append((u.telegram_id, text))
@@ -1822,7 +1853,7 @@ async def stop_game_if_needed(game_id: int):
                 chat_id=user_id,
                 text=text,
                 parse_mode="HTML",
-                reply_markup=cart_inline_btn()
+                reply_markup=cart_inline_btn(user_id)
             )
         except:
             pass
@@ -1853,6 +1884,7 @@ async def build_final_game_text(game_id: int, winner_key: str) -> str:
     roles = game.get("roles", {})
     alive = set(game.get("alive", []))
     all_players = game.get("players", [])
+    chat_id = game.get("meta", {}).get("chat_id")
     created_at = int(game.get("meta", {}).get("created_at", int(time.time())))
     duration = int(time.time()) - created_at
 
@@ -1863,7 +1895,7 @@ async def build_final_game_text(game_id: int, winner_key: str) -> str:
         else set()
     )
 
-    winner_label = WINNER_LABEL.get(winner_key, winner_key)
+    winner_label = get_winner_label_lang(chat_id).get(winner_key, winner_key)
 
     # players order bo'yicha ismni saqlab chiqarish uchun list ishlatamiz
     ids_in_order = [tg_id for tg_id in all_players if tg_id in roles]
@@ -1880,7 +1912,7 @@ async def build_final_game_text(game_id: int, winner_key: str) -> str:
         user = users_map.get(tg_id)
 
         name = user.get("first_name") if user else str(tg_id)
-        role_txt = role_label(role_key)
+        role_txt = role_label(role_key,tg_id)
 
         line = f"    {name} - {role_txt}"
 
@@ -1891,26 +1923,20 @@ async def build_final_game_text(game_id: int, winner_key: str) -> str:
         else:
             others.append(line)
             loosers_list.append(tg_id)
-
+    t = get_lang_text(chat_id)
     text = (
-        "O'yin tugadi!\n"
-        f"G'olib: {winner_label}\n\n"
-        "G'oliblar:\n"
+        f"{t['title']}\n"
+        f"{t['winner'].format(winner=winner_label)}\n\n"
+        f"{t['winners']}\n"
     )
 
-    if winners:
-        text += "\n".join(winners)
-    else:
-        text += "    (yo'q)"
+    text += "\n".join(winners) if winners else t["no_one"]
 
-    text += "\n\nQolgan o'yinchilar:\n"
+    text += f"\n\n{t['others']}\n"
 
-    if others:
-        text += "\n".join(others)
-    else:
-        text += "    (yo'q)"
+    text += "\n".join(others) if others else t["no_one"]
 
-    text += f"\n\nO'yin: {format_duration(duration)} davom etdi"
+    text += f"\n\n{t['duration'].format(time=format_duration(duration))}"
     return text, winners_list, loosers_list
 
 async def is_group_admin( chat_id: int, user_id: int) -> bool:
@@ -1965,3 +1991,48 @@ async def send_safe_message(chat_id: int, text: str, **kwargs) -> Message | None
         return None
     
     
+def get_lang(tg_id: int) -> str:
+    tg_id = int(tg_id)
+    lang = USER_LANG_CACHE.get(tg_id)
+    if lang:
+        return lang
+    
+    if tg_id > 0:
+        user_type ="user"
+    else:
+        user_type ="group"
+    if user_type == "group":
+        group = GroupTrials.objects.filter(group_id=tg_id).only("lang").first()
+        if group:
+            USER_LANG_CACHE[tg_id] = group.lang
+            return group.lang
+    else: 
+        user = User.objects.filter(telegram_id=tg_id).only("lang").first()
+        if user:
+            USER_LANG_CACHE[tg_id] = user.lang
+            return user.lang
+
+    return "uz"
+
+
+def get_lang_text(tg_id: int) -> dict:
+    return LANG_TEXTS.get(get_lang(tg_id), uz_texts)
+
+
+def get_role_labels_lang(tg_id: int) -> dict:
+    return ROLE_LABELS.get(get_lang(tg_id), ROLE_LABELS["uz"])
+
+def get_roles_choices_lang(tg_id: int):
+    return LANG_TEXTS.get(get_lang(tg_id), uz_texts)["ROLES_CHOICES"]
+
+
+def get_actions_lang(tg_id: int) -> dict:
+    return ACTIONS.get(get_lang(tg_id), ACTIONS["uz"])
+
+
+def get_winner_label_lang(tg_id: int) -> dict:
+    return WINNER_LABELS.get(get_lang(tg_id), WINNER_LABELS["uz"])
+
+
+def get_description_lang(tg_id: int) -> dict:
+    return DESCRIPTIONS.get(get_lang(tg_id), DESCRIPTIONS["uz"])

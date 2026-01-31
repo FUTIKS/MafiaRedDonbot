@@ -3,9 +3,9 @@ from decouple import config
 from django.utils import timezone
 from mafia_bot.utils import games_state
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from mafia_bot.models import Game, PriceStones,  PremiumGroup
+from mafia_bot.models import  PriceStones,  PremiumGroup
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-from core.constants import ROLES_CHOICES,ROLE_PRICES_IN_MONEY,ROLE_PRICES_IN_STONES
+from core.constants import ROLE_PRICES_IN_MONEY,ROLE_PRICES_IN_STONES
 
 
 
@@ -14,31 +14,124 @@ def remove_prefix(text):
     return text.lstrip('@')
 
 # Cart inline button
-
 def group_profile_inline_btn(has_stone, chat_id):
-    keyboard4 = InlineKeyboardButton(text="💎 Olmosni premiumga o'tkazish", url=f"https://t.me/{remove_prefix(config('BOT_USERNAME'))}?start=stone_{chat_id}")
-    keyboard1 = InlineKeyboardButton(text="⭐ evaziga 💎 sotib olish", callback_data="star_group")
-    keyboard2 = InlineKeyboardButton(text="💳 Kartadan 💳 kartaga", url="https://t.me/RedDon_Mafia")
-    keyboard3 = InlineKeyboardButton(text=" 🛠 O'yin boshqarish", url=f"https://t.me/{remove_prefix(config('BOT_USERNAME'))}?start=instance_{chat_id}")
-    keyboard5 = InlineKeyboardButton(text="✖️ Yopish", callback_data="close")
-    keyboard = [keyboard4] if  has_stone else []
+    from mafia_bot.handlers.main_functions import get_lang
+
+    lang = get_lang(chat_id)
+    print("LANG:",lang)
+    TEXTS = {
+        "uz": {
+            "premium": "💎 Olmosni premiumga o'tkazish",
+            "buy_star": "⭐ evaziga 💎 sotib olish",
+            "card": "💳 Kartadan 💳 kartaga",
+            "manage": "🛠 O'yin boshqarish",
+            "lang":"🌐 Tilni o'zgartirish",
+            "close": "✖️ Yopish",
+        },
+        "ru": {
+            "premium": "💎 Перевести алмазы в премиум",
+            "buy_star": "⭐ Купить 💎 за звёзды",
+            "card": "💳 С карты на карту",
+            "manage": "🛠 Управление игрой",
+            "lang":"🌐 Изменить язык",
+            "close": "✖️ Закрыть",
+        },
+        "en": {
+            "premium": "💎 Convert diamonds to premium",
+            "buy_star": "⭐ Buy 💎 with stars",
+            "card": "💳 Card to card transfer",
+            "manage": "🛠 Game management",
+            "lang":"🌐 Change language",
+            "close": "✖️ Close",
+        },
+        "tr": {
+            "premium": "💎 Elmasları premiuma çevir",
+            "buy_star": "⭐ Yıldız ile 💎 satın al",
+            "card": "💳 Karttan karta",
+            "manage": "🛠 Oyun yönetimi",
+            "lang":"🌐 Dili değiştir",
+            "close": "✖️ Kapat",
+        },
+    }
+
+    t = TEXTS.get(lang, TEXTS["uz"])
+
+    keyboard4 = InlineKeyboardButton(
+        text=t["premium"],
+        url=f"https://t.me/{remove_prefix(config('BOT_USERNAME'))}?start=stone_{chat_id}"
+    )
+    keyboard1 = InlineKeyboardButton(text=t["buy_star"], callback_data="star_group")
+    keyboard2 = InlineKeyboardButton(text=t["card"], url="https://t.me/RedDon_Mafia")
+    keyboard3 = InlineKeyboardButton(
+        text=t["manage"],
+        url=f"https://t.me/{remove_prefix(config('BOT_USERNAME'))}?start=instance_{chat_id}"
+    )
+    keyboard_lang = InlineKeyboardButton(text=t["lang"], callback_data="lange_group")
+    keyboard5 = InlineKeyboardButton(text=t["close"], callback_data="close")
+
     design = [
-        keyboard,
+        [keyboard4] if has_stone else [],
         [keyboard1],
         [keyboard2],
         [keyboard3],
+        [keyboard_lang],
         [keyboard5],
     ]
-    keyboard = InlineKeyboardMarkup(inline_keyboard=design)
-    return keyboard
 
-def start_inline_btn():
-    keyboard1 = InlineKeyboardButton(text= "ℹ️ Rollar haqida ma'lumot",url="https://t.me/MafiaRedDon_Roles/39")
-    keyboard2 = InlineKeyboardButton(text="☑️ Botni guruhga qo'shish haqida ma'lumot",url="https://t.me/MafiaRedDon_Roles/96")
-    keyboard3 = InlineKeyboardButton(text="➕ Botni guruhga qo'shish", url=f"https://t.me/{remove_prefix(config('BOT_USERNAME'))}?startgroup=true")
-    keyboard4 = InlineKeyboardButton(text="⭐ Premium guruhlar", callback_data="groups")
-    keyboard5 = InlineKeyboardButton(text="👤 Profil", callback_data="profile")
-    keyboard6 = InlineKeyboardButton(text="🎭 Rollar", callback_data="role_menu")
+    return InlineKeyboardMarkup(inline_keyboard=design)
+
+def start_inline_btn(user_id):
+    from mafia_bot.handlers.main_functions import get_lang
+
+    lang = get_lang(user_id)
+
+    TEXTS = {
+        "uz": {
+            "roles_info": "ℹ️ Rollar haqida ma'lumot",
+            "add_info": "☑️ Botni guruhga qo'shish haqida ma'lumot",
+            "add_bot": "➕ Botni guruhga qo'shish",
+            "premium": "⭐ Premium guruhlar",
+            "profile": "👤 Profil",
+            "roles": "🎭 Rollar",
+        },
+        "ru": {
+            "roles_info": "ℹ️ Информация о ролях",
+            "add_info": "☑️ Как добавить бота в группу",
+            "add_bot": "➕ Добавить бота в группу",
+            "premium": "⭐ Премиум группы",
+            "profile": "👤 Профиль",
+            "roles": "🎭 Роли",
+        },
+        "en": {
+            "roles_info": "ℹ️ Role information",
+            "add_info": "☑️ How to add the bot to a group",
+            "add_bot": "➕ Add bot to group",
+            "premium": "⭐ Premium groups",
+            "profile": "👤 Profile",
+            "roles": "🎭 Roles",
+        },
+        "tr": {
+            "roles_info": "ℹ️ Roller hakkında bilgi",
+            "add_info": "☑️ Botu gruba ekleme hakkında bilgi",
+            "add_bot": "➕ Botu gruba ekle",
+            "premium": "⭐ Premium gruplar",
+            "profile": "👤 Profil",
+            "roles": "🎭 Roller",
+        },
+    }
+
+    t = TEXTS.get(lang, TEXTS["uz"])
+
+    keyboard1 = InlineKeyboardButton(text=t["roles_info"], url="https://t.me/MafiaRedDon_Roles/39")
+    keyboard2 = InlineKeyboardButton(text=t["add_info"], url="https://t.me/MafiaRedDon_Roles/96")
+    keyboard3 = InlineKeyboardButton(
+        text=t["add_bot"],
+        url=f"https://t.me/{remove_prefix(config('BOT_USERNAME'))}?startgroup=true"
+    )
+    keyboard4 = InlineKeyboardButton(text=t["premium"], callback_data="groups")
+    keyboard5 = InlineKeyboardButton(text=t["profile"], callback_data="profile")
+    keyboard6 = InlineKeyboardButton(text=t["roles"], callback_data="role_menu")
+
     design = [
         [keyboard1],
         [keyboard2],
@@ -47,22 +140,64 @@ def start_inline_btn():
         [keyboard5],
         [keyboard6],
     ]
-    keyboard = InlineKeyboardMarkup(inline_keyboard=design)
-    return keyboard
 
-def take_stone_btn():
+    return InlineKeyboardMarkup(inline_keyboard=design)
+
+
+def take_stone_btn(chat_id):
+    from mafia_bot.handlers.main_functions import get_lang
+
+    lang = get_lang(chat_id)
+
+    TEXTS = {
+        "uz": "💎 Olmosni olish",
+        "ru": "💎 Забрать алмаз",
+        "en": "💎 Take diamond",
+        "tr": "💎 Elması al",
+    }
+
+    text = TEXTS.get(lang, TEXTS["uz"])
+
     kb = InlineKeyboardBuilder()
-    kb.add(InlineKeyboardButton(text="💎 Olmosni olish", callback_data="take_stone"))
-    return kb.as_markup()
-def take_gsend_stone_btn():
-    kb = InlineKeyboardBuilder()
-    kb.add(InlineKeyboardButton(text="💎 Olmosni olish", callback_data="take_gsend_stone"))
+    kb.add(InlineKeyboardButton(text=text, callback_data="take_stone"))
     return kb.as_markup()
 
-def giveaway_join_btn():
+def take_gsend_stone_btn(chat_id):
+    from mafia_bot.handlers.main_functions import get_lang
+
+    lang = get_lang(chat_id)
+
+    TEXTS = {
+        "uz": "💎 Olmosni olish",
+        "ru": "💎 Забрать алмаз",
+        "en": "💎 Take diamond",
+        "tr": "💎 Elması al",
+    }
+
+    text = TEXTS.get(lang, TEXTS["uz"])
+
     kb = InlineKeyboardBuilder()
-    kb.add(InlineKeyboardButton(text="✅ Giveawayga qo‘shilish", callback_data="giveaway_join"))
+    kb.add(InlineKeyboardButton(text=text, callback_data="take_gsend_stone"))
     return kb.as_markup()
+
+def giveaway_join_btn(tg_id):
+    from mafia_bot.handlers.main_functions import get_lang
+
+    lang = get_lang(tg_id)
+
+    TEXTS = {
+        "uz": "✅ Giveawayga qo‘shilish",
+        "ru": "✅ Участвовать в розыгрыше",
+        "en": "✅ Join giveaway",
+        "tr": "✅ Çekilişe katıl",
+    }
+
+    text = TEXTS.get(lang, TEXTS["uz"])
+
+    kb = InlineKeyboardBuilder()
+    kb.add(InlineKeyboardButton(text=text, callback_data="giveaway_join"))
+    return kb.as_markup()
+
 
 def admin_inline_btn():
     keyboard1 = InlineKeyboardButton(text=" 💬 Guruhlar obunasi", callback_data="trial")
@@ -96,21 +231,34 @@ def admin_inline_btn():
     keyboard = InlineKeyboardMarkup(inline_keyboard=design)
     return keyboard
 
-def main_keyboard(uuid) -> InlineKeyboardMarkup:
+
+
+def answer_admin(tg_id, msg_id):
+    from mafia_bot.handlers.main_functions import get_lang
+
+    lang = get_lang(tg_id)
+
+    TEXTS = {
+        "uz": "✍️ Javob berish",
+        "ru": "✍️ Ответить",
+        "en": "✍️ Reply",
+        "tr": "✍️ Yanıtla",
+    }
+
+    text = TEXTS.get(lang, TEXTS["uz"])
+
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(text="✍️ Javob berish", url=f"https://t.me/{config('BOT_USERNAME')}?start={uuid}"),
+            InlineKeyboardButton(
+                text=text,
+                callback_data=f"answer_admin_{tg_id}_{msg_id}"
+            ),
         ],
     ])
+
     return keyboard
 
-def answer_admin(tg_id,msg_id):
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [
-            InlineKeyboardButton(text="✍️ Javob berish", callback_data=f"answer_admin_{tg_id}_{msg_id}"),
-        ],
-    ])
-    return keyboard
+
 
 def end_talk_keyboard():
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
@@ -120,13 +268,27 @@ def end_talk_keyboard():
     ])
     return keyboard
 
-def back_btn(place="profile"):
+def back_btn(tg_id, place="profile"):
+    from mafia_bot.handlers.main_functions import get_lang
+
+    lang = get_lang(tg_id)
+
+    TEXTS = {
+        "uz": "⬅️ Orqaga",
+        "ru": "⬅️ Назад",
+        "en": "⬅️ Back",
+        "tr": "⬅️ Geri",
+    }
+
+    text = TEXTS.get(lang, TEXTS["uz"])
+
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="⬅️ Orqaga", callback_data=f"back_{place}")]
+            [InlineKeyboardButton(text=text, callback_data=f"back_{place}")]
         ]
     )
     return keyboard
+
 
 def back_admin_btn():
     keyboard = InlineKeyboardMarkup(
@@ -135,55 +297,162 @@ def back_admin_btn():
         ]
     )
     return keyboard
+def case_inline_btn(tg_id):
+    from mafia_bot.handlers.main_functions import get_lang
 
-def case_inline_btn():
-    keyboard1 = InlineKeyboardButton(text="💰 Pulli sandiq", callback_data="case_money")
-    keyboard2 = InlineKeyboardButton(text="💎 Olmosli sandiq", callback_data="case_stone")
-    keyboard3 = InlineKeyboardButton(text="⭐ Vip foydalanuvchi", callback_data="case_vip")
-    keyboard4 = InlineKeyboardButton(text="⬅️ Orqaga", callback_data="back_profile")
-    design = [
-        [keyboard1],
-        [keyboard2],
-        [keyboard3],
-        [keyboard4],
-    ]
-    keyboard = InlineKeyboardMarkup(inline_keyboard=design)
+    lang = get_lang(tg_id)
+
+    TEXTS = {
+        "uz": {
+            "money": "💰 Pulli sandiq",
+            "stone": "💎 Olmosli sandiq",
+            "vip": "⭐ Vip foydalanuvchi",
+            "back": "⬅️ Orqaga",
+        },
+        "ru": {
+            "money": "💰 Денежный сундук",
+            "stone": "💎 Алмазный сундук",
+            "vip": "⭐ VIP пользователь",
+            "back": "⬅️ Назад",
+        },
+        "en": {
+            "money": "💰 Money chest",
+            "stone": "💎 Diamond chest",
+            "vip": "⭐ VIP user",
+            "back": "⬅️ Back",
+        },
+        "tr": {
+            "money": "💰 Para sandığı",
+            "stone": "💎 Elmas sandığı",
+            "vip": "⭐ VIP kullanıcı",
+            "back": "⬅️ Geri",
+        },
+    }
+
+    t = TEXTS.get(lang, TEXTS["uz"])
+
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text=t["money"], callback_data="case_money")],
+            [InlineKeyboardButton(text=t["stone"], callback_data="case_stone")],
+            [InlineKeyboardButton(text=t["vip"], callback_data="case_vip")],
+            [InlineKeyboardButton(text=t["back"], callback_data="back_profile")],
+        ]
+    )
+
     return keyboard
 
-def cart_inline_btn():
-    keyboard1 = InlineKeyboardButton(text="🛒 Do'kon", callback_data="cart")
-    keyboard2 = InlineKeyboardButton(text="💶 Sotib olish", callback_data="money_money")
-    keyboard3 = InlineKeyboardButton(text="💎 Sotib olish", callback_data="money_stone")
-    keyboard6 = InlineKeyboardButton(text="🥷 Mening Geroyim", callback_data="geroy_no_0")
-    keyboard4 = InlineKeyboardButton(text="⭐ Premium guruhlar", callback_data="groups")
-    keyboard5 = InlineKeyboardButton(text="📦  Sandiqlar", callback_data="cases")
-    design = [
-        [keyboard1],
-        [keyboard2,keyboard3],
-        [keyboard6],
-        [keyboard4],
-        [keyboard5],
-    ]
-    keyboard = InlineKeyboardMarkup(inline_keyboard=design)
+def cart_inline_btn(tg_id):
+    from mafia_bot.handlers.main_functions import get_lang
+
+    lang = get_lang(tg_id)
+
+    TEXTS = {
+        "uz": {
+            "shop": "🛒 Do'kon",
+            "buy_money": "💶 Sotib olish",
+            "buy_stone": "💎 Sotib olish",
+            "hero": "🥷 Mening Geroyim",
+            "premium": "⭐ Premium guruhlar",
+            "cases": "📦 Sandiqlar",
+        },
+        "ru": {
+            "shop": "🛒 Магазин",
+            "buy_money": "💶 Купить",
+            "buy_stone": "💎 Купить",
+            "hero": "🥷 Мой Герой",
+            "premium": "⭐ Премиум группы",
+            "cases": "📦 Сундуки",
+        },
+        "en": {
+            "shop": "🛒 Shop",
+            "buy_money": "💶 Buy",
+            "buy_stone": "💎 Buy",
+            "hero": "🥷 My Hero",
+            "premium": "⭐ Premium groups",
+            "cases": "📦 Chests",
+        },
+        "tr": {
+            "shop": "🛒 Mağaza",
+            "buy_money": "💶 Satın al",
+            "buy_stone": "💎 Satın al",
+            "hero": "🥷 Kahramanım",
+            "premium": "⭐ Premium gruplar",
+            "cases": "📦 Sandıklar",
+        },
+    }
+
+    t = TEXTS.get(lang, TEXTS["uz"])
+
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text=t["shop"], callback_data="cart")],
+            [
+                InlineKeyboardButton(text=t["buy_money"], callback_data="money_money"),
+                InlineKeyboardButton(text=t["buy_stone"], callback_data="money_stone"),
+            ],
+            [InlineKeyboardButton(text=t["hero"], callback_data="geroy_no_0")],
+            [InlineKeyboardButton(text=t["premium"], callback_data="groups")],
+            [InlineKeyboardButton(text=t["cases"], callback_data="cases")],
+        ]
+    )
+
     return keyboard
-# Shop inline button
-def shop_inline_btn():
-    keyboard1 = InlineKeyboardButton(text="🛡 Ximoya - 250 💵", callback_data="buy_protection_0")
-    keyboard2 = InlineKeyboardButton(text="📂 Hujjatlar - 500 💵", callback_data="buy_docs_0")
-    keyboard3 = InlineKeyboardButton(text="🎗️ Osilishdan ximoya  - 20000 💵", callback_data="buy_hangprotect_1")
-    keyboard4 = InlineKeyboardButton(text="🎗️ Osilishdan ximoya  - 20 💎", callback_data="buy_hangprotect_2")
-    keyboard5 = InlineKeyboardButton(text="🎭 Rol sotib olish", callback_data="buy_activerole_0")
-    keyboard6 = InlineKeyboardButton(text="⬅️ Orqaga", callback_data="back_profile")
-    design = [
-        [keyboard1],
-        [keyboard2],
-        [keyboard3],
-        [keyboard4],
-        [keyboard5],
-        [keyboard6],
-    ]
-    keyboard = InlineKeyboardMarkup(inline_keyboard=design)
+def shop_inline_btn(tg_id):
+    from mafia_bot.handlers.main_functions import get_lang
+
+    lang = get_lang(tg_id)
+
+    TEXTS = {
+        "uz": {
+            "protect": "🛡 Ximoya - 250 💵",
+            "docs": "📂 Hujjatlar - 500 💵",
+            "hang_money": "🎗️ Osilishdan ximoya - 20000 💵",
+            "hang_stone": "🎗️ Osilishdan ximoya - 20 💎",
+            "role": "🎭 Rol sotib olish",
+            "back": "⬅️ Orqaga",
+        },
+        "ru": {
+            "protect": "🛡 Защита - 250 💵",
+            "docs": "📂 Документы - 500 💵",
+            "hang_money": "🎗️ Защита от повешения - 20000 💵",
+            "hang_stone": "🎗️ Защита от повешения - 20 💎",
+            "role": "🎭 Купить роль",
+            "back": "⬅️ Назад",
+        },
+        "en": {
+            "protect": "🛡 Protection - 250 💵",
+            "docs": "📂 Documents - 500 💵",
+            "hang_money": "🎗️ Hanging protection - 20000 💵",
+            "hang_stone": "🎗️ Hanging protection - 20 💎",
+            "role": "🎭 Buy role",
+            "back": "⬅️ Back",
+        },
+        "tr": {
+            "protect": "🛡 Koruma - 250 💵",
+            "docs": "📂 Belgeler - 500 💵",
+            "hang_money": "🎗️ Asılmaya karşı koruma - 20000 💵",
+            "hang_stone": "🎗️ Asılmaya karşı koruma - 20 💎",
+            "role": "🎭 Rol satın al",
+            "back": "⬅️ Geri",
+        },
+    }
+
+    t = TEXTS.get(lang, TEXTS["uz"])
+
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text=t["protect"], callback_data="buy_protection_0")],
+            [InlineKeyboardButton(text=t["docs"], callback_data="buy_docs_0")],
+            [InlineKeyboardButton(text=t["hang_money"], callback_data="buy_hangprotect_1")],
+            [InlineKeyboardButton(text=t["hang_stone"], callback_data="buy_hangprotect_2")],
+            [InlineKeyboardButton(text=t["role"], callback_data="buy_activerole_0")],
+            [InlineKeyboardButton(text=t["back"], callback_data="back_profile")],
+        ]
+    )
+
     return keyboard
+
 
 def get_role_price(role_key: str):
     if role_key in ROLE_PRICES_IN_STONES:
@@ -192,8 +461,10 @@ def get_role_price(role_key: str):
         return "💵", ROLE_PRICES_IN_MONEY[role_key]
     return "", 0
 
-def role_shop_inline_keyboard():
+def role_shop_inline_keyboard(user_id):
     builder = InlineKeyboardBuilder()
+    from mafia_bot.handlers.main_functions import get_roles_choices_lang
+    ROLES_CHOICES = get_roles_choices_lang(user_id)
     roles = ROLES_CHOICES[:-2]
 
     for role_key, role_name in roles:
@@ -208,47 +479,66 @@ def role_shop_inline_keyboard():
 
     builder.add(
         InlineKeyboardButton(
-            text="⬅️ Orqaga",
+            text="⬅️ ",
             callback_data="back_profile"
         )
     )
 
     builder.adjust(2, 2, 2, 2, 2, 2, 2, 2, 2, 1)
     return builder.as_markup()
+def pay_for_money_inline_btn(tg_id, is_money):
+    from mafia_bot.handlers.main_functions import get_lang
 
-def pay_for_money_inline_btn(is_money):
-    builder = InlineKeyboardBuilder()
+    lang = get_lang(tg_id)
+
+    TEXTS = {
+        "uz": {
+            "card": "💳 Kartadan 💳 kartaga",
+            "stars": "⭐ Telegram yulduzlar evaziga",
+            "back": "⬅️ Orqaga",
+        },
+        "ru": {
+            "card": "💳 С карты на карту",
+            "stars": "⭐ За Telegram звёзды",
+            "back": "⬅️ Назад",
+        },
+        "en": {
+            "card": "💳 Card to card",
+            "stars": "⭐ Pay with Telegram Stars",
+            "back": "⬅️ Back",
+        },
+        "tr": {
+            "card": "💳 Karttan karta",
+            "stars": "⭐ Telegram yıldızları ile",
+            "back": "⬅️ Geri",
+        },
+    }
+
+    t = TEXTS.get(lang, TEXTS["uz"])
+
     if is_money:
         callback1 = "p2p_money"
         callback2 = "star_money"
     else:
         callback1 = "p2p_stone"
         callback2 = "star_stone"
+
+    builder = InlineKeyboardBuilder()
+
     builder.add(
-        InlineKeyboardButton(
-            text="💳 Kartadan 💳 kartaga",
-            callback_data=callback1
-        )
+        InlineKeyboardButton(text=t["card"], callback_data=callback1)
     )
     builder.add(
-        InlineKeyboardButton(
-            text="⭐ Telegram yulduzlar evaziga",
-            callback_data=callback2
-        )
+        InlineKeyboardButton(text=t["stars"], callback_data=callback2)
     )
     builder.add(
-        InlineKeyboardButton(
-            text="⬅️ Orqaga",
-            callback_data="back_profile"
-        )
+        InlineKeyboardButton(text=t["back"], callback_data="back_profile")
     )
+
     builder.adjust(1)
     return builder.as_markup()
 
 import json
-from aiogram.types import InlineKeyboardButton
-from aiogram.utils.keyboard import InlineKeyboardBuilder
-
 MONEY_FOR_STAR = {
     1000: 7,
     10000: 77,
@@ -305,9 +595,11 @@ def pay_using_stars_inline_btn(is_money: bool):
 
 
 # Roles inline button
-def roles_inline_btn():
+def roles_inline_btn(user_id):
     builder = InlineKeyboardBuilder()
     
+    from mafia_bot.handlers.main_functions import get_roles_choices_lang
+    ROLES_CHOICES = get_roles_choices_lang(user_id)
     for role in ROLES_CHOICES:
         button = InlineKeyboardButton(text=role[1], callback_data=f"roles_{role[0]}")
         builder.add(button)
@@ -316,24 +608,29 @@ def roles_inline_btn():
     return keyboard   
         
 # Join game button
-def join_game_btn(uuid):
+def join_game_btn(uuid,chat_id):
+    from mafia_bot.handlers.main_functions import get_lang_text
+    t = get_lang_text(chat_id)
+    text = t["join_game"]
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(
-                text="🤵🏻 Qo'shilish",
+                text=text,
                 url=f"https://t.me/{remove_prefix(config('BOT_USERNAME'))}?start={uuid}"  # game.code yoki game.uuid
             )]
         ]
     )
     return keyboard
 # Go to bot inline button
-def go_to_bot_inline_btn(number=1):
+def go_to_bot_inline_btn(chat_id,number=1):
+    from mafia_bot.handlers.main_functions import get_lang_text
+    t = get_lang_text(chat_id)
     if number == 1:
-        text = "🤵🏻 Rolni ko'rish"
+        text = t["view_role"]
     elif number == 2:
-        text = "🤵🏻 Botga o'tish"
+        text = t["go_to_bot"]
     elif number == 3:
-        text = "🗳 Ovoz berish"
+        text = t["vote"]
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(
@@ -363,7 +660,7 @@ def doc_btn(players,doctor_id=None,game_id=None,chat_id=None,day=None):
         builder.add(button)
     builder.add(
         InlineKeyboardButton(
-            text="🚷 Hech kimni davolamaslik",
+            text="🚷",
             callback_data=f"doc_no_{game_id}_{chat_id}_{day}"
         )
     )
@@ -375,13 +672,13 @@ def doc_btn(players,doctor_id=None,game_id=None,chat_id=None,day=None):
 # Commander inline button
 def com_inline_btn(game_id,chat_id,day=None):
     builder = InlineKeyboardBuilder()
-    button1 = InlineKeyboardButton(text="🔫 O'q uzish", callback_data=f"com_shoot_{game_id}_{chat_id}_{day}")
-    button2 = InlineKeyboardButton(text="🔍 Tekshirish", callback_data=f"com_protect_{game_id}_{chat_id}_{day}")
+    button1 = InlineKeyboardButton(text="🔫", callback_data=f"com_shoot_{game_id}_{chat_id}_{day}")
+    button2 = InlineKeyboardButton(text="🔍", callback_data=f"com_protect_{game_id}_{chat_id}_{day}")
     builder.add(button1)
     builder.add(button2)
     builder.add(
         InlineKeyboardButton(
-            text="🚷 Hech narsa qilmaslik",
+            text="🚷",
             callback_data=f"com_no_{game_id}_{chat_id}_{day}"
         )
     )
@@ -431,7 +728,7 @@ def action_inline_btn(action,own_id,players,game_id,chat_id,day=None):
         builder.add(button)
     
     button = InlineKeyboardButton(
-        text="🚷 Hech nima qilmaslik",
+        text="🚷 ",
         callback_data=f"{action}_no_{game_id}_{chat_id}_{day}"
     )
     builder.add(button)
@@ -488,7 +785,7 @@ def don_inline_btn(players,  game_id, chat_id, don_id,day=None):
         )
     builder.add(
         InlineKeyboardButton(
-            text="🚷 Hech kimni oldirmaslik",
+            text="🚷 ",
             callback_data=f"don_no_{game_id}_{chat_id}_{day}"
     ))
 
@@ -527,7 +824,7 @@ def mafia_inline_btn(players, game_id,day=None):
         )
     builder.add(
         InlineKeyboardButton(
-            text="🚷 Hech kimni oldirmaslik",
+            text="🚷 ",
             callback_data=f"mafia_no_{game_id}_{day}"
     ))
     builder.adjust(1)
@@ -555,7 +852,7 @@ def adv_inline_btn(players,  game_id, chat_id,day=None):
         )
     builder.add(
         InlineKeyboardButton(
-            text="🚷 Hech kimni himoya qilmaslik",
+            text="🚷 ",
             callback_data=f"adv_no_{game_id}_{chat_id}_{day}"
     ))
 
@@ -590,7 +887,7 @@ def spy_inline_btn(players,  game_id, chat_id,day=None,spy_id=None):
         )
     builder.add(
         InlineKeyboardButton(
-            text="🚷 Hech kimni tekshirmaslik",
+            text="🚷 ",
             callback_data=f"spy_no_{game_id}_{chat_id}_{day}"
     ))
     builder.adjust(1)
@@ -613,7 +910,7 @@ def lab_inline_btn(players, lab_id, game_id, chat_id,day=None):
         )
     builder.add(
         InlineKeyboardButton(
-            text="🚷 Hech kimga dori bermaslik",
+            text="🚷 ",
             callback_data=f"lab_no_{game_id}_{chat_id}_{day}"
     ))
 
@@ -626,14 +923,14 @@ def pirate_steal_inline_btn( pirate_id,game_id,day=None):
     builder = InlineKeyboardBuilder()
     builder.add(
         InlineKeyboardButton(
-            text="10💶 berish",
+            text="10💶 ",
             callback_data=f"pirpay_yes_{pirate_id}_{game_id}_{day}"
         )
     )
 
     builder.add(
         InlineKeyboardButton(
-            text="Pul bermaslik",
+            text="🚷 ",
             callback_data=f"pirpay_no_{pirate_id}_{game_id}_{day}"
         )
     )
@@ -648,21 +945,21 @@ def professor_gift_inline_btn(game_id,day=None,professor_id=None,chat_id=None):
     random.shuffle(callbacks)
     bulider.add(
         InlineKeyboardButton(
-            text="📦 1-quti",
+            text="📦",
             callback_data=f"prof_{callbacks[0]}_{game_id}_{day}_{professor_id}_{chat_id}"
         )
         
     )
     bulider.add(
         InlineKeyboardButton(
-            text="📦 2-quti",
+            text="📦",
             callback_data=f"prof_{callbacks[1]}_{game_id}_{day}_{professor_id}_{chat_id}"
         )
         
     )
     bulider.add(
         InlineKeyboardButton(
-            text="📦 3-quti",
+            text="📦",
             callback_data=f"prof_{callbacks[2]}_{game_id}_{day}_{professor_id}_{chat_id}"
         )
         
@@ -1052,34 +1349,114 @@ def privacy_inline_btn():
     return keyboard
 
 
-def use_hero_inline_btn(game_id, chat_id, day=None):
-    builder = InlineKeyboardBuilder()        
-    
-    builder.add(InlineKeyboardButton(
-                text="🥷 Hujum qilish",
-                callback_data=f"hero_attack_{game_id}_{chat_id}_{day}"
-            ))
-    builder.add(InlineKeyboardButton(
-                text="🛡 Himoyalanish",
-                callback_data=f"hero_protect_{game_id}_{chat_id}_{day}"
-            ))
+def use_hero_inline_btn(game_id, chat_id, tg_id, day=None):
+    from mafia_bot.handlers.main_functions import get_lang
+
+    lang = get_lang(tg_id)
+
+    TEXTS = {
+        "uz": {
+            "attack": "🥷 Hujum qilish",
+            "protect": "🛡 Himoyalanish",
+        },
+        "ru": {
+            "attack": "🥷 Атаковать",
+            "protect": "🛡 Защититься",
+        },
+        "en": {
+            "attack": "🥷 Attack",
+            "protect": "🛡 Defend",
+        },
+        "tr": {
+            "attack": "🥷 Saldır",
+            "protect": "🛡 Savun",
+        },
+    }
+
+    t = TEXTS.get(lang, TEXTS["uz"])
+
+    builder = InlineKeyboardBuilder()
+
+    builder.add(
+        InlineKeyboardButton(
+            text=t["attack"],
+            callback_data=f"hero_attack_{game_id}_{chat_id}_{day}"
+        )
+    )
+    builder.add(
+        InlineKeyboardButton(
+            text=t["protect"],
+            callback_data=f"hero_protect_{game_id}_{chat_id}_{day}"
+        )
+    )
+
     builder.adjust(1)
     return builder.as_markup()
 
 
-def geroy_inline_btn(is_geroy):
-    keyboard1 = InlineKeyboardButton(text="🥷 Sotib olish 💎 50", callback_data="geroy_buy_50")
-    keyboard2 = InlineKeyboardButton(text="🥷 Sotib olish 💵 50000", callback_data="geroy_buy_50000")
-    keyboard3 = InlineKeyboardButton(text="✖️ Geroyni olib tashlash", callback_data="geroy_sold_0")
-    keyboard4 = InlineKeyboardButton(text="⬅️ Orqaga", callback_data="back_profile")
-    design = [
-        [keyboard1],
-        [keyboard2],
-        [keyboard4],
-    ]
+
+def geroy_inline_btn(is_geroy, tg_id):
+    from mafia_bot.handlers.main_functions import get_lang
+
+    lang = get_lang(tg_id)
+
+    TEXTS = {
+        "uz": {
+            "buy_stone": "🥷 Sotib olish 💎 50",
+            "buy_money": "🥷 Sotib olish 💵 50000",
+            "remove": "✖️ Geroyni olib tashlash",
+            "back": "⬅️ Orqaga",
+        },
+        "ru": {
+            "buy_stone": "🥷 Купить 💎 50",
+            "buy_money": "🥷 Купить 💵 50000",
+            "remove": "✖️ Убрать Героя",
+            "back": "⬅️ Назад",
+        },
+        "en": {
+            "buy_stone": "🥷 Buy for 💎 50",
+            "buy_money": "🥷 Buy for 💵 50000",
+            "remove": "✖️ Remove Hero",
+            "back": "⬅️ Back",
+        },
+        "tr": {
+            "buy_stone": "🥷 💎 50 ile satın al",
+            "buy_money": "🥷 💵 50000 ile satın al",
+            "remove": "✖️ Kahramanı kaldır",
+            "back": "⬅️ Geri",
+        },
+    }
+
+    t = TEXTS.get(lang, TEXTS["uz"])
+
+    keyboard1 = InlineKeyboardButton(text=t["buy_stone"], callback_data="geroy_buy_50")
+    keyboard2 = InlineKeyboardButton(text=t["buy_money"], callback_data="geroy_buy_50000")
+    keyboard3 = InlineKeyboardButton(text=t["remove"], callback_data="geroy_sold_0")
+    keyboard4 = InlineKeyboardButton(text=t["back"], callback_data="back_profile")
+
     if is_geroy:
         design = [
             [keyboard3],
             [keyboard4],
         ]
+    else:
+        design = [
+            [keyboard1],
+            [keyboard2],
+            [keyboard4],
+        ]
+
     return InlineKeyboardMarkup(inline_keyboard=design)
+
+
+def language_keyboard():
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="🇺🇿 O'zbek", callback_data="lang_uz"),
+            InlineKeyboardButton(text="🇷🇺 Русский", callback_data="lang_ru"),
+        ],
+        [
+            InlineKeyboardButton(text="🇬🇧 English", callback_data="lang_en"),
+            InlineKeyboardButton(text="🇹🇷 Türkçe", callback_data="lang_tr"),
+        ]
+    ])

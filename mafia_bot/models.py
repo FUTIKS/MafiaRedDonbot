@@ -1,7 +1,7 @@
-from datetime import timedelta
 import json
-from django.utils import timezone
+from datetime import timedelta
 from django.db import models
+from django.utils import timezone
 from core.models.basemodel import SafeBaseModel
 from core.constants import LANGUAGE_CHOICES,MONEY_FOR_STAR,STONE_FOR_STAR
 # Create your models here.
@@ -123,6 +123,7 @@ class GroupTrials(SafeBaseModel):
     premium_stones = models.IntegerField(default=0)
     start_date = models.DateTimeField(auto_now_add=True)
     end_date = models.DateTimeField(default=default_end_date)
+    lang = models.CharField(max_length=2, choices=LANGUAGE_CHOICES, default='uz')
     prem_ends_date = models.DateTimeField(null=True, blank=True)
     
     def __str__(self):

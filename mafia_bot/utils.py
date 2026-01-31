@@ -13,6 +13,7 @@ gsend_taken = {}
 giveaways = {}
 active_role_used = []
 writing_allowed_groups = {}
+USER_LANG_CACHE = {}
 
 
 async def set_bot_commands(bot: Bot):

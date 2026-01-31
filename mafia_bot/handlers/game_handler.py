@@ -11,7 +11,7 @@ from mafia_bot.utils import game_tasks,writing_allowed_groups
 from mafia_bot.buttons.inline import confirm_hang_inline_btn, go_to_bot_inline_btn,action_inline_btn
 from mafia_bot.handlers.main_functions import (can_hang, games_state, get_most_voted_id,night_reset,day_reset, notify_new_com, notify_new_don, prepare_confirm_pending,
                                                prepare_hang_pending, prepare_night_pending, promote_new_com_if_needed, promote_new_don_if_needed, punish_afk_night_players,send_night_actions_to_all,send_safe_message,
-                                               apply_night_actions,ROLE_LABELS, stop_game_if_needed,PEACE_ROLES,MAFIA_ROLES_LAB,SOLO_ROLES,hero_day_actions)
+                                               apply_night_actions, stop_game_if_needed,PEACE_ROLES,MAFIA_ROLES_LAB,SOLO_ROLES,hero_day_actions,get_lang_text,get_role_labels_lang)
 
 
 
@@ -45,6 +45,7 @@ async def start_game(game_id):
         sunset = FSInputFile("mafia_bot/gifs/sunset.mp4")
         sunrise = FSInputFile("mafia_bot/gifs/sunrise.mp4")
         users_map = games_state[game_id].get("users_map", {})
+        t= get_lang_text(game.chat_id)
         while True:
             # ================= NIGHT START =================
             night_reset(game_id)
@@ -73,7 +74,7 @@ async def start_game(game_id):
             asyncio.create_task(send_night_actions_to_all( game_id, game, alive_users_qs,game_day))
 
             
-            caption = "<b>🌃 Tun\nKo'chaga faqat jasur va qo'rqmas odamlar chiqishdi. Ertalab tirik qolganlarni sanaymiz..</b>"
+            caption = t['night_caption']
             try:
                 await bot.send_video(
                     chat_id=game.chat_id,
@@ -101,7 +102,7 @@ async def start_game(game_id):
 
             await asyncio.sleep(1)
 
-            msgb = "<b>Tirik o'yinchilar:</b>\n\n"
+            msgb = t['alive_players'] + "\n\n"
 
             for idx, tg_id in enumerate(all_players, 1):
                 if tg_id not in alive_players:
@@ -112,12 +113,12 @@ async def start_game(game_id):
                 first_name = user.get("first_name")
                 msgb += f'<b>{idx}. <a href="tg://user?id={tg_id}">{first_name}</a></b>\n'
 
-            msgb += "\n<b>Tonggacha 1 daqiqa qoldii!</b>"
+            msgb += t['1_min_day_start']
 
             await send_safe_message(
                 chat_id=game.chat_id,
                 text=msgb,
-                reply_markup=go_to_bot_inline_btn(2),
+                reply_markup=go_to_bot_inline_btn(game.chat_id,2),
                 parse_mode="HTML"
             )
 
@@ -141,12 +142,12 @@ async def start_game(game_id):
             if games_state[game_id]['night_actions']['don_kill_target'] is not None and games_state[game_id]['night_actions']['mafia_vote'] is not [] and is_don_alive:
                 await send_safe_message(
                     chat_id=game.chat_id,
-                    text="🤵🏻 Mafia navbatdagi o'ljasini tanladi..."
+                    text=t['don_choose']
                 )
             else:
                 await send_safe_message(
                     chat_id=game.chat_id,
-                    text="🚷 🤵🏻 Don hech kimni o'ldirmaslikni afzal ko'rdi."
+                    text=t['don_not_choose']
                 )
             ended = await stop_game_if_needed(game_id)
             if ended:
@@ -156,10 +157,7 @@ async def start_game(game_id):
 
 
             # ================= MORNING =================
-            caption = (
-                    f"<b>🏙 {day}-kun\n"
-                    "Quyosh chiqdi, ammo tun orqasida nima bo‘lganini faqat bir necha kishi biladi...</b>"
-                )
+            caption = t['day_start'].format(day=day)
             try:
                 await bot.send_video(
                     chat_id=game.chat_id,
@@ -203,7 +201,7 @@ async def start_game(game_id):
             if len(alive_before_night) == len(alive_after_night):
                 await send_safe_message(
                     chat_id=game.chat_id,
-                    text="🧐 Ishonish qiyin tunda hech kim o'lmadi..."
+                    text=t['no_night_deaths']
                 )
 
             await asyncio.sleep(1)
@@ -216,8 +214,7 @@ async def start_game(game_id):
 
             
 
-            msg = "<b>Tirik o'yinchilar:</b>\n\n"
-
+            msg = t['alive_players'] + "\n\n"
             roles_map = games_state.get(game_id, {}).get("roles", {})
 
             peace_labels = []
@@ -227,15 +224,18 @@ async def start_game(game_id):
             for idx, tg_id in enumerate(all_players, 1):
                 if tg_id not in alive_after_night:
                     continue
+                
                 user = users_map.get(tg_id)
                 if not user:
                     continue
+                
                 first_name = user.get("first_name")
                 msg += f'<b>{idx}. <a href="tg://user?id={tg_id}">{first_name}</a></b>\n'
                 role_key = roles_map.get(tg_id)
                 if tg_id not in games_state[game_id]['alive']:
                     continue
-                label = ROLE_LABELS.get(role_key, "Unknown")
+                
+                label = get_role_labels_lang(game.chat_id).get(role_key, "Unknown")
 
                 if role_key in PEACE_ROLES:
                     peace_labels.append(label)
@@ -257,12 +257,15 @@ async def start_game(game_id):
                 random.shuffle(result)
                 return ", ".join(result) if result else "—"
 
-            msg += "\nUlardan:\n\n"
-            msg += f"<b>Tinch axolilar - {len(peace_labels)}\n {format_role_list(peace_labels)}</b>\n\n"
-            msg += f"<b>Mafialar - {len(mafia_labels)}\n {format_role_list(mafia_labels)}</b>\n\n"
-            msg += f"<b>Yakka rollar - {len(solo_labels)}\n {format_role_list(solo_labels)}</b>"
+            msg += t['from_them']
+            peace_roles = format_role_list(peace_labels)
+            mafia_roles = format_role_list(mafia_labels)
+            solo_roles = format_role_list(solo_labels)
+            msg += t['peace_roles'].format(count=len(peace_labels), roles=peace_roles) + "\n"
+            msg += t['mafia_roles'].format(count=len(mafia_labels), roles=mafia_roles) + "\n"
+            msg += t['solo_roles'].format(count=len(solo_labels), roles=solo_roles)
 
-            msg += "\n\n<b>Tunda bo'lgan xodisalarni muxokama qilishning ayni vaqti...</b>"
+            msg += t['debate_time']
             await hero_day_actions(game_id)
 
             await send_safe_message(
@@ -280,8 +283,8 @@ async def start_game(game_id):
             # ================= START VOTING =================
             await send_safe_message(
                 chat_id=game.chat_id,
-                text="<b>Aybdorlarni aniqlash va jazolash vaqti keldi.\nOvoz berish uchun 45 sekund</b>",
-                reply_markup=go_to_bot_inline_btn(3),
+                text=t['start_voting'],
+                reply_markup=go_to_bot_inline_btn(game.chat_id, 3),
                 parse_mode="HTML"
             )
             game_day = games_state.get(game_id, {}).get("meta", {}).get("day", 0)
@@ -292,10 +295,11 @@ async def start_game(game_id):
                 lover_block_target = night_action.get("lover_block_target")
                 if lover_block_target == tg_id:
                     continue
+                tu = get_lang_text(tg_id)
                 try:
                     await send_safe_message(
                         chat_id=tg_id,
-                        text="<b>Aybdorlarni izlash vaqti keldi!\nKimni osishni xohlaysiz?</b>",
+                        text=tu['hang_prompt'],
                         reply_markup=action_inline_btn(
                             action="hang",
                             own_id=tg_id,
@@ -330,7 +334,7 @@ async def start_game(game_id):
                 writing_allowed_groups[game.chat_id] = "no"
                 await send_safe_message(
                     chat_id=game.chat_id,
-                    text="<b>Ovoz berish yakunlandi.\nOvoz berish janjalga aylanib ketdi... Xamma uy-uyiga tarqaldi...</b>",
+                    text=t['vote_end'],
                     parse_mode="HTML"
                 )
                 continue
@@ -340,10 +344,13 @@ async def start_game(game_id):
                 await send_safe_message(chat_id=game.chat_id, text="❗ Ovoz berilgan o'yinchi topilmadi.")
                 continue
 
+            voted_user_tg_id = voted_user.get('tg_id')
+            voted_user_first_name = voted_user.get('first_name')
             # ================= CONFIRM HANG =================
             msg_obj = await send_safe_message(
                 chat_id=game.chat_id,
-                text=f"<b>Rostandan ham <a href='tg://user?id={voted_user.get('tg_id')}'>{voted_user.get('first_name')}</a> ni osmoqchimisiz?</b>",
+                text=t['voted_user'].format(first_name=voted_user_first_name,tg_id = voted_user_tg_id
+                ),
                 reply_markup=confirm_hang_inline_btn(
                     voted_user_id=voted_user.get('tg_id'),
                     game_id=game.id,
@@ -374,9 +381,7 @@ async def start_game(game_id):
 
             try:
                 await msg_obj.edit_text(
-                    text=(
-                        f"<b>Rostandan ham <a href='tg://user?id={voted_user.get('tg_id')}'>{voted_user.get('first_name')}</a> ni osmoqchimisiz?\n\n"
-                        "Ovoz berish tugadi.</b>"
+                    text=t['confirm_hanged'].format(first_name=voted_user_first_name,tg_id = voted_user_tg_id
                     ),
                     reply_markup=None,
                     parse_mode="HTML"
@@ -392,7 +397,7 @@ async def start_game(game_id):
             if final_vote == "no":
                 await send_safe_message(
                     chat_id=game.chat_id,
-                    text=f"<b>Aholi kelisha olmadi ({yes} 👍 | {no} 👎 )...\nKelisha olmaslik oqibatida hech kim osilmadi...</b>",
+                    text=t['no_consenus'].format(yes=yes, no=no),
                     parse_mode="HTML"
                 )
                 continue
@@ -404,10 +409,9 @@ async def start_game(game_id):
                     user.save()
                 await send_safe_message(
                     chat_id=game.chat_id,
-                    text=(
-                        f"<b>Ovoz berish natijalari:\n\n"
-                        f"{yes} 👍  |  {no} 👎\n\n"
-                        f"<a href='tg://user?id={voted_user.get('tg_id')}'>{voted_user.get('first_name')}</a> - ni osishdan ximoyasi bor va u osilmadi! :)</b>"
+                    text=t['hang_protect'].format(yes=yes, no=no,
+                        first_name=voted_user_first_name,
+                        tg_id=voted_user_tg_id
                     ),
                     parse_mode="HTML"
                 )
@@ -416,10 +420,9 @@ async def start_game(game_id):
 
             await send_safe_message(
                 chat_id=game.chat_id,
-                text=(
-                    f"<b>Ovoz berish natijalari:\n\n"
-                    f"{yes} 👍  |  {no} 👎\n\n"
-                    f"<a href='tg://user?id={voted_user.get('tg_id')}'>{voted_user.get('first_name')}</a> - ni osamiz! :)</b>"
+                text=t['hang_no_protect'].format(yes=yes, no=no,
+                    first_name=voted_user_first_name,
+                    tg_id=voted_user_tg_id
                 ),
                 parse_mode="HTML"
             )
@@ -438,7 +441,7 @@ async def start_game(game_id):
             await asyncio.sleep(2)
             await send_safe_message(
                 chat_id=game.chat_id,
-                text = f"<a href='tg://user?id={voted_user.get('tg_id')}'>{voted_user.get('first_name')}</a> - {ROLE_LABELS.get(roles_map.get(voted_user.get('tg_id')))} edi!!"
+                text = t['hanged'].format(first_name=voted_user_first_name,tg_id = voted_user_tg_id,role_label=get_role_labels_lang(game.chat_id).get(roles_map.get(voted_user.get('tg_id')), roles_map.get(voted_user.get('tg_id'))))
             )
             if roles_map.get(voted_user.get('tg_id')) == "don":
                 new_don_id = promote_new_don_if_needed(games_state[game_id])
@@ -446,15 +449,15 @@ async def start_game(game_id):
                     await notify_new_don( games_state[game_id], new_don_id )
                     await send_safe_message(
                         chat_id=game.chat_id,
-                        text=f"🤵🏻 Don vafot etdi.\nMafialardan biri endi yangi Don "
+                        text=t['don_killed']
                     )
             if roles_map.get(voted_user.get('tg_id')) == "com":
                 new_com_id = promote_new_com_if_needed(games_state[game_id])
                 if new_com_id:
-                    await notify_new_com( games_state[game_id], new_com_id)
+                    await notify_new_com( new_com_id)
                     await send_safe_message(
                         chat_id=game.chat_id,
-                        text=f"🕵🏻‍♂ Komissar vafot etdi.\nYangi Komissar tayinlandi."
+                        text=t['com_killed']
                     )
                 ended = await stop_game_if_needed(game_id)
                 if ended:
