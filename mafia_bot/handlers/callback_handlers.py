@@ -3465,7 +3465,7 @@ async def hero_callback(callback: CallbackQuery):
 
 
     if hero_type == "attack":
-        if role in ["snyper", "commissar", "don"]:
+        if role in ["snyper", "com", "don"]:
             await callback.message.edit_text(
                 f"{get_actions_lang(hero_id)['hero']}",
                 reply_markup=action_inline_btn(action="day_attack", own_id=hero_id, players=alive_users_qs, game_id=game_id, chat_id=chat_id, day=current_day),

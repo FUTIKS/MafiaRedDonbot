@@ -1149,6 +1149,7 @@ async def private_router(message: Message,state: FSMContext) -> None:
     if chat_id:
         print('kirdi')
         game = get_game_by_chat_id(int(chat_id))
+        print(game)
         if game:
             dead = set(game.get("dead", []))
             if tg_id in dead:
