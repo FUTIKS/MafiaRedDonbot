@@ -1150,16 +1150,15 @@ async def private_router(message: Message,state: FSMContext) -> None:
     if chat_id:
         print('kirdi')
         game = get_game_by_chat_id(int(chat_id))
-        print(game)
         if game:
             if has_link(text):
                 print("Link detected in last wish")
                 return
-            user = game.get("users_map", {}).get(tg_id)
+            user = game.get("users_map", {}).get(int(tg_id))
+            print(user)
             if user:
-                
                 try:
-                    role = game.get("roles", {}).get(tg_id, "unknown")
+                    role = game.get("roles", {}).get(int(tg_id), "unknown")
                     role_label_text = role_label(role,chat_id)
                     user_tg_id = user.get("tg_id")
                     first_name = user.get("first_name")
@@ -1216,7 +1215,7 @@ async def private_router(message: Message,state: FSMContext) -> None:
         if r in MAFIA_ROLES and pid in set(game.get("alive", []))
     ]
 
-    sender_user = game.get("users_map", {}).get(tg_id)
+    sender_user = game.get("users_map", {}).get(int(tg_id))
     sender_name = sender_user.get("first_name") if sender_user else str(tg_id)
 
     relay_text = (
