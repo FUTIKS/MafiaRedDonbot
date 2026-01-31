@@ -493,7 +493,7 @@ async def punish_afk_night_players(game_id):
             
             role_label = get_role_labels_lang(chat_id).get(role, role)
             t=get_lang_text(chat_id)
-            night_text.append(text=t["punish_afk"].format(name=name, role_label=role_label))
+            night_text.append(text=t["punish_afk"].format(name=name, role_label=role_label,pid=pid))
     try:
         await send_safe_message(
         chat_id=int(chat_id),
@@ -1398,6 +1398,7 @@ async def apply_night_actions(game_id: int):
             if not hero_used.get(target_id):
                 hero_used[target_id] = True
                 t= get_lang_text(int(target_id))
+                tu = get_lang_text(int(chat_id))
                 await send_safe_message(
                     chat_id=int(target_id),
                     text=t['hero_half_protect'],
@@ -1406,7 +1407,7 @@ async def apply_night_actions(game_id: int):
                 target_name = uname(target_id)
                 await send_safe_message(
                     chat_id=chat_id,
-                    text=t['hero_saved'].format(target_name=target_name,target_id=target_id),
+                    text=tu['hero_saved'].format(target_name=target_name,target_id=target_id),
                     parse_mode="HTML"
                 )
                 continue
