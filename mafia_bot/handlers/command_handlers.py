@@ -1064,7 +1064,7 @@ async def send_roles(game_id, chat_id):
 @dp.message(F.chat.type.in_({"group", "supergroup"}))
 async def delete_not_alive_messages(message: Message):
     chat_id = message.chat.id
-    tg_id = message.from_user.id
+    tg_id =int( message.from_user.id)
     if chat_id not in group_users:
         group_users[chat_id] = set()
 
@@ -1084,14 +1084,15 @@ async def delete_not_alive_messages(message: Message):
     
     game = get_game_by_chat_id(chat_id)
     if not game or game.get("meta", {}).get("is_active_game") is not True:
-        print("No active game")
+        print("No active game in this chat")
         return 
 
     
     alive = set(game.get("alive", []))
     night_action = game.get("night_actions", {})
     lover_block_target = night_action.get("lover_block_target")
-    t = get_lang_text(tg_id)
+    t = get_lang_text(int(tg_id))
+    print(t)
     if lover_block_target == tg_id:
         try:
             await message.delete()
@@ -1120,39 +1121,32 @@ async def delete_not_alive_messages(message: Message):
 @dp.message(F.chat.type.in_({"private"}),StateFilter(None))
 async def private_router(message: Message,state: FSMContext) -> None:
     tg_id = message.from_user.id
-    print("Private message received from:", tg_id)
-    
     if message.text == "admin_parol":
-        print(1)
         await message.answer("Iltimos, login va parolni bitta qatorda yuboring:\n\nlogin password",reply_markup=back_btn(message.from_user.id))
         await state.set_state(CredentialsState.login)
         return
     elif message.text == "logout_admin":
-        print(2)
+       
         await admin_logout(message)
         return
         
-    print('kere')
     if not message.text:
-        print("No text in message")
         return
 
     text = message.text.strip()
     if not text:
-        print("Empty text after stripping")
         return
 
     # =========================================
     # 1) LAST WISH (o'lganlar xabari)
     # =========================================
     data = last_wishes.get(tg_id)
-    print(data)
     if data:
         chat_id = data.get("chat_id")
         target_name = data.get("target_name")
         role = data.get("victim_role_label")
         if has_link(text):
-            print("Link detected in last wish")
+            print("Link detected in last wish", text)
             return
         try:
             t = get_lang_text(chat_id)

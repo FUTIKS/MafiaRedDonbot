@@ -18,7 +18,6 @@ def group_profile_inline_btn(has_stone, chat_id):
     from mafia_bot.handlers.main_functions import get_lang
 
     lang = get_lang(chat_id)
-    print("LANG:",lang)
     TEXTS = {
         "uz": {
             "premium": "💎 Olmosni premiumga o'tkazish",
