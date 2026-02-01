@@ -1092,7 +1092,6 @@ async def delete_not_alive_messages(message: Message):
     night_action = game.get("night_actions", {})
     lover_block_target = night_action.get("lover_block_target")
     t = get_lang_text(int(tg_id))
-    print(t)
     if lover_block_target == tg_id:
         try:
             await message.delete()
