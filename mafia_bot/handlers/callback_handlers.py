@@ -2833,7 +2833,7 @@ async def trial_callback(callback: CallbackQuery):
     total_pages = (total + limit - 1) // limit
 
     group_list = "\n".join([
-        f"{offset + i + 1}. <a href='{"@" if "http" not in g.group_username else ""}{g.group_username}'>{g.group_name}</a>"
+        f"{offset + i + 1}. <a href='{"https://t.me/" if "http" not in g.group_username else ""}{g.group_username}'>{g.group_name}</a>"
         if g.group_username else f"{offset + i + 1}. {g.group_name}"
         for i, g in enumerate(groups)
     ])
