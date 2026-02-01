@@ -1531,7 +1531,7 @@ async def apply_night_actions(game_id: int):
             text = t['com_check_result'].format(
                 target_name=target_name,
                 visible_role_text=visible_role_text,
-                target_id=com_check_target
+                com_check_target=com_check_target
             )
             await send_safe_message(
                 chat_id=com_id,
