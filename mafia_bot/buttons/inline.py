@@ -609,7 +609,7 @@ def roles_inline_btn(user_id):
 # Join game button
 def join_game_btn(uuid,chat_id):
     from mafia_bot.handlers.main_functions import get_lang_text
-    t = get_lang_text(chat_id)
+    t = get_lang_text(int(chat_id))
     text = t["join_game"]
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
@@ -623,7 +623,7 @@ def join_game_btn(uuid,chat_id):
 # Go to bot inline button
 def go_to_bot_inline_btn(chat_id,number=1):
     from mafia_bot.handlers.main_functions import get_lang_text
-    t = get_lang_text(chat_id)
+    t = get_lang_text(int(chat_id))
     if number == 1:
         text = t["view_role"]
     elif number == 2:

@@ -471,6 +471,7 @@ async def punish_afk_night_players(game_id):
 
         # guruhga xabar
         if chat_id:
+            chat_id = int(chat_id)
             user = users_qs.get(pid)
             name = user.get("first_name") if user else str(pid)
             role = roles.get(pid, "Noma'lum")
@@ -690,7 +691,7 @@ async def process_santa_reward(target_id, callback):
         )
     user.coin += 20
     user.save()
-    t= get_lang_text(target_id)
+    t= get_lang_text(int(target_id))
     await send_safe_message(
         chat_id=target_id,
         text=t["santa_gift"]
@@ -727,7 +728,7 @@ def find_game(game_id, tg_id,chat_id,user):
 
 def create_main_messages(game_id, tg_id_for_lang):
     tg_ids = games_state.get(game_id, {}).get("players", [])
-    t = get_lang_text(tg_id_for_lang)
+    t = get_lang_text(int(tg_id_for_lang))
 
     msg = f"{t['reg_started']}\n\n{t['reg_list']}\n"
 
@@ -931,7 +932,7 @@ def add_visit(game: dict, visitor_id: int, house_id: int, invisible: bool = Fals
 
 
 def check_bot_rights(bot_member,chat_id) -> str | bool:
-    t= get_lang_text(chat_id)
+    t= get_lang_text(int(chat_id))
     message_text = t["bot_no_rights"] 
 
     # Bot admin emas bo‘lsa — hammasini so‘raymiz
@@ -1890,7 +1891,7 @@ async def build_final_game_text(game_id: int, winner_key: str) -> str:
     roles = game.get("roles", {})
     alive = set(game.get("alive", []))
     all_players = game.get("players", [])
-    chat_id = game.get("meta", {}).get("chat_id")
+    chat_id = int(game.get("meta", {}).get("chat_id"))
     created_at = int(game.get("meta", {}).get("created_at", int(time.time())))
     duration = int(time.time()) - created_at
 

@@ -42,7 +42,7 @@ async def profile_callback(callback: CallbackQuery):
             first_name=callback.from_user.first_name,
             username=callback.from_user.username
         )
-    t = get_lang_text(tg_id)
+    t = get_lang_text(int(tg_id))
     user_role = UserRole.objects.filter(user_id=user.id)
     text =""
     for user_r in user_role:
@@ -1060,7 +1060,7 @@ async def spy_callback(callback: CallbackQuery):
     await callback.message.edit_reply_markup(None)
     target_id = callback.data.split("_")[1]
     game_id = callback.data.split("_")[2]
-    chat_id = callback.data.split("_")[3]
+    chat_id = int(callback.data.split("_")[3])
     day = callback.data.split("_")[4]
     spy_id = callback.from_user.id
     
@@ -1177,7 +1177,7 @@ async def arrow_callback(callback: CallbackQuery):
     await callback.message.edit_reply_markup(None)
     target_id = callback.data.split("_")[1]
     game_id = callback.data.split("_")[2]
-    chat_id = callback.data.split("_")[3]
+    chat_id = int(callback.data.split("_")[3])
     day = callback.data.split("_")[4]
     
     arrow_id = callback.from_user.id
@@ -1227,7 +1227,7 @@ async def trap_callback(callback: CallbackQuery):
     await callback.message.edit_reply_markup(None)
     target_id = callback.data.split("_")[1]
     game_id = callback.data.split("_")[2]
-    chat_id = callback.data.split("_")[3]
+    chat_id = int(callback.data.split("_")[3])
     day = callback.data.split("_")[4]
     
     trap_id = callback.from_user.id
@@ -1276,7 +1276,7 @@ async def snyper_callback(callback: CallbackQuery):
     await callback.message.edit_reply_markup(None)
     target_id = callback.data.split("_")[1]
     game_id = callback.data.split("_")[2]
-    chat_id = callback.data.split("_")[3]
+    chat_id = int(callback.data.split("_")[3])
     day = callback.data.split("_")[4]
     
     snyper_id = callback.from_user.id
@@ -1328,7 +1328,7 @@ async def spy_callback(callback: CallbackQuery):
     await callback.message.edit_reply_markup(None)
     target_id = callback.data.split("_")[1]
     game_id = callback.data.split("_")[2]
-    chat_id = callback.data.split("_")[3]
+    chat_id = int(callback.data.split("_")[3])
     day = callback.data.split("_")[4]
     
     traitor_id = callback.from_user.id
@@ -1375,7 +1375,7 @@ async def snowball_callback(callback: CallbackQuery):
     await callback.message.edit_reply_markup(None)
     target_id = callback.data.split("_")[1]
     game_id = callback.data.split("_")[2]
-    chat_id = callback.data.split("_")[3]
+    chat_id = int(callback.data.split("_")[3])
     day = callback.data.split("_")[4]
     
     snowball_id = callback.from_user.id
@@ -1422,7 +1422,7 @@ async def pirate_callback(callback: CallbackQuery):
     await callback.message.edit_reply_markup(None)
     target_id = callback.data.split("_")[1]
     game_id = callback.data.split("_")[2]
-    chat_id = callback.data.split("_")[3]
+    chat_id = int(callback.data.split("_")[3])
     pirate_id = callback.from_user.id
     day = callback.data.split("_")[4]
     game = games_state.get(int(game_id))
