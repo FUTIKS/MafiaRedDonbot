@@ -2833,10 +2833,15 @@ async def trial_callback(callback: CallbackQuery):
     total_pages = (total + limit - 1) // limit
 
     group_list = "\n".join([
-        f"{offset + i + 1}. <a href='{g.group_username if g.group_username.startswith('http') else 'https://t.me/' + g.group_username}'>{g.group_name}</a>"
-        if g.group_username else f"{offset + i + 1}. {g.group_name}"
-        for i, g in enumerate(groups)
-    ])
+    (
+        f"{offset + i + 1}. <a href='{g.group_username}'>{g.group_name}</a>"
+        if g.group_username.startswith("http")
+        else f"{offset + i + 1}. <a href='https://t.me/{g.group_username.lstrip('@')}'>{g.group_name}</a>"
+    )
+    if g.group_username else f"{offset + i + 1}. {g.group_name}"
+    for i, g in enumerate(groups)
+])
+
 
 
     await callback.message.edit_text(
