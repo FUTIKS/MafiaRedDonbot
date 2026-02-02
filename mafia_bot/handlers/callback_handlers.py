@@ -3571,12 +3571,14 @@ async def hero_callback(callback: CallbackQuery):
 @dp.callback_query(F.data.startswith("day_attack_"))
 async def day_attack_callback(callback: CallbackQuery):
     _, _, target_id, game_id, chat_id, day = callback.data.split("_")
-    target_id = int(target_id)
+    target_id = target_id
     game_id = int(game_id)
     chat_id = int(chat_id)
     day = int(day)
     hero_id = callback.from_user.id
-
+    if target_id == "no":
+        return
+    target_id = int(target_id)
     game = games_state.get(game_id)
     if not game:
         return
