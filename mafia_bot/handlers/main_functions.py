@@ -1860,6 +1860,7 @@ async def stop_game_if_needed(game_id: int):
             t = get_lang_text(int(u.telegram_id))
             is_winner = u.telegram_id in winners
             is_group_follower = followers_map.get(u.telegram_id, False)
+            last_wishes.pop(u.telegram_id, None)
 
             reward = (
                 110 if is_winner and is_group_follower else
