@@ -56,13 +56,13 @@ DESCRIPTIONS = {
 
 MAFIA_ROLES = {"don", "mafia", "adv", "spy"}
 MAFIA_ROLES_LAB = {"don", "mafia", "adv", "spy", "lab"}
-SOLO_ROLES = {"killer", "trap", "snyper", "arrow", "traitor", "pirate", "professor"}
-PEACE_ROLES = {"peace", "doc", "daydi", "com", "kam", "lover", "serg", "kaldun",  "snowball","santa"}
+SOLO_ROLES = {"killer", "trap", "snyper", "arrow", "traitor", "pirate", "professor","drunk"}
+PEACE_ROLES = {"peace", "doc", "daydi", "com", "kam", "lover", "serg", "kaldun",  "snowball","santa","nogiron","suid","ghost"}
 NIGHT_ACTION_ROLES = {
     "doc", "daydi", "com", "killer", "kaldun",
     "don", "mafia", "adv", "spy", "lab", "trap",
     "snyper", "arrow", "traitor", "pirate", "professor",
-     "snowball", "santa",
+     "snowball", "santa","drunk"
 }
 
 LINK_RE = re.compile(
@@ -79,6 +79,7 @@ LINK_RE = re.compile(
 
 ROLE_TEAM = {
     "peace": "peace",
+    'nogiron':"peace",
     "doc": "peace",
     "daydi": "peace",
     "com": "peace",
@@ -88,6 +89,8 @@ ROLE_TEAM = {
     "kaldun": "peace",
     "snowball": "peace",
     "santa": "peace",
+    'suid':"peace",
+    "ghost":"peace",
 
     "don": "mafia",
     "mafia": "mafia",
@@ -100,6 +103,7 @@ ROLE_TEAM = {
     "snyper": "solo",
     "arrow": "solo",
     "traitor": "solo",
+    "drunk":"solo",
     "pirate": "solo",
     "professor": "solo",
 }
@@ -113,9 +117,8 @@ async def send_night_action( tg_id, role, game_id, game, users_after_night, day)
     lover_block_target = night_action.get("lover_block_target")
     if lover_block_target == tg_id:
         return
-    if role in ("peace","serg", "kam"):
+    if role in ("peace","serg", "kam","nogiron","suid","ghost"):
         return
-    
     elif role == "doc":
         await send_safe_message(
             chat_id=tg_id,
@@ -269,6 +272,13 @@ async def send_night_action( tg_id, role, game_id, game, users_after_night, day)
             reply_markup=action_inline_btn(action="snowball", own_id=tg_id, players=users_after_night, game_id=game.id, chat_id=game.chat_id, day=day)
         )
         return
+    elif role == "drunk":
+        await send_safe_message(
+            chat_id=tg_id,
+            text=get_actions_lang(tg_id).get("drunk_action"),
+            reply_markup=action_inline_btn(action="drunk",own_id=tg_id,players=users_after_night,game_id=game.id,chat_id=game.chat_id,day=day)
+        )
+        return
     
 async def send_night_actions_to_all( game_id, game,players,day):
     game_data = games_state.get(game_id, {})
@@ -328,6 +338,7 @@ def init_game(game_id: int, chat_id: int | None = None):
             "alive": [],
             "dead": [],
             "left": [],
+            "hanged": [],
 
             "roles": {},
             "team": {},
@@ -335,6 +346,7 @@ def init_game(game_id: int, chat_id: int | None = None):
             "hero": {
                 "has": set(),
                 "used": set(),
+                "notified": set(), 
             },
 
             "limits": {
@@ -380,6 +392,7 @@ def init_game(game_id: int, chat_id: int | None = None):
                 "advokat_target": None,
                 "spy_target": None,
                 "lab_target": None,
+                "drunk_target": None,
 
                 "trap_house": None,
 
@@ -612,6 +625,12 @@ def mark_confirm_done(game_id, voter_id: int):
     if len(pending) == 0:
         event.set()
 
+def get_hero_level(tg_id):
+    try:
+        return User.objects.get(telegram_id=tg_id).hero_level
+    except:
+        return 0
+
 
 def get_most_voted_id(game_id: int):
     all_votes = games_state.get(game_id, {}).get("day_actions", {}).get("votes", [])
@@ -798,6 +817,7 @@ def night_reset(game_id: int):
         na["advokat_target"] = None
         na["spy_target"] = None
         na["lab_target"] = None
+        na["drunk_target"] = None
 
         na["trap_house"] = None
 
@@ -1218,6 +1238,7 @@ def traitor_swap_roles(game: dict):
     return int(traitor_id), int(target_id), target_role
 
 
+
 async def hero_day_actions(game_id: int):
     game = games_state.get(int(game_id))
     if not game:
@@ -1228,25 +1249,28 @@ async def hero_day_actions(game_id: int):
     meta = game.get("meta", {})
     chat_id = meta.get("chat_id")
     day = meta.get("day")
+    game["hero"].setdefault("notified", set())
 
     for tg_id, user in users_map.items():
         tg_id = int(tg_id)
         if tg_id not in game.get("alive", []):
             continue
 
-        is_hero = user.get("hero", False)
-        if not is_hero:
+        if tg_id not in game["hero"]["has"]:
+            continue
+
+        # ❌ Tugma allaqachon yuborilgan bo‘lsa skip
+        if tg_id in game["hero"]["notified"]:
             continue
 
         role = roles.get(tg_id)
-
         t = get_lang_text(tg_id)
         if role in ["don", "com", "snyper"]:
             await send_safe_message(
                 chat_id=tg_id,
                 text=t['hero_day_action'],
                 reply_markup=use_hero_inline_btn(
-                    game_id=game_id,
+                    game_id=int(game_id),
                     chat_id=chat_id,
                     tg_id=tg_id,
                     day=day
@@ -1258,7 +1282,8 @@ async def hero_day_actions(game_id: int):
                 text=t['hero_protect']
             )
 
-
+        # ✅ belgilab qo‘yamiz
+        game["hero"]["notified"].add(tg_id)
 
 
 async def apply_night_actions(game_id: int):
@@ -1329,6 +1354,11 @@ async def apply_night_actions(game_id: int):
     com_id = get_alive_role_id(game, "com")
     if com_id:
         add_intent(night_actions.get("com_shoot_target"), "com", priority=1)
+    drunk_id = get_alive_role_id(game, "drunk")
+    if drunk_id:
+        add_intent(night_actions.get("drunk_target"), "drunk", priority=4)
+        if random.random() < 0.4:
+                add_intent(drunk_id, "💊 O'zi", priority=4)
 
     snowball_id = get_alive_role_id(game, "snowball")
     if snowball_id:
@@ -1390,6 +1420,7 @@ async def apply_night_actions(game_id: int):
     for target_id, intents in kill_intents.items():
         if target_id is None:
             continue
+        
         intents.sort(key=lambda x: x[1], reverse=True)
         killer_by, pr = intents[0]
 
@@ -1412,6 +1443,12 @@ async def apply_night_actions(game_id: int):
                     parse_mode="HTML"
                 )
                 continue
+        if role == "ghost" and not killer_by == "snyper":
+            killer_id = get_alive_role_id(game, killer_by)
+            continue
+        if role == "arrow" and  killer_by == "com":
+            com_id = get_alive_role_id(game, "com")
+            continue
             
         if killer_by == "snyper":
             kill(game, target_id)
@@ -1573,7 +1610,7 @@ async def apply_night_actions(game_id: int):
                     text=t['spy_notify'].format(
                         target_name=target_name,
                         real_role_text=real_role_text,
-                        target_id=spy_target
+                        spy_target=spy_target
                     ),
                     parse_mode="HTML"
                 )
@@ -1583,7 +1620,7 @@ async def apply_night_actions(game_id: int):
                 text=t['spy_found'].format(
                         target_name=target_name,
                         real_role_text=real_role_text,
-                        target_id=spy_target
+                        spy_target=spy_target
                 ),
                 parse_mode="HTML"
             )
@@ -1891,6 +1928,7 @@ async def build_final_game_text(game_id: int, winner_key: str) -> str:
     roles = game.get("roles", {})
     alive = set(game.get("alive", []))
     all_players = game.get("players", [])
+    hanged = set(game.get("hanged", []))
     chat_id = int(game.get("meta", {}).get("chat_id"))
     created_at = int(game.get("meta", {}).get("created_at", int(time.time())))
     duration = int(time.time()) - created_at
@@ -1930,6 +1968,23 @@ async def build_final_game_text(game_id: int, winner_key: str) -> str:
         else:
             others.append(line)
             loosers_list.append(tg_id)
+            
+    suid_player = next((uid for uid, role in roles.items() if role == "suid"), None)
+
+    if suid_player and suid_player in hanged:
+        user = users_map.get(suid_player)
+        name = user.get("first_name") if user else str(suid_player)
+        role_txt = role_label("suid")
+
+        line = f"    {name} - {role_txt}"
+
+        if line not in winners:
+            winners.append(line)
+            winners_list.append(suid_player)
+
+        if suid_player in loosers_list:
+            loosers_list.remove(suid_player)
+            
     t = get_lang_text(chat_id)
     text = (
         f"{t['title']}\n"

@@ -390,7 +390,7 @@ def cart_inline_btn(tg_id):
                 InlineKeyboardButton(text=t["buy_money"], callback_data="money_money"),
                 InlineKeyboardButton(text=t["buy_stone"], callback_data="money_stone"),
             ],
-            [InlineKeyboardButton(text=t["hero"], callback_data="geroy_no_0")],
+            [InlineKeyboardButton(text=t["hero"], callback_data="geroy_no")],
             [InlineKeyboardButton(text=t["premium"], callback_data="groups")],
             [InlineKeyboardButton(text=t["cases"], callback_data="cases")],
         ]
@@ -1401,26 +1401,26 @@ def geroy_inline_btn(is_geroy, tg_id):
 
     TEXTS = {
         "uz": {
-            "buy_stone": "🥷 Sotib olish 💎 50",
-            "buy_money": "🥷 Sotib olish 💵 50000",
+            "buy_stone": "🥷 Sotib olish 💎 100",
+            "upgrade_geroy":"➕ Geroyni kuchaytirish",
             "remove": "✖️ Geroyni olib tashlash",
             "back": "⬅️ Orqaga",
         },
         "ru": {
-            "buy_stone": "🥷 Купить 💎 50",
-            "buy_money": "🥷 Купить 💵 50000",
+            "buy_stone": "🥷 Купить 💎 100",
+            "upgrade_geroy":"➕ Улучшить Героя",
             "remove": "✖️ Убрать Героя",
             "back": "⬅️ Назад",
         },
         "en": {
-            "buy_stone": "🥷 Buy for 💎 50",
-            "buy_money": "🥷 Buy for 💵 50000",
+            "buy_stone": "🥷 Buy for 💎 100",
+            "upgrade_geroy":"➕ Upgrade Hero",
             "remove": "✖️ Remove Hero",
             "back": "⬅️ Back",
         },
         "tr": {
-            "buy_stone": "🥷 💎 50 ile satın al",
-            "buy_money": "🥷 💵 50000 ile satın al",
+            "buy_stone": "🥷 💎 100 ile satın al",
+            "upgrade_geroy":"➕ Kahramanı yükselt",
             "remove": "✖️ Kahramanı kaldır",
             "back": "⬅️ Geri",
         },
@@ -1428,20 +1428,20 @@ def geroy_inline_btn(is_geroy, tg_id):
 
     t = TEXTS.get(lang, TEXTS["uz"])
 
-    keyboard1 = InlineKeyboardButton(text=t["buy_stone"], callback_data="geroy_buy_50")
-    keyboard2 = InlineKeyboardButton(text=t["buy_money"], callback_data="geroy_buy_50000")
-    keyboard3 = InlineKeyboardButton(text=t["remove"], callback_data="geroy_sold_0")
+    keyboard1 = InlineKeyboardButton(text=t["buy_stone"], callback_data="geroy_buy")
+    keyboard2 = InlineKeyboardButton(text=t["upgrade_geroy"], callback_data="geroy_upgrade")
+    keyboard3 = InlineKeyboardButton(text=t["remove"], callback_data="geroy_sold")
     keyboard4 = InlineKeyboardButton(text=t["back"], callback_data="back_profile")
 
     if is_geroy:
         design = [
+            [keyboard2],
             [keyboard3],
             [keyboard4],
         ]
     else:
         design = [
             [keyboard1],
-            [keyboard2],
             [keyboard4],
         ]
 

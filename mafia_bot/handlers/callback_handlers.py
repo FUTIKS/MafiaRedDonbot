@@ -16,7 +16,7 @@ from mafia_bot.utils import stones_taken,gsend_taken,giveaways,games_state,USER_
 from aiogram.types import Message, LabeledPrice, PreCheckoutQuery,CallbackQuery
 from mafia_bot.models import Game, MoneySendHistory, User,PremiumGroup,MostActiveUser,CasesOpened,GameSettings,GroupTrials,PriceStones, UserRole,BotCredentials
 from mafia_bot.state import AddGroupState, BeginInstanceState,SendMoneyState,ChangeStoneCostState,ChangeMoneyCostState,ExtendGroupState,QuestionState,Register,CredentialsState
-from mafia_bot.handlers.main_functions import (add_visit, get_mafia_members,get_first_name_from_players, kill,send_safe_message,get_description_lang,
+from mafia_bot.handlers.main_functions import (add_visit, get_mafia_members,get_first_name_from_players, kill,send_safe_message,get_description_lang,get_hero_level,
                                                mark_confirm_done, mark_hang_done,mark_night_action_done,get_week_range,get_month_range,role_label,get_lang_text,get_role_labels_lang,get_actions_lang)
 from mafia_bot.buttons.inline import (action_inline_btn,
     admin_inline_btn, answer_admin, back_btn, cart_inline_btn, change_money_cost, change_stones_cost, com_inline_btn, end_talk_keyboard, geroy_inline_btn,  giveaway_join_btn, group_profile_inline_btn,
@@ -863,6 +863,64 @@ async def kaldun_callback(callback: CallbackQuery):
     )
     return
 
+
+@dp.callback_query(F.data.startswith("drunk_"))
+async def drunk_callback(callback: CallbackQuery):
+    await callback.answer()
+
+    parts = callback.data.split("_")
+    target_raw = parts[1]
+    game_id = int(parts[2])
+    chat_id = int(parts[3])
+    day = parts[4]
+    drunk_id = callback.from_user.id
+
+    game = games_state.get(game_id)
+    if not game:
+        return
+    t = get_lang_text(drunk_id)
+    tu = get_lang_text(chat_id)
+    if day != str(game['meta']['day']):
+        await callback.message.edit_text(
+            f"{get_actions_lang(drunk_id).get('drunk_action')}\n\n{t['late']}",
+            parse_mode="HTML"
+        )
+        return
+
+    if drunk_id not in game["alive"]:
+        return
+
+    mark_night_action_done(game, drunk_id)
+    await callback.message.edit_reply_markup(None)
+
+    if target_raw == "no":
+        await callback.message.edit_text(
+            f"{get_actions_lang(drunk_id).get('drunk_action')}\n\n{t['action_no_choose']}",
+            parse_mode="HTML"
+        )
+        await send_safe_message(
+            chat_id=chat_id,
+            text=tu['drunk_no_go']
+        )
+        return
+
+    target_id = int(target_raw)
+
+    # 🔒 GAME LOGIC — O‘ZGARMAGAN
+    game["night_actions"]["drunk_target"] = target_id
+    add_visit(game=game, visitor_id=drunk_id, house_id=target_id, invisible=False)
+
+    target_name = get_first_name_from_players(target_id)
+
+    await send_safe_message(
+        chat_id=chat_id,
+        text=tu['drunk_go']
+    )
+
+    await callback.message.edit_text(
+        f"{get_actions_lang(drunk_id).get('drunk_action')}\n\n<a href='tg://user?id={target_id}'>{target_name}</a> {t['action_choose']}.",
+        parse_mode="HTML"
+    )
 
 
 @dp.callback_query(F.data.startswith("don_"))
@@ -3496,13 +3554,12 @@ async def hero_callback(callback: CallbackQuery):
 
 
     if hero_type == "attack":
-        if role in ["snyper", "com", "don"]:
-            await callback.message.edit_text(
-                f"{get_actions_lang(hero_id)['hero']}",
-                reply_markup=action_inline_btn(action="day_attack", own_id=hero_id, players=alive_users_qs, game_id=game_id, chat_id=chat_id, day=current_day),
-                parse_mode="HTML"
-            )
-            return
+        await callback.message.edit_text(
+            f"{get_actions_lang(hero_id)['hero']}",
+            reply_markup=action_inline_btn(action="day_attack", own_id=hero_id, players=alive_users_qs, game_id=game_id, chat_id=chat_id, day=current_day),
+            parse_mode="HTML"
+        )
+        return
         
     elif hero_type == "protect":
        
@@ -3510,7 +3567,7 @@ async def hero_callback(callback: CallbackQuery):
             f"{get_actions_lang(hero_id)['hero']}\n\n{t['hero_protect_self']}",
             parse_mode="HTML"
         )
-        
+
 @dp.callback_query(F.data.startswith("day_attack_"))
 async def day_attack_callback(callback: CallbackQuery):
     _, _, target_id, game_id, chat_id, day = callback.data.split("_")
@@ -3523,60 +3580,62 @@ async def day_attack_callback(callback: CallbackQuery):
     game = games_state.get(game_id)
     if not game:
         return
-    t = get_lang_text(hero_id)
-    tu = get_lang_text(chat_id)
+
     if game["meta"]["day"] != day:
-        await callback.message.edit_text(
-            f"{get_actions_lang(hero_id)['hero_attack']}\n\n{t['late']}",
-            parse_mode="HTML"
-        )
         return
 
     if hero_id not in game["alive"] or target_id not in game["alive"]:
         return
 
-    role = game["roles"].get(hero_id)
-    if role not in ["sniper", "commissar", "don"]:
+    # 🔥 faqat hero ability bor o‘yinchi
+    if hero_id not in game["hero"]["has"]:
         return
-    role_target = game['roles'].get(target_id)
+
+    # ❌ 1 o‘yinda 1 marta
+    if hero_id in game["hero"]["used"]:
+        await callback.answer("Siz bu o‘yinda hujum qilib bo‘lgansiz", show_alert=True)
+        return
+
+    game["hero"]["used"].add(hero_id)
+
+    # HP tracking
     game.setdefault("hero_damage", {})
-    game["hero_damage"].setdefault(target_id, {"hits": 0, "hp_percent": 100})
+    game["hero_damage"].setdefault(target_id, {"hp_percent": 100})
 
     data = game["hero_damage"][target_id]
     target_name = game["users_map"].get(target_id, {}).get("first_name", "Noma'lum")
 
-    if data["hits"] == 0:
-        import random
-        damage = random.randint(50, 60)
-        data["hp_percent"] -= damage
-        data["hits"] += 1
-        hp_data = data['hp_percent']
-        await send_safe_message(
-            chat_id=chat_id,
-            text=tu['hero_attack'].format(target_name=target_name, damage=damage, hp_data=hp_data),
-            parse_mode="HTML"
-        )
-        await callback.message.edit_text(
-            f"{get_actions_lang(hero_id)['hero']}\n\n🎯 <b>{target_name}</b> {t['action_choose']}",
-            parse_mode="HTML"
-        )
-    else:
+    hero_level = get_hero_level(hero_id)
+    damage = hero_level * 3 + 50
+
+    data["hp_percent"] -= damage
+    hp_left = max(data["hp_percent"], 0)
+
+    t = get_lang_text(hero_id)
+    tu = get_lang_text(chat_id)
+
+    # ☠ kill condition
+    if hp_left <= 0:
         kill(game, target_id)
-        role_target = role_label(role_target,chat_id)
+        role_target = role_label(game['roles'].get(target_id), chat_id)
+
         await send_safe_message(
             chat_id=chat_id,
             text=tu['hero_killed'].format(target_name=target_name, role_target=role_target),
             parse_mode="HTML"
         )
-        await callback.message.edit_text(
-            f"{get_actions_lang(hero_id)['hero']}\n\n{t['hero_killed'].format(target_name=target_name, role_target=role_target)}",
+    else:
+        await send_safe_message(
+            chat_id=chat_id,
+            text=tu['hero_attack'].format(target_name=target_name, damage=damage, hp_data=hp_left),
             parse_mode="HTML"
         )
+
+
 
 @dp.callback_query(F.data.startswith("geroy_"))
 async def geroy_callback(callback: CallbackQuery):
     action = callback.data.split("_")[1]
-    money = int(callback.data.split("_")[2])
     user_id = callback.from_user.id
     user = User.objects.filter(telegram_id=user_id).first()
     if not user:
@@ -3589,21 +3648,26 @@ async def geroy_callback(callback: CallbackQuery):
     if action == "no":
         await callback.message.edit_text(t['hero_info'],reply_markup=geroy_inline_btn(user.is_hero, user_id))
     elif action == "buy":
-        if money == 50000:
-            if user.coin < 50000:
-                await callback.answer(t['not_enough_money'])
-                return
-            user.coin -= 50000
-        elif money == 50:
-            if user.stones < 50:
-                await callback.answer(t['not_enough_stones'])
-                return
-            user.stones -= 50
+        if user.stones < 100:
+            await callback.answer(t['not_enough_stones'])
+            return
+        user.stones -= 100
         user.is_hero = True
+        user.hero_level = 1
         user.save()
         await callback.message.edit_text(t['hero_bought'],reply_markup=start_inline_btn(callback.from_user.id))
+    elif action == "upgrade":
+        price = user.hero_level * 10 + 100
+        if user.stones < price:
+            await callback.answer(t['not_enough_stones'])
+            return
+        user.hero_level += 1
+        user.stones -= price
+        user.save()
+        await callback.message.edit_text(t['hero_upgraded'].format(level=user.hero_level),reply_markup=start_inline_btn(callback.from_user.id))
     elif action == "sold":
         user.is_hero=False
+        user.hero_level=1
         user.save()
         await callback.message.edit_text(t['hero_remove'],reply_markup=start_inline_btn(callback.from_user.id))
         
@@ -3629,7 +3693,7 @@ async def export_users_excel(callback: CallbackQuery):
         "active_role",
         "role",
         "is_vip",
-        "is_hero"
+        "is_hero",
     )
 
     wb = openpyxl.Workbook()

@@ -436,6 +436,7 @@ async def start_game(game_id):
             if target_id not in games_state[game_id]["dead"]:
                 games_state[game_id]["dead"].append(target_id)
             games_state[game_id]["day_actions"]["last_hanged"] = target_id
+            games_state[game_id]["hanged"].append(target_id)
             
 
             await asyncio.sleep(2)

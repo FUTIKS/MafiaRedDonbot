@@ -27,7 +27,7 @@ class User(SafeBaseModel):
     role = models.CharField(max_length=50, choices=USER_ROLES, default='user')
     is_vip=models.BooleanField(default=False)
     is_hero = models.BooleanField(default=False)
-    
+    hero_level = models.IntegerField(default=1)
     
     def __str__(self):
         return f"{self.username} - {self.telegram_id}"
