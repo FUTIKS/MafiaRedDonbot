@@ -14,7 +14,7 @@ from django.contrib.auth.hashers import make_password
 from aiogram.exceptions import TelegramForbiddenError, TelegramRetryAfter
 from mafia_bot.utils import stones_taken,gsend_taken,giveaways,games_state,USER_LANG_CACHE
 from aiogram.types import Message, LabeledPrice, PreCheckoutQuery,CallbackQuery
-from mafia_bot.models import Game, MoneySendHistory, User,PremiumGroup,MostActiveUser,CasesOpened,GameSettings,GroupTrials,PriceStones, UserRole,BotCredentials
+from mafia_bot.models import Game, MoneySendHistory, User,PremiumGroup,MostActiveUser,CasesOpened,GameSettings,GroupTrials,PriceStones, UserRole,BotCredentials, default_end_date
 from mafia_bot.state import AddGroupState, BeginInstanceState,SendMoneyState,ChangeStoneCostState,ChangeMoneyCostState,ExtendGroupState,QuestionState,Register,CredentialsState
 from mafia_bot.handlers.main_functions import (add_visit, get_mafia_members,get_first_name_from_players, kill,send_safe_message,get_description_lang,get_hero_level,
                                                mark_confirm_done, mark_hang_done,mark_night_action_done,get_week_range,get_month_range,role_label,get_lang_text,get_role_labels_lang,get_actions_lang)
@@ -2055,6 +2055,7 @@ async def process_olmos_amount(message: Message, state: FSMContext) -> None:
             group.name = group_name
             group.link = group_link
             group.stones_for = olmos_amount
+            group.ends_date = default_end_date()
             group.save()
             await message.answer(
                 text=f"✅ Premium guruh muvaffaqiyatli yangilandi!\n\n"
@@ -2068,7 +2069,8 @@ async def process_olmos_amount(message: Message, state: FSMContext) -> None:
     PremiumGroup.objects.create(
         name=group_name,
         link=group_link,
-        stones_for=olmos_amount
+        stones_for=olmos_amount,
+        ends_date=default_end_date()
     )
 
     await message.answer(
@@ -2922,10 +2924,15 @@ async def quizzes_page_callback(callback_query: CallbackQuery):
     total_pages = (total + limit - 1) // limit
 
     group_list = "\n".join([
-        f"{offset + i + 1}. <a href='https://t.me/{g.group_username}'>{g.group_name}</a>"
-        if g.group_username else f"{offset + i + 1}. {g.group_name}"
-        for i, g in enumerate(groups)
-    ])
+    (
+        f"{offset + i + 1}. <a href='{g.group_username}'>{g.group_name}</a>"
+        if g.group_username.startswith("http")
+        else f"{offset + i + 1}. <a href='https://t.me/{g.group_username.lstrip('@')}'>{g.group_name}</a>"
+    )
+     if g.group_username else f"{offset + i + 1}. {g.group_name}"
+    for i, g in enumerate(groups)
+])
+
 
     await callback_query.message.edit_text(
         text=f"Obunadagi guruhlar (sahifa {page}/{total_pages}):\n\n{group_list}",
