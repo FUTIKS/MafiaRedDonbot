@@ -3,7 +3,7 @@ from decouple import config
 from django.utils import timezone
 from mafia_bot.utils import games_state
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from mafia_bot.models import  PriceStones,  PremiumGroup
+from mafia_bot.models import  PriceStones,  PremiumGroup, User
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from core.constants import ROLE_PRICES_IN_MONEY,ROLE_PRICES_IN_STONES
 
@@ -1394,33 +1394,36 @@ def use_hero_inline_btn(game_id, chat_id, tg_id, day=None):
 
 
 
-def geroy_inline_btn(is_geroy, tg_id):
+def geroy_inline_btn(tg_id):
     from mafia_bot.handlers.main_functions import get_lang
 
     lang = get_lang(tg_id)
+    user = User.objects.filter(telegram_id=tg_id).first()
+    is_geroy = user and user.is_hero
+    price = 100+ user.hero_level * 10 if user else 110
 
     TEXTS = {
         "uz": {
             "buy_stone": "🥷 Sotib olish 💎 100",
-            "upgrade_geroy":"➕ Geroyni kuchaytirish",
+            "upgrade_geroy":f"➕ Geroyni kuchaytirish 💎 {price}",
             "remove": "✖️ Geroyni olib tashlash",
             "back": "⬅️ Orqaga",
         },
         "ru": {
             "buy_stone": "🥷 Купить 💎 100",
-            "upgrade_geroy":"➕ Улучшить Героя",
+            "upgrade_geroy":f"➕ Улучшить Героя 💎 {price}",
             "remove": "✖️ Убрать Героя",
             "back": "⬅️ Назад",
         },
         "en": {
             "buy_stone": "🥷 Buy for 💎 100",
-            "upgrade_geroy":"➕ Upgrade Hero",
+            "upgrade_geroy":f"➕ Upgrade Hero 💎 {price}",
             "remove": "✖️ Remove Hero",
             "back": "⬅️ Back",
         },
         "tr": {
             "buy_stone": "🥷 💎 100 ile satın al",
-            "upgrade_geroy":"➕ Kahramanı yükselt",
+            "upgrade_geroy":f"➕ Kahramanı yükselt 💎 {price}",
             "remove": "✖️ Kahramanı kaldır",
             "back": "⬅️ Geri",
         },

@@ -57,7 +57,7 @@ DESCRIPTIONS = {
 MAFIA_ROLES = {"don", "mafia", "adv", "spy"}
 MAFIA_ROLES_LAB = {"don", "mafia", "adv", "spy", "lab"}
 SOLO_ROLES = {"killer", "trap", "snyper", "arrow", "traitor", "pirate", "professor","drunk"}
-PEACE_ROLES = {"peace", "doc", "daydi", "com", "kam", "lover", "serg", "kaldun",  "snowball","santa","nogiron","suid","ghost"}
+PEACE_ROLES = {"peace", "doc", "daydi", "com", "kam", "lover", "serg", "kaldun",  "snowball","santa","nogiron","ghost"}
 NIGHT_ACTION_ROLES = {
     "doc", "daydi", "com", "killer", "kaldun",
     "don", "mafia", "adv", "spy", "lab", "trap",
@@ -488,13 +488,14 @@ async def punish_afk_night_players(game_id):
             user = users_qs.get(pid)
             name = user.get("first_name") if user else str(pid)
             role = roles.get(pid, "Noma'lum")
+            tg=get_lang_text(int(chat_id))
             if role == "don":
                 new_don_id = promote_new_don_if_needed(game)
                 if new_don_id:
                     await notify_new_don( game,new_don_id)
                     await send_safe_message(
                         chat_id=chat_id,
-                        text=f"🤵🏻 Don vafot etdi.\nMafialardan biri endi yangi Don "
+                        text=tg["don_become"]
                                 )
             elif role == "com":
                 new_com_id = promote_new_com_if_needed(game)
@@ -502,12 +503,11 @@ async def punish_afk_night_players(game_id):
                     await notify_new_com(  new_com_id)
                     await send_safe_message(
                                 chat_id=chat_id,
-                                text=f"🕵🏻‍♂ Komissar vafot etdi.\nYangi Komissar tayinlandi."
+                                text=tg["com_become"]
                             )
             
             role_label = get_role_labels_lang(chat_id).get(role, role)
-            t=get_lang_text(chat_id)
-            night_text.append(t["punish_afk"].format(name=name, role_label=role_label,pid=pid))
+            night_text.append(tg["punish_afk"].format(name=name, role_label=role_label,pid=pid))
     try:
         await send_safe_message(
         chat_id=int(chat_id),
@@ -1008,7 +1008,7 @@ def get_mafia_kill_target(night_actions):
 
     # agar durang bo'lsa None
     if len(top) != 1:
-        return don_target
+        return don_target if don_target else mafia_votes[0] if mafia_votes else None
 
     return top[0]
 
@@ -1505,7 +1505,7 @@ async def apply_night_actions(game_id: int):
                 await notify_new_don( game, new_don_id)
                 await send_safe_message(
                     chat_id=chat_id,
-                    text=t['don_killed']
+                    text=t['don_become']
                 )
                 
         if target_role == "com":
@@ -1514,7 +1514,7 @@ async def apply_night_actions(game_id: int):
                 await notify_new_com(new_com_id)
                 await send_safe_message(
                     chat_id=chat_id,
-                    text=t['com_killed']
+                    text=t['com_become']
                 )
 
         t = get_lang_text(int(target_id))
@@ -1958,7 +1958,7 @@ async def build_final_game_text(game_id: int, winner_key: str) -> str:
         user = users_map.get(tg_id)
 
         name = user.get("first_name") if user else str(tg_id)
-        role_txt = role_label(role_key,tg_id)
+        role_txt = role_label(role_key,chat_id)
 
         line = f"    {name} - {role_txt}"
 
@@ -1975,7 +1975,7 @@ async def build_final_game_text(game_id: int, winner_key: str) -> str:
     if suid_player and suid_player in hanged:
         user = users_map.get(suid_player)
         name = user.get("first_name") if user else str(suid_player)
-        role_txt = role_label("suid")
+        role_txt = role_label("suid", chat_id)
 
         line = f"    {name} - {role_txt}"
 

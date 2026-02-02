@@ -3648,7 +3648,7 @@ async def geroy_callback(callback: CallbackQuery):
         )
     t = get_lang_text(user_id)
     if action == "no":
-        await callback.message.edit_text(t['hero_info'],reply_markup=geroy_inline_btn(user.is_hero, user_id))
+        await callback.message.edit_text(t['hero_info'],reply_markup=geroy_inline_btn(user_id))
     elif action == "buy":
         if user.stones < 100:
             await callback.answer(t['not_enough_stones'])

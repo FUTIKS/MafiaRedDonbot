@@ -474,7 +474,7 @@ async def leave(message: Message) -> None:
             await notify_new_don( game,new_don_id)
             await send_safe_message(
                 chat_id=chat_id,
-                text=t['don_killed']
+                text=t['don_become']
                     )
     elif role == "com":
         new_com_id = promote_new_com_if_needed(game)
@@ -482,7 +482,7 @@ async def leave(message: Message) -> None:
             await notify_new_com(  new_com_id)
             await send_safe_message(
                         chat_id=chat_id,
-                        text=t['com_killed']
+                        text=t['com_become']
                     )
     role_label_text = role_label(role,chat_id)
     await send_safe_message(chat_id=chat_id,text=t['left_game'].format(telegram_id=tg_id,first_name=user.first_name,role_label_text=role_label_text))
