@@ -1401,6 +1401,7 @@ def geroy_inline_btn(tg_id):
     user = User.objects.filter(telegram_id=tg_id).first()
     is_geroy = user and user.is_hero
     price = 100+ user.hero_level * 10 if user else 110
+    is_hero_max = user.hero_level >= 17 if user else False
 
     TEXTS = {
         "uz": {
@@ -1437,7 +1438,13 @@ def geroy_inline_btn(tg_id):
     keyboard4 = InlineKeyboardButton(text=t["back"], callback_data="back_profile")
 
     if is_geroy:
-        design = [
+        if is_hero_max:
+            design = [
+                [keyboard3],
+                [keyboard4],
+            ]
+        else:
+            design = [
             [keyboard2],
             [keyboard3],
             [keyboard4],
