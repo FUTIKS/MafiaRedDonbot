@@ -681,12 +681,10 @@ async def game_command(message: Message) -> None:
             return
         if game.is_started:
             return
-        args = message.get_args()
-        if args.lower() == "turnir":
-            print("turnir mode activated")
+        if " " in message.text and message.text.split(' ')[1] == "turnir":
+            print("turnir mode")
             game.game_type = "turnir"
             game.save(update_fields=["game_type"])
-
         user = User.objects.filter(telegram_id=message.from_user.id).first()
         if not user:
             user = User.objects.create(
