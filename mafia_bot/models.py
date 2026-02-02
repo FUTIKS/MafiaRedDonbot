@@ -40,8 +40,13 @@ class UserRole(SafeBaseModel):
         return f"UserRole {self.user.username} - Role {self.role_key}"
     
 class Game(SafeBaseModel):
+    GAME_TYPE =[
+        ('classic','Classic'),
+        ('turnir','Turnir'),
+    ]
     lang = models.CharField(max_length=2,choices=LANGUAGE_CHOICES,default="uz")
     chat_id = models.BigIntegerField()
+    game_type = models.CharField(max_length=50,default="classic",choices=GAME_TYPE)
     is_started = models.BooleanField(default=False)
     is_ended=models.BooleanField(default=False)
     is_active_game=models.BooleanField(default=True)

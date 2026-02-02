@@ -304,6 +304,11 @@ def init_game(game_id: int, chat_id: int | None = None):
         game_settings = GameSettings.objects.filter(group_id=int(chat_id)).first()
         if game_settings and game_settings.begin_instance:
             max_players = game_settings.number_of_players if game_settings else max_players
+        game = Game.objects.filter(id=game_id).first()
+        if game and game.game_type == 'turnir':
+            type_game = 'turnir'
+        else:
+            type_game = 'classic'
        
 
         games_state[game_id] = {
@@ -312,6 +317,7 @@ def init_game(game_id: int, chat_id: int | None = None):
                 "chat_id": chat_id,
                 "created_at": int(time.time()),
                 "phase": "lobby",
+                "game_type": type_game,
                 "day": 0,
                 "night": 0,
                 "message_allowed":"yes",
@@ -737,7 +743,10 @@ def find_game(game_id, tg_id,chat_id,user):
             return {"message": "full"}
 
         game["players"].append(tg_id)
-        game["users_map"][tg_id]={"first_name":user.first_name,"protection":1 if user.protection>=1 else 0,"doc": 1 if user.docs>=1 else 0,"hang_protect": 1 if user.hang_protect>=1 else 0,"tg_id":tg_id,"hero":user.is_hero}
+        if game['meta']['game_type']=='turnir':
+            game["users_map"][tg_id]={"first_name":user.first_name,"protection":1 if user.protection>=1 else 0,"doc": 1 if user.docs>=1 else 0,"hang_protect": 1 if user.hang_protect>=1 else 0,"tg_id":tg_id,"hero":False}
+        else:
+            game["users_map"][tg_id]={"first_name":user.first_name,"protection":1 if user.protection>=1 else 0,"doc": 1 if user.docs>=1 else 0,"hang_protect": 1 if user.hang_protect>=1 else 0,"tg_id":tg_id,"hero":user.is_hero}
         game["alive"].append(tg_id)
         if len(game["players"])==max_players:
             return {"message": "full"}
