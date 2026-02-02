@@ -693,6 +693,8 @@ async def game_command(message: Message) -> None:
                 first_name=message.from_user.first_name,
                 username=message.from_user.username
             )
+            
+            
         msg = await message.answer(text=t["registration_started"],reply_markup=join_game_btn(str(game.uuid), chat_id))
         await bot.pin_chat_message(chat_id=chat_id,message_id=msg.message_id)
         BotMessages.objects.create(game_id=game.id,message_id=msg.message_id,is_main=True)

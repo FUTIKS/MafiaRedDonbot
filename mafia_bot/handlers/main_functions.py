@@ -1265,9 +1265,9 @@ async def hero_day_actions(game_id: int):
         tg_id = int(tg_id)
         if tg_id not in game.get("alive", []):
             continue
-
-        if tg_id not in game["hero"]["has"]:
+        if not user.get("hero", False):
             continue
+
         if tg_id in game["hero"]["used"]:
             continue
 
