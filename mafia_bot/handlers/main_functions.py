@@ -1423,6 +1423,7 @@ async def apply_night_actions(game_id: int):
         
         intents.sort(key=lambda x: x[1], reverse=True)
         killer_by, pr = intents[0]
+        role = roles.get(int(target_id))
 
         target_user = alive_users_map.get(int(target_id))
         hero_used = game.setdefault("hero_used", {})
