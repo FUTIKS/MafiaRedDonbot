@@ -1433,7 +1433,7 @@ async def apply_night_actions(game_id: int):
 
     dead_tonight = []
     saved_tonight = []
-
+    lover_target = night_actions.get("lover_block_target")
     hero_data = game.get("hero", {})
     for target_id, intents in kill_intents.items():
         if target_id is None:
@@ -1442,6 +1442,9 @@ async def apply_night_actions(game_id: int):
         intents.sort(key=lambda x: x[1], reverse=True)
         killer_by, pr = intents[0]
         role = roles.get(int(target_id))
+        killer_id = get_alive_role_id(game, killer_by)
+        if lover_target and int(lover_target) == int(target_id):
+            continue
 
         target_user = alive_users_map.get(int(target_id))
         hero_used = game.setdefault("hero_used", {})
@@ -1464,10 +1467,8 @@ async def apply_night_actions(game_id: int):
                 )
                 continue
         if role == "ghost" and not killer_by == "snyper":
-            killer_id = get_alive_role_id(game, killer_by)
             continue
         if role == "arrow" and  killer_by == "com":
-            com_id = get_alive_role_id(game, "com")
             continue
             
         if killer_by == "snyper":
@@ -1491,7 +1492,6 @@ async def apply_night_actions(game_id: int):
 
 
         if roles.get(int(target_id)) == "kam":
-            killer_id = get_alive_role_id(game, killer_by)
             if killer_id and is_alive(game, killer_id):
                 kill(game, killer_id)
                 dead_tonight.append((killer_id, "kam"))
@@ -1683,7 +1683,7 @@ async def apply_night_actions(game_id: int):
                 text=text,
                 parse_mode="HTML"
             )
-    lover_target = night_actions.get("lover_block_target")
+    
     if lover_target and is_alive(game, lover_target):
         t = get_lang_text(int(lover_target))
         try:
