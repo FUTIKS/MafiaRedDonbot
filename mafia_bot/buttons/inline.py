@@ -1348,7 +1348,7 @@ def privacy_inline_btn():
     return keyboard
 
 
-def use_hero_inline_btn(game_id, chat_id, tg_id, day=None):
+def use_hero_inline_btn(attack,game_id, chat_id, tg_id, day=None):
     from mafia_bot.handlers.main_functions import get_lang
 
     lang = get_lang(tg_id)
@@ -1375,13 +1375,13 @@ def use_hero_inline_btn(game_id, chat_id, tg_id, day=None):
     t = TEXTS.get(lang, TEXTS["uz"])
 
     builder = InlineKeyboardBuilder()
-
-    builder.add(
-        InlineKeyboardButton(
-            text=t["attack"],
-            callback_data=f"hero_attack_{game_id}_{chat_id}_{day}"
+    if attack:
+        builder.add(
+            InlineKeyboardButton(
+                text=t["attack"],
+                callback_data=f"hero_attack_{game_id}_{chat_id}_{day}"
+            )
         )
-    )
     builder.add(
         InlineKeyboardButton(
             text=t["protect"],

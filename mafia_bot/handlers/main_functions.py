@@ -345,6 +345,7 @@ def init_game(game_id: int, chat_id: int | None = None):
 
             "hero": {
                 "has": set(),
+                'self_protect':set(),
                 "used": set(),
                 "notified": set(), 
             },
@@ -1258,10 +1259,9 @@ async def hero_day_actions(game_id: int):
 
         if tg_id not in game["hero"]["has"]:
             continue
-
-        # ❌ Tugma allaqachon yuborilgan bo‘lsa skip
-        if tg_id in game["hero"]["notified"]:
+        if tg_id in game["hero"]["used"]:
             continue
+
 
         role = roles.get(tg_id)
         t = get_lang_text(tg_id)
@@ -1270,6 +1270,7 @@ async def hero_day_actions(game_id: int):
                 chat_id=tg_id,
                 text=t['hero_day_action'],
                 reply_markup=use_hero_inline_btn(
+                    attack = True,
                     game_id=int(game_id),
                     chat_id=chat_id,
                     tg_id=tg_id,
@@ -1279,7 +1280,14 @@ async def hero_day_actions(game_id: int):
         else:
             await send_safe_message(
                 chat_id=tg_id,
-                text=t['hero_protect']
+                text=t['hero_protect'],
+                reply_markup=use_hero_inline_btn(
+                    attack = False,
+                    game_id=int(game_id),
+                    chat_id=chat_id,
+                    tg_id=tg_id,
+                    day=day
+                )
             )
 
         # ✅ belgilab qo‘yamiz
@@ -1417,6 +1425,7 @@ async def apply_night_actions(game_id: int):
     dead_tonight = []
     saved_tonight = []
 
+    hero_data = game.get("hero", {})
     for target_id, intents in kill_intents.items():
         if target_id is None:
             continue
@@ -1428,7 +1437,7 @@ async def apply_night_actions(game_id: int):
         target_user = alive_users_map.get(int(target_id))
         hero_used = game.setdefault("hero_used", {})
         if target_user and target_user.get("hero", False):
-            if not hero_used.get(target_id):
+            if not hero_used.get(target_id) and target_id in hero_data.get("self_protect", set()):
                 hero_used[target_id] = True
                 t= get_lang_text(int(target_id))
                 tu = get_lang_text(int(chat_id))
@@ -1437,6 +1446,7 @@ async def apply_night_actions(game_id: int):
                     text=t['hero_half_protect'],
                     parse_mode="HTML"
                 )
+                
                 target_name = uname(target_id)
                 await send_safe_message(
                     chat_id=chat_id,

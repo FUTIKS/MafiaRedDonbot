@@ -3562,11 +3562,17 @@ async def hero_callback(callback: CallbackQuery):
         return
         
     elif hero_type == "protect":
-       
+
         await callback.message.edit_text(
             f"{get_actions_lang(hero_id)['hero']}\n\n{t['hero_protect_self']}",
             parse_mode="HTML"
         )
+        hero_data = game.setdefault("hero", {"has": set(), "used": set(), "notified": set(), "self_protect": set()}) # 🔥 AGAR TARGET YO‘Q BO‘LSA O‘ZINI
+        if hero_id in hero_data["self_protect"]:
+            return
+        
+        hero_data["used"].add(hero_id)
+        hero_data["self_protect"].add(hero_id)
 
 @dp.callback_query(F.data.startswith("day_attack_"))
 async def day_attack_callback(callback: CallbackQuery):
