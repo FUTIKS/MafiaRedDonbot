@@ -17,7 +17,7 @@ from mafia_bot.handlers.callback_handlers import begin_instance_callback
 from mafia_bot.models import Game, GroupTrials, MostActiveUser,User,BotMessages,GameSettings, UserRole,default_end_date,BotCredentials,LoginAttempts
 from mafia_bot.utils import last_wishes,team_chat_sessions,game_tasks,group_users,stones_taken,gsend_taken,games_state,giveaways,notify_users,active_role_used,writing_allowed_groups
 from mafia_bot.handlers.main_functions import (MAFIA_ROLES, find_game,create_main_messages, get_lang_text,
-                                               kill, notify_new_don, promote_new_com_if_needed,
+                                               kill, notify_new_don, promote_new_com_if_needed,get_game_lock,
                                                promote_new_don_if_needed,  shuffle_roles ,check_bot_rights,
                                                role_label,is_group_admin,mute_user,has_link,parse_amount,get_game_by_chat_id,get_description_lang,get_role_labels_lang,
                                                send_safe_message,notify_new_com)
@@ -626,100 +626,106 @@ registration_refresh_tasks = {}
 @dp.message(Command("game"), StateFilter(None)) 
 async def game_command(message: Message) -> None:
     chat_id = message.chat.id
-
-    bot_member = await message.chat.get_member(message.bot.id)
-    result = check_bot_rights(bot_member,chat_id)
-    if result:
-        await message.answer(text=result)
-        return
     await message.delete() 
-    t = get_lang_text(chat_id)
-    if message.chat.type in ("group", "supergroup"): 
-        chat_id = message.chat.id
-        is_admin = await is_group_admin(chat_id, message.from_user.id)
-        if not is_admin:
+    lock = get_game_lock(chat_id)
+
+    if lock.locked():
+        return
+
+    async with lock:
+
+        bot_member = await message.chat.get_member(message.bot.id)
+        result = check_bot_rights(bot_member,chat_id)
+        if result:
+            await message.answer(text=result)
             return
-        trial = GroupTrials.objects.filter(group_id=chat_id).first()
-        if trial:
-            if trial.end_date <= timezone.now():
-                if not trial.coins > 5:
+        t = get_lang_text(chat_id)
+        if message.chat.type in ("group", "supergroup"): 
+            chat_id = message.chat.id
+            is_admin = await is_group_admin(chat_id, message.from_user.id)
+            if not is_admin:
+                return
+            trial = GroupTrials.objects.filter(group_id=chat_id).first()
+            if trial:
+                if trial.end_date <= timezone.now():
+                    if not trial.coins > 5:
+                    
+                        await message.answer(
+                        t["trial_expired"]
+                    )
+                        return
+                    else:
+                        trial.coins -5
+                        trial.end_date = default_end_date()
+                        trial.save()
+            else:
+                link = message.chat.username if message.chat.username else ""
+                if link == "":
+                    invite = await bot.create_chat_invite_link(
+                    chat_id=chat_id,
+                    creates_join_request=False
+                )   
+                    link = invite.invite_link
                 
-                    await message.answer(
-                    t["trial_expired"]
+                GroupTrials.objects.create(
+                    group_id=chat_id,
+                    group_name=message.chat.title if message.chat.title else "",
+                    group_username=link
                 )
-                    return
-                else:
-                    trial.coins -5
-                    trial.end_date = default_end_date()
-                    trial.save()
-        else:
-            link = message.chat.username if message.chat.username else ""
-            if link == "":
-                invite = await bot.create_chat_invite_link(
-                chat_id=chat_id,
-                 creates_join_request=False
-            )   
-                link = invite.invite_link
-            
-            GroupTrials.objects.create(
-                group_id=chat_id,
-                group_name=message.chat.title if message.chat.title else "",
-                group_username=link
-            )
-        game , created = Game.objects.get_or_create(chat_id=chat_id,is_active_game=True) 
-        if not created: 
-            text_begining = create_main_messages(game.id,chat_id)
-            bot_message=BotMessages.objects.filter(game_id=game.id,is_main=True,is_deleted=False)
-            if bot_message:
-                message_ids = [m.message_id for m in bot_message if m]
-                if message_ids:
-                    await bot.delete_messages(chat_id=chat_id,message_ids=message_ids)
-                bot_message.update(is_deleted=True)
-            msg = await message.answer(text=text_begining,reply_markup=join_game_btn(str(game.uuid), chat_id))
+            game , created = Game.objects.get_or_create(chat_id=chat_id,is_active_game=True) 
+            if not created: 
+                text_begining = create_main_messages(game.id,chat_id)
+                bot_message=BotMessages.objects.filter(game_id=game.id,is_main=True,is_deleted=False)
+                if bot_message:
+                    message_ids = [m.message_id for m in bot_message if m]
+                    if message_ids:
+                        await bot.delete_messages(chat_id=chat_id,message_ids=message_ids)
+                    bot_message.update(is_deleted=True)
+                msg = await message.answer(text=text_begining,reply_markup=join_game_btn(str(game.uuid), chat_id))
+                await bot.pin_chat_message(chat_id=chat_id,message_id=msg.message_id)
+                BotMessages.objects.create(game_id=game.id,message_id=msg.message_id,is_main=True)
+                return
+            if game.is_started:
+                return
+            if " " in message.text and message.text.split(' ')[1] == "turnir":
+                print("turnir mode")
+                game.game_type = "turnir"
+                game.save(update_fields=["game_type"])
+            user = User.objects.filter(telegram_id=message.from_user.id).first()
+            if not user:
+                user = User.objects.create(
+                    telegram_id=message.from_user.id,
+                    lang ='uz',
+                    first_name=message.from_user.first_name,
+                    username=message.from_user.username
+                )
+                
+                
+            msg = await message.answer(text=t["registration_started"],reply_markup=join_game_btn(str(game.uuid), chat_id))
             await bot.pin_chat_message(chat_id=chat_id,message_id=msg.message_id)
             BotMessages.objects.create(game_id=game.id,message_id=msg.message_id,is_main=True)
-            return
-        if game.is_started:
-            return
-        if " " in message.text and message.text.split(' ')[1] == "turnir":
-            print("turnir mode")
-            game.game_type = "turnir"
-            game.save(update_fields=["game_type"])
-        user = User.objects.filter(telegram_id=message.from_user.id).first()
-        if not user:
-            user = User.objects.create(
-                telegram_id=message.from_user.id,
-                lang ='uz',
-                first_name=message.from_user.first_name,
-                username=message.from_user.username
-            )
-            
-            
-        msg = await message.answer(text=t["registration_started"],reply_markup=join_game_btn(str(game.uuid), chat_id))
-        await bot.pin_chat_message(chat_id=chat_id,message_id=msg.message_id)
-        BotMessages.objects.create(game_id=game.id,message_id=msg.message_id,is_main=True)
-        task = asyncio.create_task(refresh_registration_main_message(game.id, chat_id))
-        registration_refresh_tasks[game.id] = task
-        users_to_notify = list(notify_users.get(chat_id, set()))
-        if users_to_notify:
-            text = t['registration_started_notify']
+            task = asyncio.create_task(refresh_registration_main_message(game.id, chat_id))
+            registration_refresh_tasks[game.id] = task
+            users_to_notify = list(notify_users.get(chat_id, set()))
+            if users_to_notify:
+                text = t['registration_started_notify']
 
-            for user_id in users_to_notify:
-                try:
-                    await send_safe_message(chat_id=user_id, text=text,reply_markup=join_game_btn(str(game.uuid), chat_id))
-                except Exception:
-                    pass
-            notify_users[chat_id].clear()
-        game_settings = GameSettings.objects.filter(group_id=chat_id).first()
-        if not game_settings:
-            game_settings = GameSettings.objects.create(group_id=chat_id,user_id=user.id)
-        if game_settings and not game_settings.begin_instance:
-            wait_time = game_settings.begin_instance_time
-        else:
-            return
-                
-        task = asyncio.create_task(registration_timer(game.id, chat_id))
-        registration_timers[game.id] = [task, wait_time] 
+                for user_id in users_to_notify:
+                    try:
+                        await send_safe_message(chat_id=user_id, text=text,reply_markup=join_game_btn(str(game.uuid), chat_id))
+                    except Exception:
+                        pass
+                notify_users[chat_id].clear()
+            game_settings = GameSettings.objects.filter(group_id=chat_id).first()
+            if not game_settings:
+                game_settings = GameSettings.objects.create(group_id=chat_id,user_id=user.id)
+            if game_settings and not game_settings.begin_instance:
+                wait_time = game_settings.begin_instance_time
+            else:
+                return
+                    
+            task = asyncio.create_task(registration_timer(game.id, chat_id))
+            registration_timers[game.id] = [task, wait_time] 
         
 async def auto_begin_game(chat_id: int):
     game , created = Game.objects.get_or_create(chat_id=chat_id,is_active_game=True) 

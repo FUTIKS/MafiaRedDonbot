@@ -13,7 +13,7 @@ from aiogram.enums import ChatMemberStatus
 from core.constants import uz_texts,ROLES_BY_COUNT,ru_texts,en_texts,tr_texts
 from mafia_bot.models import Game, GameSettings,User,MostActiveUser, UserRole, GroupTrials
 from aiogram.types import ChatPermissions,ChatMemberAdministrator, ChatMemberOwner
-from mafia_bot.utils import games_state, last_wishes,game_tasks, active_role_used,writing_allowed_groups,USER_LANG_CACHE
+from mafia_bot.utils import games_state, last_wishes,game_tasks, active_role_used,writing_allowed_groups,USER_LANG_CACHE,game_locks
 from mafia_bot.buttons.inline import cart_inline_btn, doc_btn, com_inline_btn, don_inline_btn, mafia_inline_btn, adv_inline_btn, spy_inline_btn, lab_inline_btn, action_inline_btn,use_hero_inline_btn
 
 lock = Lock()
@@ -2051,6 +2051,12 @@ async def mute_user(chat_id: int, user_id: int, seconds: int = 45):
         until_date=until_date
     )
     
+    
+def get_game_lock(chat_id):
+    if chat_id not in game_locks:
+        game_locks[chat_id] = asyncio.Lock()
+    return game_locks[chat_id]
+
     
 def get_week_range(today):
     start = today - timedelta(days=today.weekday())
