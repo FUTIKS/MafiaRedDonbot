@@ -3602,9 +3602,6 @@ async def day_attack_callback(callback: CallbackQuery):
     if hero_id not in game["alive"] or target_id not in game["alive"]:
         return
 
-    # 🔥 faqat hero ability bor o‘yinchi
-    if hero_id not in game["hero"]["has"]:
-        return
 
     # ❌ 1 o‘yinda 1 marta
     if hero_id in game["hero"]["used"]:
