@@ -319,6 +319,7 @@ uz_texts ={
         "vote":"🗳 Ovoz berish",
         "money_reward":"✅ Siz pulli sandiqni ochdingiz va ichidan 💶 {reward} chiqdi!",
         "stone_reward":"✅ Siz olmosli sandiqni ochdingiz va ichidan 💎 {reward} chiqdi!",
+        "already_in_another_game":"❌ Siz allaqachon boshqa o'yinda ishtirok etmoqdasiz!",
 }
 
 ru_texts ={
@@ -632,6 +633,7 @@ ru_texts ={
 "vote": "🗳 Голосовать",
 "money_reward": "✅ Вы открыли денежный сундук и получили 💶 {reward}!",
 "stone_reward": "✅ Вы открыли алмазный сундук и получили 💎 {reward}!",
+"already_in_another_game":"⚠️ Вы уже участвуете в другой игре!",
 
 }
 
@@ -948,6 +950,7 @@ en_texts ={
 "vote": "🗳 Vote",
 "money_reward": "✅ You opened a money chest and received 💶 {reward}!",
 "stone_reward": "✅ You opened a diamond chest and received 💎 {reward}!",
+"already_in_another_game":"❌ You are already in another game! Please wait for it to finish.",
 
 }
 
@@ -1262,6 +1265,7 @@ tr_texts ={
 "vote": "🗳 Oy ver",
 "money_reward": "✅ Para sandığını açtınız ve içinden 💶 {reward} çıktı!",
 "stone_reward": "✅ Elmas sandığını açtınız ve içinden 💎 {reward} çıktı!",
+"already_in_another_game":"⚠️ Başka bir oyundasınız, önce ona katılmalısınız!",
 
 }
 

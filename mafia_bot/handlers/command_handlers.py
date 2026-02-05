@@ -17,7 +17,7 @@ from mafia_bot.handlers.callback_handlers import begin_instance_callback
 from mafia_bot.models import Game, GroupTrials, MostActiveUser,User,BotMessages,GameSettings, UserRole,default_end_date,BotCredentials,LoginAttempts
 from mafia_bot.utils import last_wishes,team_chat_sessions,game_tasks,group_users,stones_taken,gsend_taken,games_state,giveaways,notify_users,active_role_used,writing_allowed_groups
 from mafia_bot.handlers.main_functions import (MAFIA_ROLES, find_game,create_main_messages, get_lang_text,
-                                               kill, notify_new_don, promote_new_com_if_needed,get_game_lock,
+                                               kill, notify_new_don, promote_new_com_if_needed,get_game_lock,is_player_in_game,
                                                promote_new_don_if_needed,  shuffle_roles ,check_bot_rights,
                                                role_label,is_group_admin,mute_user,has_link,parse_amount,get_game_by_chat_id,get_description_lang,get_role_labels_lang,
                                                send_safe_message,notify_new_com)
@@ -65,6 +65,9 @@ async def start(message: Message) -> None:
         game = Game.objects.filter(uuid=args,is_active_game=True,is_started=False).first()
         if not game :
             await message.reply(text=t['game_not_active'])
+            return
+        if is_player_in_game(tg_id):
+            await message.reply(text=t['already_in_another_game'])
             return
         
         result = find_game(game.id,tg_id,game.chat_id,user)
@@ -289,20 +292,21 @@ async def gsend_command(message: Message) -> None:
         await message.answer("❌ Sizda yetarli olmos yo'q.")
         return
     t = get_lang_text(message.chat.id)
-    text = t['group_send'].format(  
-        amount=amount,
-    )
-
-    sent = await message.answer(text, reply_markup=take_gsend_stone_btn(message.chat.id), parse_mode="HTML")
+    
     sender.stones -= amount
     sender.save(update_fields=["stones"])
-    gsend_taken[chat_id] = {
-        "limit": amount,
-        "taken": [],
-        "msg_id": sent.message_id,
-        "creator": message.from_user.id
-    }
+    players = game.get("players", []).copy()
+    random.shuffle(players)
 
+    for i in range(amount):
+        target_id = players[i % len(players)]
+        target_user = User.objects.filter(telegram_id=target_id).first()
+        if not target_user:
+            continue
+        target_user.stones += 1
+        target_user.save(update_fields=["stones"])
+        
+   
     
 
 

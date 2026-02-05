@@ -1087,9 +1087,8 @@ def compute_daydi_seen(game):
 
 def get_alive_role_id(game, role_key: str):
     roles = game.get("roles", {})
-    alive = set(game.get("alive", []))
     for tg_id, r in roles.items():
-        if r == role_key and tg_id in alive:
+        if r == role_key :
             return tg_id
     return None
 
@@ -2051,6 +2050,13 @@ async def mute_user(chat_id: int, user_id: int, seconds: int = 45):
         until_date=until_date
     )
     
+def is_player_in_game( tg_id: int) -> bool:
+    tg_id = int(tg_id)
+    for game in games_state.values():
+        players = game.get("players", [])
+        if tg_id in players:
+            return True
+    return False
     
 def get_game_lock(chat_id):
     if chat_id not in game_locks:
