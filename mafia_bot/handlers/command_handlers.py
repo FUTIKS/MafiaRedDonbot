@@ -908,6 +908,10 @@ async def send_top(message: Message, days: int, title: str):
         is_admin = await is_group_admin(message.chat.id, message.from_user.id)
         if not is_admin:
             return
+    if days == 30:
+        user = User.objects.filter(telegram_id=message.from_user.id).first()
+        if not user or user.role != 'admin':
+            return
     group_id = message.chat.id
     since = timezone.now() - timedelta(days=days)
     all_get=10
