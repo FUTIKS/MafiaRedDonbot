@@ -66,9 +66,9 @@ async def start(message: Message) -> None:
         if not game :
             await message.reply(text=t['game_not_active'])
             return
-        if is_player_in_game(tg_id):
-            await message.reply(text=t['already_in_another_game'])
-            return
+        # if is_player_in_game(tg_id):
+        #     await message.reply(text=t['already_in_another_game'])
+        #     return
         
         result = find_game(game.id,tg_id,game.chat_id,user)
         if result.get("message") == "already_in":
