@@ -2285,12 +2285,6 @@ async def send_callback(callback: CallbackQuery,state: FSMContext) -> None:
         return
     elif action == "confirm":
         username, amount_str = callback.data.split("_")[2], callback.data.split("_")[3]
-        if stones_taken.get(username):
-            await callback.message.edit_text(
-                text="❌ Bu kanalda jo'natilishi kerak bo'lgan olmoslar allaqachon mavjud.",
-                reply_markup=admin_inline_btn()
-            )
-            return
         await callback.message.edit_text(
             text="💎 Kanalga olmos jo'natildi",
             reply_markup=admin_inline_btn()
@@ -2332,6 +2326,13 @@ async def process_send_channel_olmos(message: Message, state: FSMContext) -> Non
             reply_markup=back_admin_btn()
         )
         return
+    if stones_taken.get(channel_username):
+            await message.answer(
+                text="❌ Bu kanalda tugamagan olmoslar allaqachon mavjud.",
+                reply_markup=admin_inline_btn()
+            )
+            await state.clear()
+            return
     await message.answer(
         text=f"✅ {channel_username} kanaliga {amount} olmos yuborililsinmi?",
         reply_markup=confirm_channel_olmos_inline_btn(channel_username=channel_username, amount=amount)
@@ -3218,6 +3219,7 @@ async def take_stone(callback: CallbackQuery):
 
     data = stones_taken.get(chat_id)
     if not data:
+        await callback.message.edit_reply_markup(None)
         await callback.answer(tu['no_sharing'], show_alert=True)
         return
 
@@ -3272,17 +3274,20 @@ async def take_gsend_stone(callback: CallbackQuery):
     tu = get_lang_text(user_id)
     data = gsend_taken.get(chat_id)
     if not data:
+        await callback.message.edit_reply_markup(None)
         await callback.answer(tu['no_sharing'], show_alert=True)
         return
     
     game_db = Game.objects.filter(chat_id=chat_id, is_active=True).first()
     if not game_db:
+        await callback.message.edit_reply_markup(None)
         return
     
     game = games_state.get(game_db.id)
     players = game.get("players") if game else None
 
     if not players:
+        await callback.message.edit_reply_markup(None)
         await callback.answer("❌ O‘yin topilmadi.", show_alert=True)
         return
 
@@ -3340,10 +3345,12 @@ async def giveaway_join(callback: CallbackQuery):
     tu = get_lang_text(user_id)
     gw = giveaways.get(chat_id)
     if not gw:
+        await callback.message.edit_reply_markup(None)
         await callback.answer(tu['giveway_not_active'], show_alert=True)
         return
 
     if time.time() >= gw["end_at"]:
+        await callback.message.edit_reply_markup(None)
         await callback.answer(tu['giveway_ended'], show_alert=True)
         return
 
