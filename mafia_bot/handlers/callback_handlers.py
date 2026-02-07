@@ -2284,11 +2284,17 @@ async def send_callback(callback: CallbackQuery,state: FSMContext) -> None:
         await state.set_state(SendMoneyState.waiting_for_channel_olmos)
         return
     elif action == "confirm":
+        username, amount_str = callback.data.split("_")[2], callback.data.split("_")[3]
+        if stones_taken.get(username):
+            await callback.message.edit_text(
+                text="❌ Bu kanalda jo'natilishi kerak bo'lgan olmoslar allaqachon mavjud.",
+                reply_markup=admin_inline_btn()
+            )
+            return
         await callback.message.edit_text(
             text="💎 Kanalga olmos jo'natildi",
             reply_markup=admin_inline_btn()
         )
-        username, amount_str = callback.data.split("_")[2], callback.data.split("_")[3]
         sent = await bot.send_message(
             chat_id=username,
             text=f"Kanalga {amount_str} ta 💎 olmos yuborildi.",
