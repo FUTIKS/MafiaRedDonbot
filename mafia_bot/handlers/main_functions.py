@@ -10,7 +10,7 @@ from django.db import transaction
 from aiogram.types import Message
 from django.db.models import F as DF
 from aiogram.enums import ChatMemberStatus
-from core.constants import uz_texts,ROLES_BY_COUNT,ru_texts,en_texts,tr_texts
+from core.constants import uz_texts,ROLES_BY_COUNT,ru_texts,en_texts,tr_texts,qz_texts
 from mafia_bot.models import Game, GameSettings,User,MostActiveUser, UserRole, GroupTrials
 from aiogram.types import ChatPermissions,ChatMemberAdministrator, ChatMemberOwner
 from mafia_bot.utils import games_state, last_wishes,game_tasks, active_role_used,writing_allowed_groups,USER_LANG_CACHE,game_locks
@@ -22,6 +22,7 @@ LANG_TEXTS = {
     "ru": ru_texts,
     "en": en_texts,
     "tr": tr_texts,
+    "qz": qz_texts,
 }
 
 ROLE_LABELS = {
@@ -29,6 +30,7 @@ ROLE_LABELS = {
     "ru": dict(ru_texts["ROLES_CHOICES"]),
     "en": dict(en_texts["ROLES_CHOICES"]),
     "tr": dict(tr_texts["ROLES_CHOICES"]),
+    "qz": dict(qz_texts["ROLES_CHOICES"]),
 }
 
 ACTIONS = {
@@ -36,6 +38,7 @@ ACTIONS = {
     "ru": dict(ru_texts["ACTIONS"]),
     "en": dict(en_texts["ACTIONS"]),
     "tr": dict(tr_texts["ACTIONS"]),
+    "qz": dict(qz_texts["ACTIONS"]),
 }
 
 WINNER_LABELS = {
@@ -43,6 +46,7 @@ WINNER_LABELS = {
     "ru": ru_texts["WINNER_LABEL"],
     "en": en_texts["WINNER_LABEL"],
     "tr": tr_texts["WINNER_LABEL"],
+    "qz": qz_texts["WINNER_LABEL"],
 }
 
 DESCRIPTIONS = {
@@ -50,6 +54,7 @@ DESCRIPTIONS = {
     "ru": ru_texts["DESCRIPTIONS"],
     "en": en_texts["DESCRIPTIONS"],
     "tr": tr_texts["DESCRIPTIONS"],
+    "qz": qz_texts["DESCRIPTIONS"],
 }
 
 
@@ -744,9 +749,9 @@ def find_game(game_id, tg_id,chat_id,user):
 
         game["players"].append(tg_id)
         if game['meta']['game_type']=='turnir':
-            game["users_map"][tg_id]={"first_name":user.first_name,"protection":1 if user.protection>=1 else 0,"doc": 1 if user.docs>=1 else 0,"hang_protect": 1 if user.hang_protect>=1 else 0,"tg_id":tg_id,"hero":False}
+            game["users_map"][tg_id]={"first_name":user.first_name,"protection":1 if user.protection>=1 and user.is_protected else 0,"doc": 1 if user.docs>=1 and user.is_doc else 0,"hang_protect": 1 if user.hang_protect>=1 and user.is_hang_protected else 0,"geroy_protect": 1 if user.geroy_protection>=1 and user.is_geroy_protected else 0,"tg_id":tg_id,"hero":False}
         else:
-            game["users_map"][tg_id]={"first_name":user.first_name,"protection":1 if user.protection>=1 else 0,"doc": 1 if user.docs>=1 else 0,"hang_protect": 1 if user.hang_protect>=1 else 0,"tg_id":tg_id,"hero":user.is_hero}
+            game["users_map"][tg_id]={"first_name":user.first_name,"protection":1 if user.protection>=1 and user.is_protected else 0,"doc": 1 if user.docs>=1 and user.is_doc else 0,"hang_protect": 1 if user.hang_protect>=1 and user.is_hang_protected else 0,"geroy_protect": 1 if user.geroy_protection>=1 and user.is_geroy_protected else 0,"tg_id":tg_id,"hero":user.is_hero}
         game["alive"].append(tg_id)
         if len(game["players"])==max_players:
             return {"message": "full"}

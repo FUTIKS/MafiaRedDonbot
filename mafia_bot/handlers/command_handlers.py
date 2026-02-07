@@ -21,7 +21,7 @@ from mafia_bot.handlers.main_functions import (MAFIA_ROLES, find_game,create_mai
                                                promote_new_don_if_needed,  shuffle_roles ,check_bot_rights,
                                                role_label,is_group_admin,mute_user,has_link,parse_amount,get_game_by_chat_id,get_description_lang,get_role_labels_lang,
                                                send_safe_message,notify_new_com)
-from mafia_bot.buttons.inline import (admin_inline_btn, back_btn, giveaway_join_btn, group_profile_inline_btn, join_game_btn, 
+from mafia_bot.buttons.inline import (admin_inline_btn, back_btn, claim_chanel_olmos_inline_btn, giveaway_join_btn, group_profile_inline_btn, join_game_btn, 
                                       start_inline_btn, go_to_bot_inline_btn, cart_inline_btn, take_gsend_stone_btn,
                                       take_stone_btn,stones_to_premium_inline_btn,language_keyboard)
 
@@ -59,6 +59,10 @@ async def start(message: Message) -> None:
         elif args.startswith("stone_"):
             chat_id = int(args.split('_')[1])
             await stones_to_premium(message,chat_id)
+            return
+        elif args.startswith("claim_"):
+            username = args.split('_')[1]
+            await claim_channel_olmos(message,username)
             return
             
             
@@ -195,6 +199,7 @@ async def profile_command(message: Message):
             protection=user.protection,
             hang_protect=user.hang_protect,
             docs=user.docs,
+            geroy_protect=user.geroy_protection,
             text=text
         ),
         parse_mode="HTML",reply_markup=cart_inline_btn(message.from_user.id)
@@ -625,7 +630,6 @@ async def stop_registration(game_id=None, chat_id=None, instant=False):
     
 
 registration_refresh_tasks = {}
-
 
 @dp.message(Command("game"), StateFilter(None)) 
 async def game_command(message: Message) -> None:
@@ -1438,3 +1442,56 @@ async def stones_to_premium(message:Message, chat_id: int):
     text = f"{t['become_premium_group']} {game_trials.stones} "
     await message.answer(text,reply_markup=stones_to_premium_inline_btn(game_trials.stones,chat_id))
 
+
+
+async def claim_channel_olmos(message: Message, username: str):
+    username = f"@{username}" if not username.startswith("@") else username
+    data = stones_taken.get(username)
+    user_id = message.from_user.id
+    tu = get_lang_text(user_id)
+    if not data:
+        await message.answer(tu['no_sharing'], show_alert=True)
+        return
+
+    limit = data["limit"]
+    taken = data["taken"]
+    msg_id = data["msg_id"]
+    sender = data["creator"]
+
+    if user_id in taken:
+        await message.answer(tu['stone_already_taken'], show_alert=True)
+        return
+
+    if len(taken) >= limit:
+        await message.answer(tu['stone_ended'], show_alert=True)
+        return
+
+    taken.append(user_id)
+    user_taker = User.objects.filter(telegram_id=user_id).first()
+    sender = User.objects.filter(telegram_id=int(sender)).first()
+    if not user_taker:
+        user_taker = User.objects.create(
+            telegram_id=user_id, 
+            first_name=message.from_user.first_name,
+            username=message.from_user.username
+        )
+    users_qs = User.objects.filter(telegram_id__in=taken)
+    
+    
+    taken_text = ""
+    for i, user in enumerate(users_qs, start=1):
+        taken_text += f"\n{i}. 💎 <a href='tg://user?id={user.telegram_id}'>{user.first_name}</a>"
+
+    text = (
+         f"Kanalga {limit} ta 💎 olmos yuborildi."
+        f"{taken_text}"
+    )
+    
+    if len(taken) >= limit:
+        await bot.edit_message_text(chat_id=username, message_id=msg_id, text=text, reply_markup=None, parse_mode="HTML")
+        stones_taken.pop(username, None)
+    else:
+        await bot.edit_message_text(chat_id=username, message_id=msg_id, text=text, reply_markup=claim_chanel_olmos_inline_btn(username.lstrip("@")), parse_mode="HTML")
+    user_taker.stones += 1
+    user_taker.save()
+    await message.answer(tu['stone_taken'])

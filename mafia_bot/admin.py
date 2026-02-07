@@ -23,7 +23,7 @@ class UserAdmin(admin.ModelAdmin):
         ("Asosiy", {"fields": ("telegram_id", "username", "first_name", "lang", "role")}),
         ("Balans", {"fields": ("coin", "stones", "premium_stones") if hasattr(User, "premium_stones") else ("coin", "stones")}),
         ("Status", {"fields": ("is_vip", "active_role")}),
-        ("Qo‘shimcha", {"fields": ("protection", "docs")}),
+        ("Qo‘shimcha", {"fields": ("protection", "docs","hang_protect","is_protected","is_hang_protected","is_doc","is_geroy_protected")}),
     )
 
     def get_fieldsets(self, request, obj=None):
@@ -31,7 +31,7 @@ class UserAdmin(admin.ModelAdmin):
             ("Asosiy", {"fields": ("telegram_id", "username", "first_name", "lang", "role")}),
             ("Balans", {"fields": ("coin", "stones")}),
             ("Status", {"fields": ("is_vip", "is_hero", "active_role")}),
-            ("Qo‘shimcha", {"fields": ("protection", "docs")}),
+             ("Qo‘shimcha", {"fields": ("protection", "docs","hang_protect","is_protected","is_hang_protected","is_doc","is_geroy_protected")}),
         ]
         return base
 

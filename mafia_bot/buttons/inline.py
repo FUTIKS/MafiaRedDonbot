@@ -51,6 +51,14 @@ def group_profile_inline_btn(has_stone, chat_id):
             "lang":"🌐 Dili değiştir",
             "close": "✖️ Kapat",
         },
+        "qz": {
+            "premium": "💎 Алмастарды премиумға ауыстыру",
+            "buy_star": "⭐ Жұлдыздармен 💎 сатып алу",
+            "card": "💳 Карттан картаға",
+            "manage": "🛠 Ойын басқару",
+            "lang":"🌐 Тілді өзгерту",
+            "close": "✖️ Жабу",
+        }
     }
 
     t = TEXTS.get(lang, TEXTS["uz"])
@@ -117,6 +125,14 @@ def start_inline_btn(user_id):
             "profile": "👤 Profil",
             "roles": "🎭 Roller",
         },
+        "qz": {
+            "roles_info": "ℹ️ Ролдер туралы ақпарат",
+            "add_info": "☑️ Ботты топқа қосу туралы ақпарат",
+            "add_bot": "➕ Ботты топқа қосу",
+            "premium": "⭐ Премиум топтар",
+            "profile": "👤 Профиль",
+            "roles": "🎭 Ролдер",
+        },
     }
 
     t = TEXTS.get(lang, TEXTS["uz"])
@@ -153,6 +169,7 @@ def take_stone_btn(chat_id):
         "ru": "💎 Забрать алмаз",
         "en": "💎 Take diamond",
         "tr": "💎 Elması al",
+        "qz": "💎 Алмосты алу",
     }
 
     text = TEXTS.get(lang, TEXTS["uz"])
@@ -171,6 +188,7 @@ def take_gsend_stone_btn(chat_id):
         "ru": "💎 Забрать алмаз",
         "en": "💎 Take diamond",
         "tr": "💎 Elması al",
+        "qz": "💎 Алмосты алу",
     }
 
     text = TEXTS.get(lang, TEXTS["uz"])
@@ -189,6 +207,7 @@ def giveaway_join_btn(tg_id):
         "ru": "✅ Участвовать в розыгрыше",
         "en": "✅ Join giveaway",
         "tr": "✅ Çekilişe katıl",
+        "qz": "✅ Giveawayға қосылу",
     }
 
     text = TEXTS.get(lang, TEXTS["uz"])
@@ -201,6 +220,7 @@ def giveaway_join_btn(tg_id):
 def admin_inline_btn():
     keyboard1 = InlineKeyboardButton(text=" 💬 Guruhlar obunasi", callback_data="trial")
     keyboard2 = InlineKeyboardButton(text=" ⭐ Premium guruhlar", callback_data="premium_group")
+    keyboard15 = InlineKeyboardButton(text="💎 Kanalga olmos jo'natish", callback_data="send_channel")
     keyboard3 = InlineKeyboardButton(text=" 👥 Foydalanuvchi bilan aloqa", callback_data="user_talk")
     keyboard4 = InlineKeyboardButton(text=" 📢 Botga habar jo'natish", callback_data="broadcast_message")
     keyboard5 = InlineKeyboardButton(text=" 📊 Statistika", callback_data="statistics")
@@ -216,6 +236,7 @@ def admin_inline_btn():
     design = [
         [keyboard1],
         [keyboard2],
+        [keyboard15],
         [keyboard3],
         [keyboard4],
         [keyboard5],
@@ -242,6 +263,7 @@ def answer_admin(tg_id, msg_id):
         "ru": "✍️ Ответить",
         "en": "✍️ Reply",
         "tr": "✍️ Yanıtla",
+        "qz": "✍️ Жауап беру",
     }
 
     text = TEXTS.get(lang, TEXTS["uz"])
@@ -277,6 +299,7 @@ def back_btn(tg_id, place="profile"):
         "ru": "⬅️ Назад",
         "en": "⬅️ Back",
         "tr": "⬅️ Geri",
+        "qz": "⬅️ Артқа",
     }
 
     text = TEXTS.get(lang, TEXTS["uz"])
@@ -326,6 +349,12 @@ def case_inline_btn(tg_id):
             "vip": "⭐ VIP kullanıcı",
             "back": "⬅️ Geri",
         },
+        "qz": {
+            "money": "💰 Ақша сандық",
+            "stone": "💎 Алмас сандық",
+            "vip": "⭐ VIP қолданушы",
+            "back": "⬅️ Артқа",
+        },
     }
 
     t = TEXTS.get(lang, TEXTS["uz"])
@@ -345,9 +374,14 @@ def cart_inline_btn(tg_id):
     from mafia_bot.handlers.main_functions import get_lang
 
     lang = get_lang(tg_id)
+    user = User.objects.filter(telegram_id=tg_id).first()
 
     TEXTS = {
         "uz": {
+            "toggle_protection":f"🛡 - {'🟢 ON' if user.is_protected else ' 🔴 OFF'}",
+            "toggle_doc": f"📂 - {'🟢 ON' if user.is_doc else ' 🔴 OFF'}",
+            "toggle_hang":f"🎗️ - {'🟢 ON' if user.is_hang_protected else ' 🔴 OFF'}",
+            "toggle_geroy_protect":f"🔰 - {'🟢 ON' if user.is_geroy_protected else ' 🔴 OFF'} ",
             "shop": "🛒 Do'kon",
             "buy_money": "💶 Sotib olish",
             "buy_stone": "💎 Sotib olish",
@@ -356,6 +390,10 @@ def cart_inline_btn(tg_id):
             "cases": "📦 Sandiqlar",
         },
         "ru": {
+            "toggle_protection":f"🛡 - {'🟢 ВКЛ' if user.is_protected else ' 🔴 ВЫКЛ'}",
+            "toggle_doc": f"📂 - {'🟢 ВКЛ' if user.is_doc else ' 🔴 ВЫКЛ'}",
+            "toggle_hang":f"🎗️ - {'🟢 ВКЛ' if user.is_hang_protected else ' 🔴 ВЫКЛ'}",
+            "toggle_geroy_protect":f"🔰 - {'🟢 ВКЛ' if user.is_geroy_protected else ' 🔴 ВЫКЛ'}",
             "shop": "🛒 Магазин",
             "buy_money": "💶 Купить",
             "buy_stone": "💎 Купить",
@@ -364,6 +402,10 @@ def cart_inline_btn(tg_id):
             "cases": "📦 Сундуки",
         },
         "en": {
+            "toggle_protection":f"🛡 - {'🟢 ON' if user.is_protected else ' 🔴 OFF'}",
+            "toggle_doc": f"📂 - {'🟢 ON' if user.is_doc else ' 🔴 OFF'}",
+            "toggle_hang":f"🎗️ - {'🟢 ON' if user.is_hang_protected else ' 🔴 OFF'}",
+            "toggle_geroy_protect":f"🔰 - {'🟢 ON' if user.is_geroy_protected else ' 🔴 OFF'}",
             "shop": "🛒 Shop",
             "buy_money": "💶 Buy",
             "buy_stone": "💎 Buy",
@@ -372,6 +414,10 @@ def cart_inline_btn(tg_id):
             "cases": "📦 Chests",
         },
         "tr": {
+            "toggle_protection":f"🛡 - {'🟢 ON' if user.is_protected else ' 🔴 OFF'}",
+            "toggle_doc": f"📂 - {'🟢 ON' if user.is_doc else ' 🔴 OFF'}",
+            "toggle_hang":f"🎗️ - {'🟢 ON' if user.is_hang_protected else ' 🔴 OFF'}",
+            "toggle_geroy_protect":f"🔰 - {'🟢 ON' if user.is_geroy_protected else ' 🔴 OFF'}",
             "shop": "🛒 Mağaza",
             "buy_money": "💶 Satın al",
             "buy_stone": "💎 Satın al",
@@ -379,12 +425,32 @@ def cart_inline_btn(tg_id):
             "premium": "⭐ Premium gruplar",
             "cases": "📦 Sandıklar",
         },
+        "qz": {
+            "toggle_protection":f"🛡 - {'🟢 ВКЛ' if user.is_protected else ' 🔴 ВЫКЛ'}",
+            "toggle_doc": f"📂 - {'🟢 ВКЛ' if user.is_doc else ' 🔴 ВЫКЛ'}",
+            "toggle_hang":f"🎗️ - {'🟢 ВКЛ' if user.is_hang_protected else ' 🔴 ВЫКЛ'}",
+            "toggle_geroy_protect":f"🔰 - {'🟢 ВКЛ' if user.is_geroy_protected else ' 🔴 ВЫКЛ'}",
+            "shop": "🛒 Дүкен",
+            "buy_money": "💶 Сатып алу",
+            "buy_stone": "💎 Сатып алу",
+            "hero": "🥷 Менің Кейіпкерім",
+            "premium": "⭐ Премиум топтар",
+            "cases": "📦 Сандықтар",
+        },
     }
 
     t = TEXTS.get(lang, TEXTS["uz"])
 
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
+            [
+                InlineKeyboardButton(text=t["toggle_protection"], callback_data="toggle_protection"),
+                InlineKeyboardButton(text=t["toggle_doc"], callback_data="toggle_doc"),
+            ]
+            ,[
+                InlineKeyboardButton(text=t["toggle_hang"], callback_data="toggle_hang"),
+                InlineKeyboardButton(text=t["toggle_geroy_protect"], callback_data="toggle_geroy"),
+            ],
             [InlineKeyboardButton(text=t["shop"], callback_data="cart")],
             [
                 InlineKeyboardButton(text=t["buy_money"], callback_data="money_money"),
@@ -408,6 +474,7 @@ def shop_inline_btn(tg_id):
             "docs": "📂 Hujjatlar - 500 💵",
             "hang_money": "🎗️ Osilishdan ximoya - 20000 💵",
             "hang_stone": "🎗️ Osilishdan ximoya - 20 💎",
+            "geroy_protect": "🔰 Geroy himoyasi - 5000 💵",
             "role": "🎭 Rol sotib olish",
             "back": "⬅️ Orqaga",
         },
@@ -416,6 +483,7 @@ def shop_inline_btn(tg_id):
             "docs": "📂 Документы - 500 💵",
             "hang_money": "🎗️ Защита от повешения - 20000 💵",
             "hang_stone": "🎗️ Защита от повешения - 20 💎",
+            "geroy_protect": "🔰 Защита героя - 5000 💵",
             "role": "🎭 Купить роль",
             "back": "⬅️ Назад",
         },
@@ -424,6 +492,7 @@ def shop_inline_btn(tg_id):
             "docs": "📂 Documents - 500 💵",
             "hang_money": "🎗️ Hanging protection - 20000 💵",
             "hang_stone": "🎗️ Hanging protection - 20 💎",
+            "geroy_protect": "🔰 Hero protection - 5000 💵",
             "role": "🎭 Buy role",
             "back": "⬅️ Back",
         },
@@ -432,8 +501,18 @@ def shop_inline_btn(tg_id):
             "docs": "📂 Belgeler - 500 💵",
             "hang_money": "🎗️ Asılmaya karşı koruma - 20000 💵",
             "hang_stone": "🎗️ Asılmaya karşı koruma - 20 💎",
+            "geroy_protect": "🔰 Kahraman koruması - 5000 💵",
             "role": "🎭 Rol satın al",
             "back": "⬅️ Geri",
+        },
+        "qz": {
+            "protect": "🛡 Қорғау - 250 💵",
+            "docs": "📂 Құжаттар - 500 💵",
+            "hang_money": "🎗️ Асудан қорғау - 20000 💵",
+            "hang_stone": "🎗️ Асудан қорғау - 20 💎",
+            "geroy_protect": "🔰 Герой қорғауы - 5000 💵",
+            "role": "🎭 Роль сатып алу",
+            "back": "⬅️ Артқа",
         },
     }
 
@@ -445,6 +524,7 @@ def shop_inline_btn(tg_id):
             [InlineKeyboardButton(text=t["docs"], callback_data="buy_docs_0")],
             [InlineKeyboardButton(text=t["hang_money"], callback_data="buy_hangprotect_1")],
             [InlineKeyboardButton(text=t["hang_stone"], callback_data="buy_hangprotect_2")],
+            [InlineKeyboardButton(text=t["geroy_protect"], callback_data="buy_geroyprotect_0")],
             [InlineKeyboardButton(text=t["role"], callback_data="buy_activerole_0")],
             [InlineKeyboardButton(text=t["back"], callback_data="back_profile")],
         ]
@@ -510,6 +590,11 @@ def pay_for_money_inline_btn(tg_id, is_money):
             "card": "💳 Karttan karta",
             "stars": "⭐ Telegram yıldızları ile",
             "back": "⬅️ Geri",
+        },
+        "qz": {
+            "card": "💳 Карттан карта",
+            "stars": "⭐ Telegram жұлдыздарымен",
+            "back": "⬅️ Артқа",
         },
     }
 
@@ -584,7 +669,7 @@ def pay_using_stars_inline_btn(is_money: bool):
 
     builder.add(
         InlineKeyboardButton(
-            text="⬅️ Orqaga",
+            text="⬅️",
             callback_data="back_profile"
         )
     )
@@ -1370,6 +1455,10 @@ def use_hero_inline_btn(attack,game_id, chat_id, tg_id, day=None):
             "attack": "🥷 Saldır",
             "protect": "🛡 Savun",
         },
+        "qz": {
+            "attack": "🥷 Hujum",
+            "protect": "🛡 Qorğau",
+        },
     }
 
     t = TEXTS.get(lang, TEXTS["uz"])
@@ -1428,6 +1517,12 @@ def geroy_inline_btn(tg_id):
             "remove": "✖️ Kahramanı kaldır",
             "back": "⬅️ Geri",
         },
+        "qz": {
+            "buy_stone": "🥷 Сатып алу 💎 100",
+            "upgrade_geroy":f"➕ Кейіпкерді күшейту 💎 {price}",
+            "remove": "✖️ Кейіпкерді алып тастау",
+            "back": "⬅️ Артқа",
+        },
     }
 
     t = TEXTS.get(lang, TEXTS["uz"])
@@ -1467,5 +1562,37 @@ def language_keyboard():
         [
             InlineKeyboardButton(text="🇬🇧 English", callback_data="lang_en"),
             InlineKeyboardButton(text="🇹🇷 Türkçe", callback_data="lang_tr"),
+        ],
+        [
+            InlineKeyboardButton(text="🇰🇿 Қазақша", callback_data="lang_qz"),
+            
+        ]
+    ])
+
+
+def confirm_channel_olmos_inline_btn(channel_username, amount):
+    builder = InlineKeyboardBuilder()
+    builder.add(
+        InlineKeyboardButton(
+            text="✅ Tasdiqlash",
+            callback_data=f"send_confirm_{channel_username}_{amount}"
+        )
+    )
+    builder.add(
+        InlineKeyboardButton(
+            text="❌ Bekor qilish",
+            callback_data="send_no"
+        )
+    )
+    builder.adjust(1)
+    return builder.as_markup()
+
+def claim_chanel_olmos_inline_btn(username):
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(
+                text="💎 Olmosni olish",
+                url=f"https://t.me/{remove_prefix(config('BOT_USERNAME'))}?start=claim_{username}"      
+                )
         ]
     ])

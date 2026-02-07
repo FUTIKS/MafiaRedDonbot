@@ -16,13 +16,13 @@ from mafia_bot.utils import stones_taken,gsend_taken,giveaways,games_state,USER_
 from aiogram.types import Message, LabeledPrice, PreCheckoutQuery,CallbackQuery
 from mafia_bot.models import Game, MoneySendHistory, User,PremiumGroup,MostActiveUser,CasesOpened,GameSettings,GroupTrials,PriceStones, UserRole,BotCredentials, default_end_date
 from mafia_bot.state import AddGroupState, BeginInstanceState,SendMoneyState,ChangeStoneCostState,ChangeMoneyCostState,ExtendGroupState,QuestionState,Register,CredentialsState
-from mafia_bot.handlers.main_functions import (add_visit, get_mafia_members,get_first_name_from_players, kill,send_safe_message,get_description_lang,get_hero_level,
+from mafia_bot.handlers.main_functions import (add_visit, get_mafia_members,get_first_name_from_players, kill, remove_prefix,send_safe_message,get_description_lang,get_hero_level,
                                                mark_confirm_done, mark_hang_done,mark_night_action_done,get_week_range,get_month_range,role_label,get_lang_text,get_role_labels_lang,get_actions_lang)
 from mafia_bot.buttons.inline import (action_inline_btn,
     admin_inline_btn, answer_admin, back_btn, cart_inline_btn, change_money_cost, change_stones_cost, com_inline_btn, end_talk_keyboard, geroy_inline_btn,  giveaway_join_btn, group_profile_inline_btn,
     groupes_keyboard, groups_buy_stars, history_groupes_keyboard, language_keyboard, language_keyboard, money_case, pay_for_money_inline_btn, pay_using_stars_inline_btn, role_shop_inline_keyboard,
-    shop_inline_btn, start_inline_btn, roles_inline_btn, com_inline_action_btn,pirate_steal_inline_btn,
-    professor_gift_inline_btn,confirm_hang_inline_btn,groups_inline_btn,group_manage_btn,back_admin_btn,case_inline_btn,
+    shop_inline_btn, start_inline_btn, roles_inline_btn, com_inline_action_btn,pirate_steal_inline_btn,confirm_channel_olmos_inline_btn,
+    professor_gift_inline_btn,confirm_hang_inline_btn,groups_inline_btn,group_manage_btn,back_admin_btn,case_inline_btn,claim_chanel_olmos_inline_btn,
     stone_case,begin_instance_inline_btn, take_gsend_stone_btn, take_stone_btn,trial_groupes_keyboard,trial_group_manage_btn,privacy_inline_btn, use_hero_inline_btn
 )
 
@@ -56,6 +56,7 @@ async def profile_callback(callback: CallbackQuery):
             protection=user.protection,
             hang_protect=user.hang_protect,
             docs=user.docs,
+            geroy_protect=user.geroy_protection,
             text=text
         ),
         parse_mode="HTML",reply_markup=cart_inline_btn(tg_id)
@@ -205,6 +206,7 @@ async def buy_callback(callback: CallbackQuery):
                 protection=user.protection,
                 hang_protect=user.hang_protect,
                 docs=user.docs,
+                geroy_protect=user.geroy_protection,
                 text=""
             ),
                 parse_mode="HTML",
@@ -225,6 +227,7 @@ async def buy_callback(callback: CallbackQuery):
                     protection=user.protection,
                     hang_protect=user.hang_protect,
                     docs=user.docs,
+                    geroy_protect=user.geroy_protection,
                     text=""
                 ),
                 parse_mode="HTML",
@@ -252,6 +255,7 @@ async def buy_callback(callback: CallbackQuery):
                     protection=user.protection,
                     hang_protect=user.hang_protect,
                     docs=user.docs,
+                    geroy_protect=user.geroy_protection,
                     text=""
                 ),
                 parse_mode="HTML",
@@ -262,6 +266,27 @@ async def buy_callback(callback: CallbackQuery):
             text=t['buy_role'],
             reply_markup=role_shop_inline_keyboard(tg_id)
         )
+    elif thing_to_buy == "geroyprotect":
+        if user.coin >= 5000:
+            user.coin -= 5000
+            user.geroy_protection += 1
+            user.save()
+            await callback.message.edit_text(
+                text=t['user_profile'].format(
+                    first_name=callback.from_user.first_name,
+                    coin=user.coin,
+                    stones=user.stones,
+                    protection=user.protection,
+                    hang_protect=user.hang_protect,
+                    docs=user.docs,
+                    geroy_protect=user.geroy_protection,
+                    text=""
+                ),
+                parse_mode="HTML",
+                reply_markup=cart_inline_btn(tg_id)
+            )
+        else:
+            await callback.answer(text=t['not_enough_money'], show_alert=True)
 
 @dp.callback_query(F.data.startswith("active_"))
 async def buy_role_callback(call: CallbackQuery, state: FSMContext):
@@ -2241,6 +2266,7 @@ async def send_callback(callback: CallbackQuery,state: FSMContext) -> None:
             reply_markup=back_admin_btn()
         )
         await state.set_state(SendMoneyState.waiting_for_money)
+        return
         
         
     elif action == "olmos":
@@ -2249,6 +2275,63 @@ async def send_callback(callback: CallbackQuery,state: FSMContext) -> None:
             reply_markup=back_admin_btn()
         )
         await state.set_state(SendMoneyState.waiting_for_olmos)
+        return
+    elif action == "channel":
+        await callback.message.edit_text(
+            text="💎 Kanalga jo'natmoqchi bo'lgan kanal usernamesini va olmos miqdorini yonma-yon kiriting:\n(@my_chanel 10)",
+            reply_markup=back_admin_btn()
+        )
+        await state.set_state(SendMoneyState.waiting_for_channel_olmos)
+        return
+    elif action == "confirm":
+        await callback.message.edit_text(
+            text="💎 Kanalga olmos jo'natildi",
+            reply_markup=admin_inline_btn()
+        )
+        username, amount_str = callback.data.split("_")[2], callback.data.split("_")[3]
+        sent = await bot.send_message(
+            chat_id=username,
+            text=f"Kanalga {amount_str} ta 💎 olmos yuborildi.",
+            reply_markup=claim_chanel_olmos_inline_btn(username=remove_prefix(username))        
+        )
+        stones_taken[username] = {
+            "limit": int(amount_str),
+            "taken": [],
+            "msg_id": sent.message_id,
+            "creator": callback.message.from_user.id
+    }   
+        return
+    elif action == "no":
+        await bot.send_message(
+            chat_id=username,
+            text=f"Kanalga jo'natilishi kerak bo'lgan 💎 olmoslar bekor qilindi.",
+            reply_markup=admin_inline_btn()
+        )
+        return
+@dp.message(SendMoneyState.waiting_for_channel_olmos)
+async def process_send_channel_olmos(message: Message, state: FSMContext) -> None:
+    try:
+        channel_username, amount_str = message.text.strip().split()
+        amount = int(amount_str)
+    except ValueError:
+        await message.answer(
+            text="❌ Iltimos, to'g'ri formatda kiriting: @channel_username olmos_miqdori",
+            reply_markup=back_admin_btn()
+        )
+        return
+    
+    if not channel_username.startswith("@"):
+        await message.answer(
+            text="❌ Iltimos, kanal username'ini @ bilan boshlang.",
+            reply_markup=back_admin_btn()
+        )
+        return
+    await message.answer(
+        text=f"✅ {channel_username} kanaliga {amount} olmos yuborililsinmi?",
+        reply_markup=confirm_channel_olmos_inline_btn(channel_username=channel_username, amount=amount)
+    )
+    await state.clear()
+
 
 @dp.message(SendMoneyState.waiting_for_money)
 async def process_send_money(message: Message, state: FSMContext) -> None:
@@ -3607,6 +3690,15 @@ async def day_attack_callback(callback: CallbackQuery):
     if hero_id in game["hero"]["used"]:
         await callback.answer("Siz bu o‘yinda hujum qilib bo‘lgansiz", show_alert=True)
         return
+    target_user = game["users_map"].get(target_id)
+    if target_user and target_user.get("geroy_protect") > 0:
+        target = User.objects.filter(telegram_id=target_id).first()
+        target_user["geroy_protect"] -= 1
+        if target:
+            target.geroy_protection -= 1
+            target.save()
+        await callback.answer("Bu foydalanuvchi geroy tomonidan himoyalangan", show_alert=True)
+        return
 
     game["hero"]["used"].add(hero_id)
 
@@ -3778,6 +3870,7 @@ async def set_language_callback(callback: CallbackQuery):
         "ru": "✅ Язык изменён на русский",
         "en": "✅ Language changed to English",
         "tr": "✅ Dil Türkçe olarak değiştirildi",
+        "qz": "✅ Тіл қазақ тіліне өзгертілді"
     }
     if callback.message.chat.type == "private":
         await callback.message.edit_text(texts.get(lang, texts["uz"]),reply_markup=start_inline_btn(callback.from_user.id))
@@ -3790,6 +3883,45 @@ async def set_language_callback(callback: CallbackQuery):
 async def lange_group_callback(callback: CallbackQuery,state: FSMContext) -> None:
     await callback.answer()
     await callback.message.edit_text(
-        text="Language / Tilni tanlang / Выберите язык / Dil seçin:",
+        text="Language / Tilni tanlang / Выберите язык / Dil seçin / Тілді таңдаңыз:",
         reply_markup=language_keyboard()
+    )
+    
+    
+@dp.callback_query(F.data.startswith("toggle_"))
+async def toggle_profile_callback(callback: CallbackQuery):
+    await callback.answer()
+    setting = callback.data.split("_")[1]
+    chat_id = callback.from_user.id
+    user = User.objects.filter(telegram_id=chat_id).first()
+    if setting == "protection":
+      user.is_protected = not user.is_protected
+      user.save()
+    elif setting == "hang":
+        user.is_hang_protected = not user.is_hang_protected
+        user.save()
+    elif setting == "doc":
+        user.is_doc = not user.is_doc
+        user.save()
+    elif setting == "geroy":
+        user.is_geroy_protected = not user.is_geroy_protected
+        user.save()
+    text =""
+    user_role = UserRole.objects.filter(user_id=user.id)
+    for user_r in user_role:
+        role_name = dict(get_role_labels_lang(chat_id)).get(user_r.role_key, "Noma'lum rol")
+        text += f"🎭 {role_name} -  {user_r.quantity}\n"
+    t = get_lang_text(chat_id)
+    await callback.message.edit_text(
+        text=t['user_profile'].format(
+            first_name=callback.from_user.first_name,
+            coin=user.coin,
+            stones=user.stones,
+            protection=user.protection,
+            hang_protect=user.hang_protect,
+            docs=user.docs,
+            geroy_protect=user.geroy_protection,
+            text=text
+        ),
+        parse_mode="HTML",reply_markup=cart_inline_btn(chat_id)
     )

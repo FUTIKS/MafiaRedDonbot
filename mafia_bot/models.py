@@ -28,6 +28,11 @@ class User(SafeBaseModel):
     is_vip=models.BooleanField(default=False)
     is_hero = models.BooleanField(default=False)
     hero_level = models.IntegerField(default=1)
+    geroy_protection = models.IntegerField(default=0)
+    is_protected = models.BooleanField(default=True)
+    is_hang_protected = models.BooleanField(default=True)
+    is_doc = models.BooleanField(default=True)
+    is_geroy_protected = models.BooleanField(default=True)
     
     def __str__(self):
         return f"{self.username} - {self.telegram_id}"

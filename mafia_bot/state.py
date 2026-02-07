@@ -11,6 +11,7 @@ class SendMoneyState(StatesGroup):
     waiting_for_olmos = State()
     waiting_olmos_to_remove = State()
     waiting_money_to_remove = State()
+    waiting_for_channel_olmos = State()
     
     
 class ChangeStoneCostState(StatesGroup):
