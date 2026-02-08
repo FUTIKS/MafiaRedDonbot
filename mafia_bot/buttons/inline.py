@@ -3,7 +3,7 @@ from decouple import config
 from django.utils import timezone
 from mafia_bot.utils import games_state
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from mafia_bot.models import  PriceStones,  PremiumGroup, User
+from mafia_bot.models import  PriceStones,  PremiumGroup, User, UserRole
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from core.constants import ROLE_PRICES_IN_MONEY,ROLE_PRICES_IN_STONES
 
@@ -382,6 +382,8 @@ def cart_inline_btn(tg_id):
             "toggle_doc": f"📂 - {'🟢 ON' if user.is_doc else ' 🔴 OFF'}",
             "toggle_hang":f"🎗️ - {'🟢 ON' if user.is_hang_protected else ' 🔴 OFF'}",
             "toggle_geroy_protect":f"🔰 - {'🟢 ON' if user.is_geroy_protected else ' 🔴 OFF'} ",
+            "toggle_geroy_use":f"🥷 - {'🟢 ON' if user.is_geroy_use else ' 🔴 OFF'} ",
+            "toggle_active_role_use":f"🎭 - {'🟢 ON' if user.is_active_role_use else ' 🔴 OFF'} ",
             "shop": "🛒 Do'kon",
             "buy_money": "💶 Sotib olish",
             "buy_stone": "💎 Sotib olish",
@@ -394,6 +396,8 @@ def cart_inline_btn(tg_id):
             "toggle_doc": f"📂 - {'🟢 ВКЛ' if user.is_doc else ' 🔴 ВЫКЛ'}",
             "toggle_hang":f"🎗️ - {'🟢 ВКЛ' if user.is_hang_protected else ' 🔴 ВЫКЛ'}",
             "toggle_geroy_protect":f"🔰 - {'🟢 ВКЛ' if user.is_geroy_protected else ' 🔴 ВЫКЛ'}",
+            "toggle_geroy_use":f"🥷 - {'🟢 ВКЛ' if user.is_geroy_use else ' 🔴 ВЫКЛ'}",
+            "toggle_active_role_use":f"🎭 - {'🟢 ВКЛ' if user.is_active_role_use else ' 🔴 ВЫКЛ'}",
             "shop": "🛒 Магазин",
             "buy_money": "💶 Купить",
             "buy_stone": "💎 Купить",
@@ -406,6 +410,8 @@ def cart_inline_btn(tg_id):
             "toggle_doc": f"📂 - {'🟢 ON' if user.is_doc else ' 🔴 OFF'}",
             "toggle_hang":f"🎗️ - {'🟢 ON' if user.is_hang_protected else ' 🔴 OFF'}",
             "toggle_geroy_protect":f"🔰 - {'🟢 ON' if user.is_geroy_protected else ' 🔴 OFF'}",
+            "toggle_geroy_use":f"🥷 - {'🟢 ON' if user.is_geroy_use else ' 🔴 OFF'}",
+            "toggle_active_role_use":f"🎭 - {'🟢 ON' if user.is_active_role_use else ' 🔴 OFF'}",
             "shop": "🛒 Shop",
             "buy_money": "💶 Buy",
             "buy_stone": "💎 Buy",
@@ -418,6 +424,8 @@ def cart_inline_btn(tg_id):
             "toggle_doc": f"📂 - {'🟢 ON' if user.is_doc else ' 🔴 OFF'}",
             "toggle_hang":f"🎗️ - {'🟢 ON' if user.is_hang_protected else ' 🔴 OFF'}",
             "toggle_geroy_protect":f"🔰 - {'🟢 ON' if user.is_geroy_protected else ' 🔴 OFF'}",
+            "toggle_geroy_use":f"🥷 - {'🟢 ON' if user.is_geroy_use else ' 🔴 OFF'}",
+            "toggle_active_role_use":f"🎭 - {'🟢 ON' if user.is_active_role_use else ' 🔴 OFF'}",
             "shop": "🛒 Mağaza",
             "buy_money": "💶 Satın al",
             "buy_stone": "💎 Satın al",
@@ -430,6 +438,8 @@ def cart_inline_btn(tg_id):
             "toggle_doc": f"📂 - {'🟢 ВКЛ' if user.is_doc else ' 🔴 ВЫКЛ'}",
             "toggle_hang":f"🎗️ - {'🟢 ВКЛ' if user.is_hang_protected else ' 🔴 ВЫКЛ'}",
             "toggle_geroy_protect":f"🔰 - {'🟢 ВКЛ' if user.is_geroy_protected else ' 🔴 ВЫКЛ'}",
+            "toggle_geroy_use":f"🥷 - {'🟢 ВКЛ' if user.is_geroy_use else ' 🔴 ВЫКЛ'}",
+            "toggle_active_role_use":f"🎭 - {'🟢 ВКЛ' if user.is_active_role_use else ' 🔴 ВЫКЛ'}",
             "shop": "🛒 Дүкен",
             "buy_money": "💶 Сатып алу",
             "buy_stone": "💎 Сатып алу",
@@ -441,28 +451,47 @@ def cart_inline_btn(tg_id):
 
     t = TEXTS.get(lang, TEXTS["uz"])
 
-    keyboard = InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(text=t["toggle_protection"], callback_data="toggle_protection"),
-                InlineKeyboardButton(text=t["toggle_doc"], callback_data="toggle_doc"),
-            ]
-            ,[
-                InlineKeyboardButton(text=t["toggle_hang"], callback_data="toggle_hang"),
-                InlineKeyboardButton(text=t["toggle_geroy_protect"], callback_data="toggle_geroy"),
-            ],
-            [InlineKeyboardButton(text=t["shop"], callback_data="cart")],
-            [
-                InlineKeyboardButton(text=t["buy_money"], callback_data="money_money"),
-                InlineKeyboardButton(text=t["buy_stone"], callback_data="money_stone"),
-            ],
-            [InlineKeyboardButton(text=t["hero"], callback_data="geroy_no")],
-            [InlineKeyboardButton(text=t["premium"], callback_data="groups")],
-            [InlineKeyboardButton(text=t["cases"], callback_data="cases")],
-        ]
-    )
+    rows = [
+        [
+            InlineKeyboardButton(text=t["toggle_protection"], callback_data="toggle_protection"),
+            InlineKeyboardButton(text=t["toggle_doc"], callback_data="toggle_doc"),
+        ],
+        [
+            InlineKeyboardButton(text=t["toggle_hang"], callback_data="toggle_hang"),
+            InlineKeyboardButton(text=t["toggle_geroy_protect"], callback_data="toggle_geroy"),
+        ],
+    ]
+
+    conditional_row = []
+
+    if user and user.is_hero:
+        conditional_row.append(
+            InlineKeyboardButton(text=t["toggle_geroy_use"], callback_data="toggle_geroyuse")
+        )
+
+    if user and UserRole.objects.filter(user_id=user.id, quantity__gt=0).exists():
+        conditional_row.append(
+            InlineKeyboardButton(text=t["toggle_active_role_use"], callback_data="toggle_activerole")
+        )
+
+    if conditional_row:
+        rows.append(conditional_row)
+
+    rows += [
+        [InlineKeyboardButton(text=t["shop"], callback_data="cart")],
+        [
+            InlineKeyboardButton(text=t["buy_money"], callback_data="money_money"),
+            InlineKeyboardButton(text=t["buy_stone"], callback_data="money_stone"),
+        ],
+        [InlineKeyboardButton(text=t["hero"], callback_data="geroy_no")],
+        [InlineKeyboardButton(text=t["premium"], callback_data="groups")],
+        [InlineKeyboardButton(text=t["cases"], callback_data="cases")],
+    ]
+
+    keyboard = InlineKeyboardMarkup(inline_keyboard=rows)
 
     return keyboard
+
 def shop_inline_btn(tg_id):
     from mafia_bot.handlers.main_functions import get_lang
 

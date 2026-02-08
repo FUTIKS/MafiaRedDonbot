@@ -3908,17 +3908,18 @@ async def toggle_profile_callback(callback: CallbackQuery):
     chat_id = callback.from_user.id
     user = User.objects.filter(telegram_id=chat_id).first()
     if setting == "protection":
-      user.is_protected = not user.is_protected
-      user.save()
+        user.is_protected = not user.is_protected
     elif setting == "hang":
         user.is_hang_protected = not user.is_hang_protected
-        user.save()
     elif setting == "doc":
         user.is_doc = not user.is_doc
-        user.save()
     elif setting == "geroy":
         user.is_geroy_protected = not user.is_geroy_protected
-        user.save()
+    elif setting == "geroyuse":
+        user.is_geroy_use = not user.is_geroy_use
+    elif setting == "activerole":
+        user.is_active_role_use = not user.is_active_role_use
+    user.save()
     text =""
     user_role = UserRole.objects.filter(user_id=user.id)
     for user_r in user_role:

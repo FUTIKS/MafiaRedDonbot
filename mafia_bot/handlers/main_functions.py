@@ -751,7 +751,7 @@ def find_game(game_id, tg_id,chat_id,user):
         if game['meta']['game_type']=='turnir':
             game["users_map"][tg_id]={"first_name":user.first_name,"protection":1 if user.protection>=1 and user.is_protected else 0,"doc": 1 if user.docs>=1 and user.is_doc else 0,"hang_protect": 1 if user.hang_protect>=1 and user.is_hang_protected else 0,"geroy_protect": 1 if user.geroy_protection>=1 and user.is_geroy_protected else 0,"tg_id":tg_id,"hero":False}
         else:
-            game["users_map"][tg_id]={"first_name":user.first_name,"protection":1 if user.protection>=1 and user.is_protected else 0,"doc": 1 if user.docs>=1 and user.is_doc else 0,"hang_protect": 1 if user.hang_protect>=1 and user.is_hang_protected else 0,"geroy_protect": 1 if user.geroy_protection>=1 and user.is_geroy_protected else 0,"tg_id":tg_id,"hero":user.is_hero}
+            game["users_map"][tg_id]={"first_name":user.first_name,"protection":1 if user.protection>=1 and user.is_protected else 0,"doc": 1 if user.docs>=1 and user.is_doc else 0,"hang_protect": 1 if user.hang_protect>=1 and user.is_hang_protected else 0,"geroy_protect": 1 if user.geroy_protection>=1 and user.is_geroy_protected else 0,"tg_id":tg_id,"hero":user.is_hero and user.is_geroy_use}
         game["alive"].append(tg_id)
         if len(game["players"])==max_players:
             return {"message": "full"}
@@ -914,7 +914,7 @@ def shuffle_roles(game_id) -> bool:
 
     for tg_id in players:
         user = User.objects.filter(telegram_id=tg_id).first()
-        if not user:
+        if not user or not user.is_active_role_use:
             continue
 
         user_roles = UserRole.objects.filter(user_id=user.id, quantity__gt=0)
