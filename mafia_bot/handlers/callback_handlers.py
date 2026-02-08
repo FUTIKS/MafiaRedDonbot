@@ -48,7 +48,14 @@ async def profile_callback(callback: CallbackQuery):
     for user_r in user_role:
         role_name = dict(get_role_labels_lang(tg_id)).get(user_r.role_key, "Noma'lum rol")
         text += f"🎭 {role_name} -  {user_r.quantity}\n"
-    active_user = MostActiveUser.objects.filter(user_id=user.id).first()
+    result = MostActiveUser.objects.filter(user_id=user.id).aggregate(
+    total_played=Sum('games_played'),
+    total_wins=Sum('games_win')
+    )
+
+    total_played = result['total_played'] or 0
+    total_wins = result['total_wins'] or 0
+
     await callback.message.edit_text(
         text=t['user_profile'].format(
             first_name=callback.from_user.first_name,
@@ -58,8 +65,8 @@ async def profile_callback(callback: CallbackQuery):
             hang_protect=user.hang_protect,
             docs=user.docs,
             geroy_protect=user.geroy_protection,
-            wins=active_user.games_win if active_user else 0,
-            all_played=active_user.games_played if active_user else 0,
+            wins=total_wins,
+            all_played=total_played,
             text=text
         ),
         parse_mode="HTML",reply_markup=cart_inline_btn(tg_id)
@@ -188,7 +195,14 @@ async def buy_callback(callback: CallbackQuery):
     price = callback.data.split("_")[2]
     tg_id = callback.from_user.id
     user = User.objects.filter(telegram_id=callback.from_user.id).first()
-    active_user = MostActiveUser.objects.filter(user_id=user.id).first()
+    result = MostActiveUser.objects.filter(user_id=user.id).aggregate(
+    total_played=Sum('games_played'),
+    total_wins=Sum('games_win')
+)
+
+    total_played = result['total_played'] or 0
+    total_wins = result['total_wins'] or 0
+
     if not user:
         user = User.objects.create(
             telegram_id=callback.from_user.id,
@@ -211,8 +225,8 @@ async def buy_callback(callback: CallbackQuery):
                 hang_protect=user.hang_protect,
                 docs=user.docs,
                 geroy_protect=user.geroy_protection,
-                wins=active_user.games_win if active_user else 0,
-                all_played=active_user.games_played if active_user else 0,
+                wins=total_wins,
+                all_played=total_played,
                 text=""
             ),
                 parse_mode="HTML",
@@ -232,8 +246,8 @@ async def buy_callback(callback: CallbackQuery):
                     stones=user.stones,
                     protection=user.protection,
                     hang_protect=user.hang_protect,
-                    wins=active_user.games_win if active_user else 0,
-                    all_played=active_user.games_played if active_user else 0,
+                    wins=total_wins,
+                    all_played=total_played,
                     docs=user.docs,
                     geroy_protect=user.geroy_protection,
                     text=""
@@ -264,8 +278,8 @@ async def buy_callback(callback: CallbackQuery):
                     hang_protect=user.hang_protect,
                     docs=user.docs,
                     geroy_protect=user.geroy_protection,
-                    wins=active_user.games_win if active_user else 0,
-                    all_played=active_user.games_played if active_user else 0,
+                    wins=total_wins,
+                    all_played=total_played,
                     text=""
                 ),
                 parse_mode="HTML",
@@ -290,8 +304,8 @@ async def buy_callback(callback: CallbackQuery):
                     hang_protect=user.hang_protect,
                     docs=user.docs,
                     geroy_protect=user.geroy_protection,
-                    wins=active_user.games_win if active_user else 0,
-                    all_played=active_user.games_played if active_user else 0,
+                    wins=total_wins,
+                    all_played=total_played,
                     text=""
                 ),
                 parse_mode="HTML",
@@ -3931,7 +3945,14 @@ async def toggle_profile_callback(callback: CallbackQuery):
         role_name = dict(get_role_labels_lang(chat_id)).get(user_r.role_key, "Noma'lum rol")
         text += f"🎭 {role_name} -  {user_r.quantity}\n"
     t = get_lang_text(chat_id)
-    active_user = MostActiveUser.objects.filter(user_id=user.id).first()
+    result = MostActiveUser.objects.filter(user_id=user.id).aggregate(
+    total_played=Sum('games_played'),
+    total_wins=Sum('games_win')
+)
+
+    total_played = result['total_played'] or 0
+    total_wins = result['total_wins'] or 0
+
     await callback.message.edit_text(
         text=t['user_profile'].format(
             first_name=callback.from_user.first_name,
@@ -3941,8 +3962,8 @@ async def toggle_profile_callback(callback: CallbackQuery):
             hang_protect=user.hang_protect,
             docs=user.docs,
             geroy_protect=user.geroy_protection,
-            wins=active_user.games_win if active_user else 0,
-            all_played=active_user.games_played if active_user else 0,
+            wins=total_wins,
+            all_played=total_played,
             text=text
         ),
         parse_mode="HTML",reply_markup=cart_inline_btn(chat_id)
