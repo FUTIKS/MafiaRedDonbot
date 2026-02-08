@@ -300,16 +300,24 @@ async def gsend_command(message: Message) -> None:
     
     sender.stones -= amount
     sender.save(update_fields=["stones"])
-    players = game.get("players", []).copy()
-    random.shuffle(players)
+    chat_id = message.chat.id
+    t = get_lang_text(chat_id)
+    group_sender = t['group_sender'].format(  
+        count=amount,
+    )
+    text = (
+        f"💎 <a href='tg://user?id={message.from_user.id}'>{message.from_user.first_name}</a> {group_sender}"
+    )
 
-    for i in range(amount):
-        target_id = players[i % len(players)]
-        target_user = User.objects.filter(telegram_id=target_id).first()
-        if not target_user:
-            continue
-        target_user.stones += 1
-        target_user.save(update_fields=["stones"])
+    sent = await message.answer(text, reply_markup=take_gsend_stone_btn(chat_id), parse_mode="HTML")
+
+    gsend_taken[chat_id] = {
+        "limit": amount,
+        "taken": [],
+        "msg_id": sent.message_id,
+        "creator": message.from_user.id
+}   
+    
         
    
     
@@ -443,7 +451,9 @@ async def change_command(message: Message) -> None:
     group_change = t['giveaway_join'].format(
         amount=amount,
         minut=minut,
-        sekund=duration % 60
+        sekund=duration % 60,
+        text ="",
+        quantity = 0
     )
 
     sent = await message.answer(group_change, reply_markup=giveaway_join_btn(chat_id), parse_mode="HTML")
@@ -634,7 +644,6 @@ registration_refresh_tasks = {}
 @dp.message(Command("game"), StateFilter(None)) 
 async def game_command(message: Message) -> None:
     chat_id = message.chat.id
-    await message.delete() 
     lock = get_game_lock(chat_id)
 
     if lock.locked():
@@ -647,6 +656,7 @@ async def game_command(message: Message) -> None:
         if result:
             await message.answer(text=result)
             return
+        await message.delete() 
         t = get_lang_text(chat_id)
         if message.chat.type in ("group", "supergroup"): 
             chat_id = message.chat.id
@@ -750,6 +760,8 @@ async def auto_begin_game(chat_id: int):
                 await bot.delete_messages(chat_id=chat_id,message_ids=message_ids)
             except:
                 pass
+            
+            
     messages.update(is_deleted=True)
     t = get_lang_text(chat_id)
     msg = await send_safe_message(chat_id=chat_id,text=t["registration_started"],reply_markup=join_game_btn(str(game.uuid), chat_id))
@@ -1088,8 +1100,8 @@ async def send_roles(game_id, chat_id):
 
 @dp.message(F.chat.type.in_({"group", "supergroup"}))
 async def delete_not_alive_messages(message: Message):
-    chat_id = message.chat.id
-    tg_id =int( message.from_user.id)
+    chat_id = int(message.chat.id)
+    tg_id = int(message.from_user.id)
     if chat_id not in group_users:
         group_users[chat_id] = set()
 
@@ -1099,15 +1111,15 @@ async def delete_not_alive_messages(message: Message):
         if is_group_admin_bool:
             return
 
-    if writing_allowed_groups.get(chat_id) == "no":
+    if writing_allowed_groups.get(int(chat_id)) == "no":
         try:
             await message.delete()
-            await mute_user(chat_id,tg_id)
+            await mute_user(int(chat_id), int(tg_id))
         except Exception:
             pass
         return
     
-    game = get_game_by_chat_id(chat_id)
+    game = get_game_by_chat_id(int(chat_id))
     if not game or game.get("meta", {}).get("is_active_game") is not True:
         print("No active game in this chat")
         return 
@@ -1144,7 +1156,7 @@ async def delete_not_alive_messages(message: Message):
 
 @dp.message(F.chat.type.in_({"private"}),StateFilter(None))
 async def private_router(message: Message,state: FSMContext) -> None:
-    tg_id = message.from_user.id
+    tg_id = int(message.from_user.id)
     if message.text == "admin_parol":
         await message.answer("Iltimos, login va parolni bitta qatorda yuboring:\n\nlogin password",reply_markup=back_btn(message.from_user.id))
         await state.set_state(CredentialsState.login)
@@ -1166,7 +1178,7 @@ async def private_router(message: Message,state: FSMContext) -> None:
     # =========================================
     data = last_wishes.get(tg_id)
     if data:
-        chat_id = data.get("chat_id")
+        chat_id = int(data.get("chat_id"))
         target_name = data.get("target_name")
         role = data.get("victim_role_label")
         if has_link(text):
@@ -1191,7 +1203,7 @@ async def private_router(message: Message,state: FSMContext) -> None:
             pass
 
                       
-        return
+            
 
 
     # =========================================
@@ -1201,7 +1213,7 @@ async def private_router(message: Message,state: FSMContext) -> None:
     if not team_chat_id:
         return
 
-    game = get_game_by_chat_id(team_chat_id)
+    game = get_game_by_chat_id(int(team_chat_id))
     if not game:
         return
 

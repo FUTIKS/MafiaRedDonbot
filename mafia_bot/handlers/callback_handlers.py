@@ -267,8 +267,8 @@ async def buy_callback(callback: CallbackQuery):
             reply_markup=role_shop_inline_keyboard(tg_id)
         )
     elif thing_to_buy == "geroyprotect":
-        if user.coin >= 5000:
-            user.coin -= 5000
+        if user.coin >= 10000:
+            user.coin -= 10000
             user.geroy_protection += 1
             user.save()
             await callback.message.edit_text(
@@ -2291,7 +2291,7 @@ async def send_callback(callback: CallbackQuery,state: FSMContext) -> None:
         )
         sent = await bot.send_message(
             chat_id=username,
-            text=f"Kanalga {amount_str} ta 💎 olmos yuborildi.",
+            text=f"Kanalimiz obunachilari uchun 💎 {amount_str} ta olmos hadya qilinmoqda:",
             reply_markup=claim_chanel_olmos_inline_btn(username=remove_prefix(username))        
         )
         stones_taken[username] = {
@@ -3278,20 +3278,17 @@ async def take_gsend_stone(callback: CallbackQuery):
         await callback.answer(tu['no_sharing'], show_alert=True)
         return
     
-    game_db = Game.objects.filter(chat_id=chat_id, is_active=True).first()
+    game_db = Game.objects.filter(chat_id=chat_id, is_active_game=True).first()
     if not game_db:
-        await callback.message.edit_reply_markup(None)
         return
     
-    game = games_state.get(game_db.id)
-    players = game.get("players") if game else None
-
-    if not players:
-        await callback.message.edit_reply_markup(None)
+    game = games_state[game_db.id]
+    players = game.get("players",[]) if game else None
+    if not  players :
         await callback.answer("❌ O‘yin topilmadi.", show_alert=True)
         return
 
-    if str(user_id) not in players and user_id not in players:
+    if user_id not in players :
         await callback.answer(tu['stone_not_in_game'], show_alert=True)
         return
 
@@ -3375,8 +3372,8 @@ async def giveaway_join(callback: CallbackQuery):
             for i, user in enumerate(users_qs)
         ]
     amount =gw['amount']
-    
-    text = t['giveway_continue'].format(amount=amount, minut=minut, second=second, users="\n".join(line), )
+    quantity = len(gw["members"])
+    text = t['giveway_continue'].format(amount=amount, minut=minut, second=second, text="\n".join(line), quantity=quantity)
     await callback.message.edit_text(text, reply_markup=giveaway_join_btn(chat_id), parse_mode="HTML")
     await callback.answer(tu['giveway_joined'])
 
@@ -3484,6 +3481,7 @@ async def process_broadcast_message(message: Message, state: FSMContext):
 
     await message.answer("⏳ Xabar yuborilmoqda...")
 
+    await state.clear()
     success = 0
     fail = 0
 
@@ -3520,7 +3518,6 @@ async def process_broadcast_message(message: Message, state: FSMContext):
         reply_markup=admin_inline_btn()
     )
 
-    await state.clear()
 
 @dp.callback_query(F.data == "close")
 async def close_callback(callback: CallbackQuery):
