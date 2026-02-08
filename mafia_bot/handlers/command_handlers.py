@@ -191,6 +191,7 @@ async def profile_command(message: Message):
         ROLES_CHOICES = get_role_labels_lang(message.from_user.id)
         role_name = dict(ROLES_CHOICES).get(user_r.role_key, "Noma'lum rol")
         text += f"🎭 {role_name} - {user_r.quantity}\n"
+    active_user = MostActiveUser.objects.filter(user_id=user.id).first()
     await message.answer(
         text=t['user_profile'].format(
             first_name=message.from_user.first_name,
@@ -200,6 +201,8 @@ async def profile_command(message: Message):
             hang_protect=user.hang_protect,
             docs=user.docs,
             geroy_protect=user.geroy_protection,
+            wins=active_user.games_win if active_user else 0,
+            all_played=active_user.games_played if active_user else 0,
             text=text
         ),
         parse_mode="HTML",reply_markup=cart_inline_btn(message.from_user.id)
