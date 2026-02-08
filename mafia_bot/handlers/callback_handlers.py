@@ -3648,7 +3648,6 @@ async def hero_callback(callback: CallbackQuery):
     if hero_id not in game["alive"]:
         return
 
-    role = game["roles"].get(hero_id)
     users_map = game["users_map"]
     alive_users_qs = [users_map[tg_id] for tg_id in game["alive"] if tg_id in users_map]
 
@@ -3696,10 +3695,7 @@ async def day_attack_callback(callback: CallbackQuery):
         return
 
 
-    # ❌ 1 o‘yinda 1 marta
-    if hero_id in game["hero"]["used"]:
-        await callback.answer("Siz bu o‘yinda hujum qilib bo‘lgansiz", show_alert=True)
-        return
+    
     target_user = game["users_map"].get(target_id)
     if target_user and target_user.get("geroy_protect") > 0:
         target = User.objects.filter(telegram_id=target_id).first()
