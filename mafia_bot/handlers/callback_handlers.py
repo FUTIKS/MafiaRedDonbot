@@ -3701,6 +3701,8 @@ async def hero_callback(callback: CallbackQuery):
 
 @dp.callback_query(F.data.startswith("day_attack_"))
 async def day_attack_callback(callback: CallbackQuery):
+    await callback.answer()
+    await callback.message.edit_reply_markup(None)
     _, _, target_id, game_id, chat_id, day = callback.data.split("_")
     target_id = target_id
     game_id = int(game_id)

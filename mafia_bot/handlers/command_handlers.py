@@ -1523,13 +1523,30 @@ async def claim_channel_olmos(message: Message, username: str):
         f"{taken_text}"
     )
     
-    if len(taken) >= limit:
-        if (len(taken)) %2==0:
-            await bot.edit_message_text(chat_id=username, message_id=msg_id, text=text, reply_markup=None, parse_mode="HTML")
+    current_len = len(taken)
+
+    should_update = (current_len % 2) == (limit % 2)
+
+    if current_len >= limit:
+        if should_update:
+            await bot.edit_message_text(
+                chat_id=username,
+                message_id=msg_id,
+                text=text,
+                reply_markup=None,
+                parse_mode="HTML"
+            )
         stones_taken.pop(username, None)
     else:
-        if len(taken) %2==0:
-            await bot.edit_message_text(chat_id=username, message_id=msg_id, text=text, reply_markup=claim_chanel_olmos_inline_btn(username.lstrip("@")), parse_mode="HTML")
+        if should_update:
+            await bot.edit_message_text(
+                chat_id=username,
+                message_id=msg_id,
+                text=text,
+                reply_markup=claim_chanel_olmos_inline_btn(username.lstrip("@")),
+                parse_mode="HTML"
+            )
+
     user_taker.stones += 1
     user_taker.save()
     await message.answer(tu['stone_taken'])
