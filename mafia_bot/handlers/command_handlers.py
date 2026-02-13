@@ -1498,6 +1498,8 @@ async def claim_channel_olmos(message: Message, username: str):
 
     if len(taken) >= limit:
         await message.answer(tu['stone_ended'], show_alert=True)
+        if data:
+            data.clear()
         return
 
     taken.append(user_id)
@@ -1522,10 +1524,12 @@ async def claim_channel_olmos(message: Message, username: str):
     )
     
     if len(taken) >= limit:
-        await bot.edit_message_text(chat_id=username, message_id=msg_id, text=text, reply_markup=None, parse_mode="HTML")
+        if (len(taken)) %2==0:
+            await bot.edit_message_text(chat_id=username, message_id=msg_id, text=text, reply_markup=None, parse_mode="HTML")
         stones_taken.pop(username, None)
     else:
-        await bot.edit_message_text(chat_id=username, message_id=msg_id, text=text, reply_markup=claim_chanel_olmos_inline_btn(username.lstrip("@")), parse_mode="HTML")
+        if len(taken) %2==0:
+            await bot.edit_message_text(chat_id=username, message_id=msg_id, text=text, reply_markup=claim_chanel_olmos_inline_btn(username.lstrip("@")), parse_mode="HTML")
     user_taker.stones += 1
     user_taker.save()
     await message.answer(tu['stone_taken'])
