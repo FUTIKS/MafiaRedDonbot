@@ -1143,11 +1143,11 @@ async def delete_not_alive_messages(message: Message):
         return 
 
     
-    alive = set(game.get("alive", []))
+    alive = game.get("alive", [])
     night_action = game.get("night_actions", {})
     lover_block_target = night_action.get("lover_block_target")
     t = get_lang_text(int(tg_id))
-    if lover_block_target == tg_id:
+    if int(lover_block_target) == tg_id:
         try:
             await message.delete()
             await mute_user(chat_id,tg_id)
