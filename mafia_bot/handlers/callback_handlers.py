@@ -3751,6 +3751,8 @@ async def day_attack_callback(callback: CallbackQuery):
 
     t = get_lang_text(hero_id)
     tu = get_lang_text(chat_id)
+    
+    await callback.message.edit_text(text=f"{get_actions_lang(hero_id).get('hero')}\n\n<a href='tg://user?id={target_id}'>{target_name}</a> {t['action_choose']}")
 
     # ☠ kill condition
     if hp_left <= 0:

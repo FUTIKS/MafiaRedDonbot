@@ -66,10 +66,12 @@ async def start(message: Message) -> None:
             return
             
             
-        game = Game.objects.filter(uuid=args,is_active_game=True,is_started=False).first()
-        if not game :
+        game = Game.objects.filter(uuid=args,is_active_game=True).first()
+        if not game or not game.is_started:
             await message.reply(text=t['game_not_active'])
             return
+        elif game and game.is_started:
+                return
         # if is_player_in_game(tg_id):
         #     await message.reply(text=t['already_in_another_game'])
         #     return
