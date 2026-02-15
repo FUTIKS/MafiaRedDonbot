@@ -67,7 +67,7 @@ async def start(message: Message) -> None:
             
             
         game = Game.objects.filter(uuid=args,is_active_game=True).first()
-        if not game or not game.is_started:
+        if not game or  game.is_started:
             await message.reply(text=t['game_not_active'])
             return
         elif game and game.is_started:
