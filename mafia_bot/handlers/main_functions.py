@@ -750,9 +750,9 @@ def find_game(game_id, tg_id,chat_id,user):
 
         game["players"].append(tg_id)
         if game['meta']['game_type']=='turnir':
-            game["users_map"][tg_id]={"first_name":user.first_name,"protection":1 if user.protection>=1 and user.is_protected else 0,"doc": 1 if user.docs>=1 and user.is_doc else 0,"hang_protect": 1 if user.hang_protect>=1 and user.is_hang_protected else 0,"geroy_protect": 1 if user.geroy_protection>=1 and user.is_geroy_protected else 0,"tg_id":tg_id,"hero":False}
+            game["users_map"][tg_id]={"first_name":user.first_name,"protection":1 if user.protection>=1 and user.is_protected else 0,"docs": 1 if user.docs>=1 and user.is_doc else 0,"hang_protect": 1 if user.hang_protect>=1 and user.is_hang_protected else 0,"geroy_protect": 1 if user.geroy_protection>=1 and user.is_geroy_protected else 0,"tg_id":tg_id,"hero":False}
         else:
-            game["users_map"][tg_id]={"first_name":user.first_name,"protection":1 if user.protection>=1 and user.is_protected else 0,"doc": 1 if user.docs>=1 and user.is_doc else 0,"hang_protect": 1 if user.hang_protect>=1 and user.is_hang_protected else 0,"geroy_protect": 1 if user.geroy_protection>=1 and user.is_geroy_protected else 0,"tg_id":tg_id,"hero":user.is_hero and user.is_geroy_use}
+            game["users_map"][tg_id]={"first_name":user.first_name,"protection":1 if user.protection>=1 and user.is_protected else 0,"docs": 1 if user.docs>=1 and user.is_doc else 0,"hang_protect": 1 if user.hang_protect>=1 and user.is_hang_protected else 0,"geroy_protect": 1 if user.geroy_protection>=1 and user.is_geroy_protected else 0,"tg_id":tg_id,"hero":user.is_hero and user.is_geroy_use}
         game["alive"].append(tg_id)
         if len(game["players"])==max_players:
             return {"message": "full"}

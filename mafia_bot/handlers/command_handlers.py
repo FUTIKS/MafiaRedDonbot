@@ -575,14 +575,14 @@ async def registration_timer(game_id, chat_id):
                 BotMessages.objects.create(game_id=int(game_id), message_id=msg.message_id, is_main=False)
 
             if remaining <= 29 and not thirty_sec_notified:
-                msg = BotMessages.objects.filter(game_id=int(game_id), is_main=False, is_deleted=False).last()
+                msg = BotMessages.objects.filter(game_id=int(game_id), is_main=False, is_deleted=False)
                 if msg:
+                    message_ids = [m.message_id for m in msg if m]
                     try:
-                        await bot.delete_message(chat_id=chat_id, message_id=msg.message_id)
-                        msg.is_deleted = True
-                        msg.save()
+                        await bot.delete_messages(chat_id=chat_id,message_ids=message_ids)
                     except:
                         pass
+                    msg.update(is_deleted=True)
                 thirty_sec_notified = True
                 msg = await send_safe_message(
                     chat_id,
@@ -621,13 +621,14 @@ async def stop_registration(game_id=None, chat_id=None, instant=False):
 
 
     deleted_messages = BotMessages.objects.filter(game_id=game.id, is_deleted=False)
-    for bot_message in deleted_messages:
-        try:
-            await bot.delete_message(chat_id=game.chat_id, message_id=bot_message.message_id)
-            bot_message.is_deleted = True
-            bot_message.save()
-        except:
-            pass
+    if deleted_messages:
+        message_ids = [m.message_id for m in deleted_messages if m]
+        if message_ids:
+            try:
+                await bot.delete_messages(chat_id=chat_id,message_ids=message_ids)
+            except Exception:
+                pass
+        deleted_messages.update(is_deleted=True)
     if instant:
         return
     t = get_lang_text(game.chat_id)
@@ -646,7 +647,7 @@ async def stop_registration(game_id=None, chat_id=None, instant=False):
             text=t["game_started"],
             reply_markup=go_to_bot_inline_btn(game.chat_id)
         )
-        chat_id_game_id[chat_id] = game.id
+        chat_id_game_id[game.chat_id] = game.id
         shuffle_roles(game.id)
         await send_roles(game_id=game.id, chat_id=game.chat_id)
         return
@@ -776,6 +777,8 @@ async def auto_begin_game(chat_id: int):
                 await bot.delete_messages(chat_id=chat_id,message_ids=message_ids)
             except:
                 pass
+        messages.update(is_deleted=True)
+        
             
             
     messages.update(is_deleted=True)
@@ -1149,7 +1152,7 @@ async def delete_not_alive_messages(message: Message):
     night_action = game.get("night_actions", {})
     lover_block_target = night_action.get("lover_block_target")
     t = get_lang_text(int(tg_id))
-    if int(lover_block_target) == tg_id:
+    if str(lover_block_target) == str(tg_id):
         try:
             await message.delete()
             await mute_user(chat_id,tg_id)
@@ -1425,15 +1428,16 @@ async def refresh_registration_main_message(game_id: int, chat_id: int):
 
             old_main = BotMessages.objects.filter(
                 game_id=game_id, is_main=True, is_deleted=False
-            ).last()
+            )
 
             if old_main:
-                try:
-                    await bot.delete_message(chat_id=chat_id, message_id=old_main.message_id)
-                except Exception:
-                    pass
-                old_main.is_deleted = True
-                old_main.save()
+                message_ids = [m.message_id for m in old_main if m]
+                if message_ids:
+                    try:
+                        await bot.delete_messages(chat_id=chat_id, message_ids=message_ids)
+                    except Exception:
+                        pass
+                old_main.update(is_deleted=True)
 
             result_2 = create_main_messages(int(game_id),chat_id)
            
