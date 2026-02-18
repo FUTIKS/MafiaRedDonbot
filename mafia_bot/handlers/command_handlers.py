@@ -67,7 +67,7 @@ async def start(message: Message) -> None:
             
             
         game = Game.objects.filter(uuid=args,is_active_game=True).first()
-        if not game or  game.is_started:
+        if not game:
             await message.reply(text=t['game_not_active'])
             return
         elif game and game.is_started:
@@ -91,7 +91,7 @@ async def start(message: Message) -> None:
                 except Exception as e:
                     pass
         if result.get("message") == "full":
-            await stop_registration(game_id=game.id)
+            await stop_registration(chat_id=game.chat_id)
         return
     
             
@@ -117,9 +117,11 @@ async def start(message: Message) -> None:
             await message.answer(t['use_game_command'])
             return
         chat_id = message.chat.id
-        game = Game.objects.filter(chat_id=chat_id, is_active_game=True,is_started=False).first()
-        if not game:
+        game = Game.objects.filter(chat_id=chat_id, is_active_game=True).first()
+        if not game :
             await message.answer(t['use_game_command'])
+            return
+        if game.is_started:
             return
         is_admin = await is_group_admin(chat_id, tg_id)
         if not is_admin:
@@ -548,7 +550,8 @@ registration_timers = {}
 async def registration_timer(game_id, chat_id):
     one_minute_notified = False
     thirty_sec_notified = False
-    uuid = str(Game.objects.get(id=game_id).uuid)
+    game = Game.objects.get(id=game_id)
+    uuid = str(game.uuid)
     t = get_lang_text(chat_id)
 
     try:
@@ -577,11 +580,11 @@ async def registration_timer(game_id, chat_id):
             if remaining <= 29 and not thirty_sec_notified:
                 msg = BotMessages.objects.filter(game_id=int(game_id), is_main=False, is_deleted=False)
                 if msg:
-                    message_ids = [m.message_id for m in msg if m]
-                    try:
-                        await bot.delete_messages(chat_id=chat_id,message_ids=message_ids)
-                    except:
-                        pass
+                    for m in msg:
+                        try:
+                            await bot.delete_message(chat_id=chat_id,message_id=m.message_id)
+                        except Exception:
+                            pass
                     msg.update(is_deleted=True)
                 thirty_sec_notified = True
                 msg = await send_safe_message(
@@ -594,43 +597,56 @@ async def registration_timer(game_id, chat_id):
             await asyncio.sleep(1)
             data[1] -= 1
 
-        await stop_registration(game_id=int(game_id))
+        await stop_registration(chat_id=chat_id)
 
     except asyncio.CancelledError:
+        print("returnser")
         return
 
 
 
 async def stop_registration(game_id=None, chat_id=None, instant=False):
     if game_id and chat_id is None:
-        game = Game.objects.get(id=game_id)
+        game = Game.objects.filter(id=game_id,is_active_game=True,is_started=False).first()
+        print(f"Stopping registration for game {game_id} in chat {game.chat_id}")
     else:
         game = Game.objects.filter(chat_id=chat_id, is_active_game=True, is_started=False).first()
-
+    
     all_players = games_state.get(game.id, {}).get("players", [])
     players_count = len(all_players)
+    
 
     timer = registration_timers.pop(game.id, None)
     if timer:
         task = timer[0]
         if task and not task.done():
             task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
     t = registration_refresh_tasks.pop(game.id, None)
     if t and not t.done():
         t.cancel()
 
 
+
     deleted_messages = BotMessages.objects.filter(game_id=game.id, is_deleted=False)
+
     if deleted_messages:
-        message_ids = [m.message_id for m in deleted_messages if m]
-        if message_ids:
+
+        for m in deleted_messages:
             try:
-                await bot.delete_messages(chat_id=chat_id,message_ids=message_ids)
-            except Exception:
+                await bot.delete_message(chat_id=game.chat_id,message_id=m.message_id)
+            except Exception as e:
                 pass
         deleted_messages.update(is_deleted=True)
+
     if instant:
+        game.is_active_game = False
+        game.save()
         return
+
     t = get_lang_text(game.chat_id)
     if players_count < 4 and not game.is_started:
         game.is_active_game = False
@@ -706,13 +722,14 @@ async def game_command(message: Message) -> None:
                 )
             game , created = Game.objects.get_or_create(chat_id=chat_id,is_active_game=True) 
             if not created: 
+                if game.is_started:
+                    return
                 text_begining = create_main_messages(game.id,chat_id)
                 bot_message=BotMessages.objects.filter(game_id=game.id,is_main=True,is_deleted=False)
                 if bot_message:
-                    message_ids = [m.message_id for m in bot_message if m]
-                    if message_ids:
+                    for m in bot_message:
                         try:
-                            await bot.delete_messages(chat_id=chat_id,message_ids=message_ids)
+                            await bot.delete_message(chat_id=chat_id,message_id=m.message_id)
                         except Exception:
                             pass
                     bot_message.update(is_deleted=True)
@@ -771,11 +788,10 @@ async def auto_begin_game(chat_id: int):
         return
     messages = BotMessages.objects.filter(game_id=game.id,is_main=True,is_deleted=False)
     if messages:
-        message_ids = [m.message_id for m in messages if m]
-        if message_ids:
+        for m in messages:
             try:
-                await bot.delete_messages(chat_id=chat_id,message_ids=message_ids)
-            except:
+                await bot.delete_message(chat_id=chat_id,message_id=m.message_id)
+            except Exception:
                 pass
         messages.update(is_deleted=True)
         
@@ -840,11 +856,9 @@ async def stop_command(message: Message) -> None:
     game_reg = Game.objects.filter(chat_id=chat_id, is_active_game=True).first()
     tu = get_lang_text(chat_id)
     if game_reg and not game_reg.is_started:
-        game_reg.is_active_game = False
-        game_reg.save()
         writing_allowed_groups.pop(game_reg.chat_id, None)
         # task bo'lsa cancel (agar siz game_tasks ishlatayotgan bo'ls
-        await stop_registration(game_id=game_reg.id,instant=True)
+        await stop_registration(chat_id=game_reg.chat_id,instant=True)
         chat_id_game_id.pop(chat_id, None)
         await send_safe_message(chat_id=chat_id, text=tu["registration_stopped"])
         return
@@ -908,7 +922,7 @@ async def admin_moderation_commands(message: Message) -> None:
     game = games_state.get(game_db.id)
     if game is not None:
         kill(game,int(tg_id))
-        await send_safe_message(chat_id=message.reply_to_message.from_user.id,text="🔇 Siz o'yindan chetlatildingiz!")
+        await send_safe_message(chat_id=int(tg_id),text="🔇 Siz o'yindan chetlatildingiz!")
     return
 
     
@@ -1431,10 +1445,9 @@ async def refresh_registration_main_message(game_id: int, chat_id: int):
             )
 
             if old_main:
-                message_ids = [m.message_id for m in old_main if m]
-                if message_ids:
+                for m in old_main:
                     try:
-                        await bot.delete_messages(chat_id=chat_id, message_ids=message_ids)
+                        await bot.delete_message(chat_id=chat_id, message_id=m.message_id)
                     except Exception:
                         pass
                 old_main.update(is_deleted=True)

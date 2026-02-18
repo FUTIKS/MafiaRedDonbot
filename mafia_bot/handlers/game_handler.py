@@ -381,13 +381,22 @@ async def start_game(game_id):
 
             try:
                 await msg_obj.edit_text(
-                    text=t['confirm_hanged'].format(first_name=voted_user_first_name,tg_id = voted_user_tg_id
+                    text=t['confirm_hang'].format(first_name=voted_user_first_name,tg_id = voted_user_tg_id
                     ),
                     reply_markup=None,
                     parse_mode="HTML"
                 )
             except Exception:
-                pass
+                try:
+                    await msg_obj.delete_reply_markup()
+                except Exception:
+                    pass
+                await send_safe_message(
+                    chat_id=game.chat_id,
+                    text=t['confirm_hang'].format(first_name=voted_user_first_name,tg_id = voted_user_tg_id
+                    ),
+                    parse_mode="HTML"
+                )
 
             await asyncio.sleep(3)
 
@@ -406,7 +415,7 @@ async def start_game(game_id):
                 user = User.objects.filter(telegram_id=voted_user.get('tg_id')).first()
                 if user:
                     user.hang_protect -=1
-                    user.save()
+                    user.save(update_fields=["hang_protect"])
                 await send_safe_message(
                     chat_id=game.chat_id,
                     text=t['hang_protect'].format(yes=yes, no=no,
