@@ -1,4 +1,5 @@
 import re
+import html
 import time
 import random
 import asyncio
@@ -498,7 +499,7 @@ async def punish_afk_night_players(game_id):
         if chat_id:
             chat_id = int(chat_id)
             user = users_qs.get(pid)
-            name = user.get("first_name") if user else str(pid)
+            name = html.escape(user.get("first_name", "")) if user else str(pid)
             role = roles.get(pid, "Noma'lum")
             tg=get_lang_text(int(chat_id))
             if role == "don":
@@ -750,9 +751,9 @@ def find_game(game_id, tg_id,chat_id,user):
 
         game["players"].append(tg_id)
         if game['meta']['game_type']=='turnir':
-            game["users_map"][tg_id]={"first_name":user.first_name,"protection":1 if user.protection>=1 and user.is_protected else 0,"docs": 1 if user.docs>=1 and user.is_doc else 0,"hang_protect": 1 if user.hang_protect>=1 and user.is_hang_protected else 0,"geroy_protect": 1 if user.geroy_protection>=1 and user.is_geroy_protected else 0,"tg_id":tg_id,"hero":False}
+            game["users_map"][tg_id]={"first_name":html.escape(user.first_name),"protection":1 if user.protection>=1 and user.is_protected else 0,"docs": 1 if user.docs>=1 and user.is_doc else 0,"hang_protect": 1 if user.hang_protect>=1 and user.is_hang_protected else 0,"geroy_protect": 1 if user.geroy_protection>=1 and user.is_geroy_protected else 0,"tg_id":tg_id,"hero":False}
         else:
-            game["users_map"][tg_id]={"first_name":user.first_name,"protection":1 if user.protection>=1 and user.is_protected else 0,"docs": 1 if user.docs>=1 and user.is_doc else 0,"hang_protect": 1 if user.hang_protect>=1 and user.is_hang_protected else 0,"geroy_protect": 1 if user.geroy_protection>=1 and user.is_geroy_protected else 0,"tg_id":tg_id,"hero":user.is_hero and user.is_geroy_use}
+            game["users_map"][tg_id]={"first_name":html.escape(user.first_name),"protection":1 if user.protection>=1 and user.is_protected else 0,"docs": 1 if user.docs>=1 and user.is_doc else 0,"hang_protect": 1 if user.hang_protect>=1 and user.is_hang_protected else 0,"geroy_protect": 1 if user.geroy_protection>=1 and user.is_geroy_protected else 0,"tg_id":tg_id,"hero":user.is_hero and user.is_geroy_use}
         game["alive"].append(tg_id)
         if len(game["players"])==max_players:
             return {"message": "full"}
@@ -777,7 +778,7 @@ def create_main_messages(game_id, tg_id_for_lang):
         user = users_map.get(tg_id)
         if not user:
             continue
-        msg += f'<a href="tg://user?id={tg_id}">{user.get("first_name")}</a>, '
+        msg += f'<a href="tg://user?id={tg_id}">{html.escape(user.get("first_name", ""))}</a>, '
         count += 1
 
     msg += f"\n\n{t['total'].format(count=count)}"
@@ -1031,7 +1032,7 @@ def get_mafia_kill_target(night_actions):
 def get_first_name_from_players(tg_id):
     user = User.objects.filter(telegram_id=tg_id).only("telegram_id", "first_name").first()
     if user:
-        return user.first_name
+        return html.escape(user.first_name)
     return str(tg_id)
 
 def has_link(text: str) -> bool:
@@ -2087,6 +2088,7 @@ def get_month_range(today):
 
 
 async def send_safe_message(chat_id: int, text: str, **kwargs) -> Message | None:
+    kwargs['parse_mode'] = kwargs.get('parse_mode', 'HTML')
     try:
         return await bot.send_message(chat_id=chat_id, text=text, **kwargs)
     except Exception:

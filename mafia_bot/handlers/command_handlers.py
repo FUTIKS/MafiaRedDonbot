@@ -1157,7 +1157,6 @@ async def delete_not_alive_messages(message: Message):
     if not game or not game.get("meta", {}).get("is_active_game") :
         print("No active game in this chat")
         print("game_id:", game_id)
-        print("game:", game)
         print("chat_id_game_id:", chat_id_game_id)
         return 
 
@@ -1255,7 +1254,6 @@ async def private_router(message: Message,state: FSMContext) -> None:
         print("No game found for team chat relay")
         print("team_chat_id:", team_chat_id)
         print("game_id:", game_id)
-        print(game,"game")
         return
 
     if game.get("meta", {}).get("team_chat_open") != "yes":
@@ -1459,10 +1457,10 @@ async def refresh_registration_main_message(game_id: int, chat_id: int):
                 text=result_2,
                 reply_markup=join_game_btn(uuid, chat_id)
             )
+            if msg:
+                await bot.pin_chat_message(chat_id=chat_id, message_id=msg.message_id)
 
-            await bot.pin_chat_message(chat_id=chat_id, message_id=msg.message_id)
-
-            BotMessages.objects.create(
+                BotMessages.objects.create(
                 game_id=int(game_id), message_id=msg.message_id, is_main=True
             )
 
