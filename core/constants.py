@@ -292,7 +292,7 @@ uz_texts ={
         "groups_section":"🌐 Guruhlar bo'limi\n\nBu yerda siz botimiz qo'llab-quvvatlaydigan rasmiy guruhlar va kanallar ro'yxatini topishingiz mumkin. Ushbu guruhlar orqali siz yangiliklardan xabardor bo'lishingiz, boshqa foydalanuvchilar bilan muloqot qilishingiz va yordam olishingiz mumkin.",
         "hero_protect_self":"🛡 Geroy bilan HIMOYALANDINGIZ!",
         "hero_attack":"🎯 <b>{target_name}</b> ga ⚔️ Geroy hujum qildiva {damage}% jonini oldi.\nHozirda uning {hp_data}% joni bor.",
-        "hero_killed":"💀 <b>{target_name}</b> yana Geroy hujumiga uchradi va halok bo‘ldi!\nU {role_target} edi.",
+        "hero_killed":"💀 <b>{target_name}</b> Geroy hujumiga uchradi va halok bo‘ldi!\nU {role_target} edi.",
         "hero_bought":"🥷 Siz Geroy rolini sotib oldingiz! Endi siz har kuni kunduzgi vaqtda o'ldira olasiz va ba'zi hujumlardan himoyalanasiz.",
         "hero_upgraded":"🥷 Siz Geroy rolini yangiladingiz! {level}",
         "hero_remove":"✅ Siz geroyni olib tashladingiz. Endi siz geroy xususiyatlaridan foydalana olmaysiz.",
