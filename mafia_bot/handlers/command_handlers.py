@@ -957,44 +957,63 @@ async def next_command(message: Message) -> None:
     )
 
 
+
 async def send_top(message: Message, days: int, title: str):
     await message.delete()
 
-    if days== 30 and message.chat.type in ("group", "supergroup"):
+    if days == 30 and message.chat.type in ("group", "supergroup"):
         return
+
     if message.chat.type in ("group", "supergroup"):
         is_admin = await is_group_admin(message.chat.id, message.from_user.id)
         if not is_admin:
             return
+
     if days == 30:
         user = User.objects.filter(telegram_id=message.from_user.id).first()
         if not user or user.role != 'admin':
             return
+
     group_id = message.chat.id
-    since = timezone.now() - timedelta(days=days)
-    all_get=10
-    if days == 30:
-        all_get= 30
-    elif days ==7:
-        all_get=7
+    now = timezone.now()
+
+    if days == 1:
+        since = now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    elif days == 7:
+        start_of_week = now - timedelta(days=now.weekday())
+        since = start_of_week.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    elif days == 30:
+        since = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
     else:
-        all_get=10
+        target_day = now - timedelta(days=days - 1)
+        since = target_day.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    if days == 30:
+        all_get = 30
+    elif days == 7:
+        all_get = 7
+    else:
+        all_get = 10
+
     if days == 30:
         top = (
-        MostActiveUser.objects
-        .filter( created_datetime__gte=since)
-        .values("user")
-        .annotate(wins=Sum("games_win"))
-        .order_by("-wins")[:all_get]
-    )
+            MostActiveUser.objects
+            .filter(created_datetime__gte=since)
+            .values("user")
+            .annotate(wins=Sum("games_win"))
+            .order_by("-wins")[:all_get]
+        )
     else:
         top = (
-        MostActiveUser.objects
-        .filter(group=group_id, created_datetime__gte=since)
-        .values("user")
-        .annotate(wins=Sum("games_win"))
-        .order_by("-wins")[:all_get]
-    )
+            MostActiveUser.objects
+            .filter(group=group_id, created_datetime__gte=since)
+            .values("user")
+            .annotate(wins=Sum("games_win"))
+            .order_by("-wins")[:all_get]
+        )
 
     if not top:
         await message.answer("Bu guruhda hali o'yin o'ynagan foydalanuvchilar yo'q.")
@@ -1015,9 +1034,9 @@ async def send_top(message: Message, days: int, title: str):
         win = row["wins"] or 0
 
         if idx <= 3:
-            lines.append(f"{medals[idx-1]} {mention} — {win*5} ball")
+            lines.append(f"{medals[idx-1]} {mention} — {win * 5} ball")
         else:
-            lines.append(f"{idx}. {mention} — {win*5} ball")
+            lines.append(f"{idx}. {mention} — {win * 5} ball")
 
     text = f"{title}\n\n" + "\n".join(lines)
     await message.answer(text, parse_mode="HTML")
