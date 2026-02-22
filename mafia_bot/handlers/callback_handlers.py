@@ -3146,7 +3146,7 @@ async def extend_callback(callback: CallbackQuery,state: FSMContext) -> None:
     group_id = callback.data.split(":")[1]
     await callback.message.edit_text(
         text="⏳ Obuna muddatini uzaytirish uchun obuna tugash sanasini (YYYY-MM-DD) kiriting:",
-        reply_markup=back_btn(callback.from_user.id,callback.from_user.id,callback.from_user.id,"groups")
+        reply_markup=back_btn(callback.from_user.id,"groups")
     )
     await state.update_data(group_id=group_id)
     await state.set_state(ExtendGroupState.waiting_for_extend_info)
