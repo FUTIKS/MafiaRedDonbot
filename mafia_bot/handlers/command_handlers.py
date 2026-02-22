@@ -19,9 +19,11 @@ from mafia_bot.utils import last_wishes,team_chat_sessions,game_tasks,group_user
 from mafia_bot.handlers.main_functions import (MAFIA_ROLES, find_game,create_main_messages, get_lang_text,
                                                kill, notify_new_don, promote_new_com_if_needed,get_game_lock,
                                                promote_new_don_if_needed,  shuffle_roles ,check_bot_rights,
-                                               role_label,is_group_admin,mute_user,has_link,parse_amount,get_description_lang,get_role_labels_lang,
+                                               role_label,is_group_admin,mute_user,has_link,parse_amount,
+                                               get_description_lang,get_role_labels_lang,
                                                send_safe_message,notify_new_com)
-from mafia_bot.buttons.inline import (admin_inline_btn, back_btn, claim_chanel_olmos_inline_btn, giveaway_join_btn, group_profile_inline_btn, join_game_btn, 
+from mafia_bot.buttons.inline import (admin_inline_btn, back_btn, claim_chanel_olmos_inline_btn, giveaway_join_btn, 
+                                      group_profile_inline_btn, join_game_btn, 
                                       start_inline_btn, go_to_bot_inline_btn, cart_inline_btn, take_gsend_stone_btn,
                                       take_stone_btn,stones_to_premium_inline_btn,language_keyboard)
 
@@ -48,6 +50,9 @@ async def start(message: Message) -> None:
             return
         elif args.startswith("instance_"):
             chat_id = args.split('_')[1]
+            admin_id = int(args.split('_')[2])
+            if admin_id != tg_id:
+                return
             await begin_instance_callback(message,chat_id)
             return
         elif args.startswith("paym_"):
@@ -58,6 +63,9 @@ async def start(message: Message) -> None:
             return
         elif args.startswith("stone_"):
             chat_id = int(args.split('_')[1])
+            admin_id = int(args.split('_')[2])
+            if admin_id != tg_id:
+                return
             await stones_to_premium(message,chat_id)
             return
         elif args.startswith("claim_"):
@@ -175,7 +183,7 @@ async def profile_command(message: Message):
             premium_stones=premium_stones,
             premium_end_date=premium_end_date
         ),
-        reply_markup=group_profile_inline_btn(has_stone, message.chat.id)
+        reply_markup=group_profile_inline_btn(has_stone, message.chat.id,message.from_user.id)
         )
         
         return

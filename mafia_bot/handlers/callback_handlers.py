@@ -155,14 +155,14 @@ async def back_callback(callback: CallbackQuery, state: FSMContext):
         premium_stones = group_trial.premium_stones if group_trial else 0
         premium_end_date = group_trial.end_date.strftime('%Y-%m-%d %H:%M:%S') if group_trial.end_date else "O'tib ketgan"
 
-        await callback.message.answer(text=t['group_profile'].format(
+        await callback.message.edit_text(text=t['group_profile'].format(
             coins=coins,
             is_active=active_text,
             next_activation=next_activation,
             stones=stones,
             premium_stones=premium_stones,
             premium_end_date=premium_end_date
-        ), reply_markup=group_profile_inline_btn(has_stone, chat_id))
+        ), reply_markup=group_profile_inline_btn(has_stone, chat_id,callback.from_user.id))
         
     elif place == "groups":
         page = 1
@@ -420,6 +420,9 @@ async def star_callback(callback: CallbackQuery):
             reply_markup=pay_using_stars_inline_btn(is_money=False)
         )
     elif which == "group":
+        admin_id = int(callback.data.split("_")[2])
+        if admin_id != callback.from_user.id:
+            return
         await callback.message.edit_text(
             text = t['choose_quantity'],
             reply_markup=groups_buy_stars(callback.message.chat.id)
@@ -2843,19 +2846,18 @@ async def case_buy_callback(callback: CallbackQuery):
             reply_markup=money_case()
         )
     elif case_type == "stone":
-        if not user.is_vip:
-            if case_opened:
-                last_opened = case_opened.modified_datetime
+        if case_opened:
+            last_opened = case_opened.modified_datetime
 
-                # timezone muammosiz bo'lishi uchun UTC ishlatamiz
-                now = datetime.datetime.utcnow()
+            # timezone muammosiz bo'lishi uchun UTC ishlatamiz
+            now = datetime.datetime.utcnow()
 
-                # ✅ month check
-                if last_opened.year == now.year and last_opened.month == now.month:
-                    await callback.answer(
-                        t['already_opened']
-                    )
-                    return
+            # ✅ month check
+            if last_opened.year == now.year and last_opened.month == now.month:
+                await callback.answer(
+                    t['already_opened']
+                )
+                return
         await callback.message.edit_text(
             text=t['stone_case_text'],
             reply_markup=stone_case()
@@ -3545,9 +3547,12 @@ async def process_broadcast_message(message: Message, state: FSMContext):
     )
 
 
-@dp.callback_query(F.data == "close")
+@dp.callback_query(F.data.startswith("close_"))
 async def close_callback(callback: CallbackQuery):
     await callback.answer()
+    admin_id = int(callback.data.split("_")[1])
+    if admin_id != callback.from_user.id:
+        return
     await callback.message.delete()
     
     
@@ -3911,13 +3916,16 @@ async def set_language_callback(callback: CallbackQuery):
     if callback.message.chat.type == "private":
         await callback.message.edit_text(texts.get(lang, texts["uz"]),reply_markup=start_inline_btn(callback.from_user.id))
         return
-    await callback.message.edit_text(texts.get(lang, texts["uz"]),reply_markup=group_profile_inline_btn(True,callback.message.chat.id))
+    await callback.message.edit_text(texts.get(lang, texts["uz"]),reply_markup=group_profile_inline_btn(True,callback.message.chat.id,callback.from_user.id))
     await callback.answer()
 
 
-@dp.callback_query(F.data == "lange_group")
+@dp.callback_query(F.data.startswith("lange_"))
 async def lange_group_callback(callback: CallbackQuery,state: FSMContext) -> None:
     await callback.answer()
+    admin_id = int(callback.data.split("_")[1])
+    if callback.from_user.id != admin_id:
+        return
     await callback.message.edit_text(
         text="Language / Tilni tanlang / Выберите язык / Dil seçin / Тілді таңдаңыз:",
         reply_markup=language_keyboard()

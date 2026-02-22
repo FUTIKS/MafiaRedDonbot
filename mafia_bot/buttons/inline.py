@@ -14,7 +14,7 @@ def remove_prefix(text):
     return text.lstrip('@')
 
 # Cart inline button
-def group_profile_inline_btn(has_stone, chat_id):
+def group_profile_inline_btn(has_stone, chat_id,tg_id):
     from mafia_bot.handlers.main_functions import get_lang
 
     lang = get_lang(chat_id)
@@ -65,16 +65,16 @@ def group_profile_inline_btn(has_stone, chat_id):
 
     keyboard4 = InlineKeyboardButton(
         text=t["premium"],
-        url=f"https://t.me/{remove_prefix(config('BOT_USERNAME'))}?start=stone_{chat_id}"
+        url=f"https://t.me/{remove_prefix(config('BOT_USERNAME'))}?start=stone_{chat_id}_{tg_id}"
     )
-    keyboard1 = InlineKeyboardButton(text=t["buy_star"], callback_data="star_group")
+    keyboard1 = InlineKeyboardButton(text=t["buy_star"], callback_data=f"star_group_{tg_id}")
     keyboard2 = InlineKeyboardButton(text=t["card"], url="https://t.me/RedDon_Mafia")
     keyboard3 = InlineKeyboardButton(
         text=t["manage"],
-        url=f"https://t.me/{remove_prefix(config('BOT_USERNAME'))}?start=instance_{chat_id}"
+        url=f"https://t.me/{remove_prefix(config('BOT_USERNAME'))}?start=instance_{chat_id}_{tg_id}"
     )
-    keyboard_lang = InlineKeyboardButton(text=t["lang"], callback_data="lange_group")
-    keyboard5 = InlineKeyboardButton(text=t["close"], callback_data="close")
+    keyboard_lang = InlineKeyboardButton(text=t["lang"], callback_data=f"lange_{tg_id}")
+    keyboard5 = InlineKeyboardButton(text=t["close"], callback_data=f"close_{tg_id}")
 
     design = [
         [keyboard4] if has_stone else [],
@@ -363,7 +363,7 @@ def case_inline_btn(tg_id):
         inline_keyboard=[
             [InlineKeyboardButton(text=t["money"], callback_data="case_money")],
             [InlineKeyboardButton(text=t["stone"], callback_data="case_stone")],
-            [InlineKeyboardButton(text=t["vip"], callback_data="case_vip")],
+            # [InlineKeyboardButton(text=t["vip"], callback_data="case_vip")],
             [InlineKeyboardButton(text=t["back"], callback_data="back_profile")],
         ]
     )
