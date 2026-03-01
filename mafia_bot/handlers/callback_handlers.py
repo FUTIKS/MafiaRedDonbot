@@ -344,7 +344,7 @@ async def buy_role_callback(call: CallbackQuery, state: FSMContext):
             return await call.answer(t['not_enough_money'], show_alert=True)
         user.coin -= price
 
-    await user.asave(update_fields=["stones", "coin"])
+    await user.save(update_fields=["stones", "coin"])
     user_role, created = UserRole.objects.get_or_create(user=user, role_key=role_key)
     if not created:
         user_role.quantity += 1
