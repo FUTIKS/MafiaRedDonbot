@@ -1578,7 +1578,7 @@ async def apply_night_actions(game_id: int):
     serg_id = get_alive_role_id(game, "serg")
     com_check_target = night_actions.get("com_check_target")
 
-    if com_id and com_check_target and is_alive(game, com_id):
+    if com_id and com_check_target:
         target_user = alive_users_map.get(int(com_check_target))
         target_name = target_user.get("first_name") if target_user else str(com_check_target)
 
