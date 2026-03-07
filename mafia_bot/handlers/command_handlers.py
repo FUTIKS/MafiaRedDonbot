@@ -4,6 +4,8 @@ import asyncio
 from aiogram import F
 from dispatcher import dp,bot
 from datetime import timedelta
+from asgiref.sync import sync_to_async
+from django.db.models import F as MF
 from django.db.models import Sum  
 from django.utils import timezone
 from aiogram.filters import StateFilter
@@ -336,6 +338,7 @@ async def gsend_command(message: Message) -> None:
     gsend_taken[chat_id] = {
         "limit": amount,
         "taken": [],
+        "takers_map": [],
         "msg_id": sent.message_id,
         "creator": message.from_user.id
 }   
@@ -386,6 +389,7 @@ async def money_command(message: Message) -> None:
         stones_taken[chat_id] = {
             "limit": count,
             "taken": [],
+            "takers_map": [],
             "msg_id": sent.message_id,
             "creator": message.from_user.id
     }   
@@ -1521,76 +1525,94 @@ async def stones_to_premium(message:Message, chat_id: int):
     await message.answer(text,reply_markup=stones_to_premium_inline_btn(game_trials.stones,chat_id))
 
 
+channel_locks = {}
 
 async def claim_channel_olmos(message: Message, username: str):
     username = f"@{username}" if not username.startswith("@") else username
     data = stones_taken.get(username)
     user_id = message.from_user.id
     tu = get_lang_text(user_id)
+
     if not data:
-        await message.answer(tu['no_sharing'], show_alert=True)
+        await message.answer(tu['no_sharing'])
         return
 
-    limit = data["limit"]
-    taken = data["taken"]
-    msg_id = data["msg_id"]
-    sender = data["creator"]
+    lock = channel_locks.setdefault(username, asyncio.Lock())
 
-    if user_id in taken:
-        await message.answer(tu['stone_already_taken'], show_alert=True)
-        return
+    async with lock:
+        data = stones_taken.get(username)
+        if not data:
+            await message.answer(tu['no_sharing'])
+            return
 
-    if len(taken) >= limit:
-        await message.answer(tu['stone_ended'], show_alert=True)
-        if data:
-            data.clear()
-        return
+        limit = data["limit"]
+        taken = data["taken"]
+        takers_map = data["takers_map"]
+        msg_id = data["msg_id"]
 
-    taken.append(user_id)
-    user_taker = User.objects.filter(telegram_id=user_id).first()
-    sender = User.objects.filter(telegram_id=int(sender)).first()
-    if not user_taker:
-        user_taker = User.objects.create(
-            telegram_id=user_id, 
-            first_name=message.from_user.first_name,
-            username=message.from_user.username
+        if user_id in taken:
+            await message.answer(tu['stone_already_taken'])
+            return
+
+        if len(taken) >= limit:
+            await message.answer(tu['stone_ended'])
+            stones_taken.pop(username, None)
+            return
+
+        taken.append(user_id)
+
+        user_taker = await sync_to_async(
+            lambda: User.objects.filter(telegram_id=user_id).first()
+        )()
+
+        if not user_taker:
+            user_taker = await sync_to_async(User.objects.create)(
+                telegram_id=user_id,
+                first_name=message.from_user.first_name,
+                username=message.from_user.username
+            )
+
+        takers_map.append(user_taker)
+
+        taken_text = "".join(
+            f"\n{i}. 💎 <a href='tg://user?id={u.telegram_id}'>{u.first_name}</a>"
+            for i, u in enumerate(takers_map, 1)
         )
-    users_qs = User.objects.filter(telegram_id__in=taken)
-    
-    
-    taken_text = ""
-    for i, user in enumerate(users_qs, start=1):
-        taken_text += f"\n{i}. 💎 <a href='tg://user?id={user.telegram_id}'>{user.first_name}</a>"
 
-    text = (
-         f"Kanalga {limit} ta 💎 olmos yuborildi."
-        f"{taken_text}"
+        text = f"Kanalga {limit} ta 💎 olmos yuborildi.{taken_text}"
+
+        current_len = len(taken)
+        should_update = (current_len % 2) == (limit % 2)
+
+        if current_len >= limit:
+            if should_update:
+                try:
+                    await bot.edit_message_text(
+                    chat_id=username,
+                    message_id=msg_id,
+                    text=text,
+                    reply_markup=None,
+                    parse_mode="HTML"
+                )
+                except Exception:
+                    pass
+            stones_taken.pop(username, None)
+        else:
+            if should_update:
+                try:
+                    await bot.edit_message_text(
+                    chat_id=username,
+                    message_id=msg_id,
+                    text=text,
+                    reply_markup=claim_chanel_olmos_inline_btn(username.lstrip("@")),
+                    parse_mode="HTML"
+                )
+                except Exception:
+                    pass
+        await sync_to_async(
+    lambda: User.objects.filter(id=user_taker.id).update(
+        stones=MF("stones") + 1
     )
-    
-    current_len = len(taken)
+)()
 
-    should_update = (current_len % 2) == (limit % 2)
-
-    if current_len >= limit:
-        if should_update:
-            await bot.edit_message_text(
-                chat_id=username,
-                message_id=msg_id,
-                text=text,
-                reply_markup=None,
-                parse_mode="HTML"
-            )
-        stones_taken.pop(username, None)
-    else:
-        if should_update:
-            await bot.edit_message_text(
-                chat_id=username,
-                message_id=msg_id,
-                text=text,
-                reply_markup=claim_chanel_olmos_inline_btn(username.lstrip("@")),
-                parse_mode="HTML"
-            )
-
-    user_taker.stones += 1
-    user_taker.save()
     await message.answer(tu['stone_taken'])

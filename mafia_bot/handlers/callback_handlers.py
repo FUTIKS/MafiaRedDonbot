@@ -1,12 +1,13 @@
 import re
 import json
 import time
+import asyncio 
 import datetime
 from aiogram import F
-from asyncio import sleep
 from dispatcher import dp, bot
 from datetime import timedelta
-from django.db.models import Sum
+from django.db.models import Sum, F as MF
+from asgiref.sync import sync_to_async
 from django.utils import timezone
 from aiogram.filters import StateFilter
 from aiogram.fsm.context import FSMContext 
@@ -2315,18 +2316,26 @@ async def send_callback(callback: CallbackQuery,state: FSMContext) -> None:
         return
     elif action == "confirm":
         username, amount_str = callback.data.split("_")[2], callback.data.split("_")[3]
-        await callback.message.edit_text(
-            text="💎 Kanalga olmos jo'natildi",
-            reply_markup=admin_inline_btn()
-        )
-        sent = await bot.send_message(
+        try:
+            sent = await bot.send_message(
             chat_id=username,
             text=f"Kanalimiz obunachilari uchun 💎 {amount_str} ta olmos hadya qilinmoqda:",
             reply_markup=claim_chanel_olmos_inline_btn(username=remove_prefix(username))        
         )
+        except Exception as e:
+            await callback.message.edit_text(
+                    text="❌ Kanal username'ida xatolik bor yoki kanal topilmadi. Iltimos, tekshirib qaytadan urinib ko'ring.",
+                    reply_markup=admin_inline_btn()
+                )
+            return
+        await callback.message.edit_text(
+            text="💎 Kanalga olmos jo'natildi",
+            reply_markup=admin_inline_btn()
+        )
         stones_taken[username] = {
             "limit": int(amount_str),
             "taken": [],
+            "takers_map": [],
             "msg_id": sent.message_id,
             "creator": callback.message.from_user.id
     }   
@@ -3239,10 +3248,15 @@ async def quizzes_page_callback(callback_query: CallbackQuery):
         await callback_query.message.edit_text("❌ Hech qanday o'tkazmalar topilmadi.", reply_markup=admin_inline_btn())
         return
     
+
+
+main_chat_locks = {}
+
 @dp.callback_query(F.data == "take_stone")
 async def take_stone(callback: CallbackQuery):
     chat_id = callback.message.chat.id
     user_id = callback.from_user.id
+
     t = get_lang_text(chat_id)
     tu = get_lang_text(user_id)
 
@@ -3252,114 +3266,197 @@ async def take_stone(callback: CallbackQuery):
         await callback.answer(tu['no_sharing'], show_alert=True)
         return
 
-    limit = data["limit"]
-    taken = data["taken"]
-    sender = data["creator"]
+    lock = main_chat_locks.setdefault(chat_id, asyncio.Lock())
 
-    if user_id in taken:
-        await callback.answer(tu['stone_already_taken'], show_alert=True)
-        return
+    async with lock:
+        data = stones_taken.get(chat_id)
+        if not data:
+            await callback.answer(tu['no_sharing'], show_alert=True)
+            await callback.message.edit_reply_markup(None)
+            return
 
-    if len(taken) >= limit:
-        await callback.answer(tu['stone_ended'], show_alert=True)
-        return
+        limit = data["limit"]
+        taken = data["taken"]
+        takers = data.setdefault("takers_map", [])
+        sender_id = data["creator"]
 
-    taken.append(user_id)
-    user_taker = User.objects.filter(telegram_id=user_id).first()
-    sender = User.objects.filter(telegram_id=int(sender)).first()
-    if not user_taker:
-        user_taker = User.objects.create(
-            telegram_id=user_id, 
-            first_name=callback.from_user.first_name,
-            username=callback.from_user.username
+        if user_id in taken:
+            await callback.answer(tu['stone_already_taken'], show_alert=True)
+            return
+
+        if len(taken) >= limit:
+            await callback.answer(tu['stone_ended'], show_alert=True)
+            await callback.message.edit_reply_markup(None)
+            stones_taken.pop(chat_id, None)
+            return
+
+        sender = await sync_to_async(
+            lambda: User.objects.filter(telegram_id=int(sender_id)).first()
+        )()
+
+        user_taker = await sync_to_async(
+            lambda: User.objects.filter(telegram_id=user_id).first()
+        )()
+
+        if not user_taker:
+            user_taker = await sync_to_async(User.objects.create)(
+                telegram_id=user_id,
+                first_name=callback.from_user.first_name,
+                username=callback.from_user.username
+            )
+
+        taken.append(user_id)
+        takers.append(user_taker)
+
+        taken_text = "".join(
+            f"\n{i}. 💎 <a href='tg://user?id={u.telegram_id}'>{u.first_name}</a>"
+            for i, u in enumerate(takers, 1)
         )
-    users_qs = User.objects.filter(telegram_id__in=taken)
-    
-    
-    taken_text = ""
-    for i, user in enumerate(users_qs, start=1):
-        taken_text += f"\n{i}. 💎 <a href='tg://user?id={user.telegram_id}'>{user.first_name}</a>"
 
-    text = (
-         f"💎 <a href='tg://user?id={sender.telegram_id}'>{sender.first_name}</a>  {t['group_sender'].format(count=limit)}\n"
-        f"{taken_text}"
-    )
+        text = (
+            f"💎 <a href='tg://user?id={sender.telegram_id}'>{sender.first_name}</a> "
+            f"{t['group_sender'].format(count=limit)}\n"
+            f"{taken_text}"
+        )
 
-    if len(taken) >= limit:
-        await callback.message.edit_text(text, reply_markup=None, parse_mode="HTML")
-        stones_taken.pop(chat_id, None)
-    else:
-        await callback.message.edit_text(text, reply_markup=take_stone_btn(chat_id), parse_mode="HTML")
-    user_taker.stones += 1
-    user_taker.save()
+        try:
+            if len(taken) >= limit:
+                await callback.message.edit_text(
+                    text,
+                    reply_markup=None,
+                    parse_mode="HTML"
+                )
+                stones_taken.pop(chat_id, None)
+            else:
+                await callback.message.edit_text(
+                    text,
+                    reply_markup=take_stone_btn(chat_id),
+                    parse_mode="HTML"
+                )
+        except Exception:
+            pass
+
+        await sync_to_async(
+            lambda: User.objects.filter(id=user_taker.id).update(
+                stones=MF("stones") + 1
+            )
+        )()
+
     await callback.answer(tu['stone_taken'])
 
+chat_locks = {}
 
 @dp.callback_query(F.data == "take_gsend_stone")
 async def take_gsend_stone(callback: CallbackQuery):
     chat_id = callback.message.chat.id
     user_id = callback.from_user.id
+
     t = get_lang_text(chat_id)
     tu = get_lang_text(user_id)
+
     data = gsend_taken.get(chat_id)
     if not data:
         await callback.message.edit_reply_markup(None)
         await callback.answer(tu['no_sharing'], show_alert=True)
         return
-    
-    game_db = Game.objects.filter(chat_id=chat_id, is_active_game=True).first()
-    if not game_db:
-        return
-    
-    game = games_state[game_db.id]
-    players = game.get("players",[]) if game else None
-    if not  players :
-        await callback.answer("❌ O‘yin topilmadi.", show_alert=True)
-        return
 
-    if user_id not in players :
-        await callback.answer(tu['stone_not_in_game'], show_alert=True)
-        return
+    lock = chat_locks.setdefault(chat_id, asyncio.Lock())
 
-    limit = data["limit"]
-    taken = data["taken"]
-    sender = data["creator"]
-    sender = User.objects.filter(telegram_id=int(sender)).first()
-    
-    if user_id in taken:
-        await callback.answer(tu['stone_already_taken'], show_alert=True)
-        return
+    async with lock:
 
-    if len(taken) >= limit:
-        await callback.answer(tu['stone_ended'], show_alert=True)
-        return
+        data = gsend_taken.get(chat_id)
+        if not data:
+            await callback.answer(tu['no_sharing'], show_alert=True)
+            await callback.message.edit_reply_markup(None)
+            return
 
-    taken.append(user_id)
-    user_taker = User.objects.filter(telegram_id=user_id).first()
-    if not user_taker:
-        user_taker = User.objects.create(
-            telegram_id=user_id, 
-            first_name=callback.from_user.first_name,
-            username=callback.from_user.username
+        game_db = await sync_to_async(
+            lambda: Game.objects.filter(chat_id=chat_id, is_active_game=True).first()
+        )()
+
+        if not game_db:
+            await callback.answer(tu['stone_not_in_game'], show_alert=True)
+            await callback.message.edit_reply_markup(None)
+            return
+
+        game = games_state.get(game_db.id)
+        players = game.get("players", []) if game else []
+
+        if not players:
+            await callback.answer("❌ O‘yin topilmadi.", show_alert=True)
+            await callback.message.edit_reply_markup(None)
+            return
+
+        if user_id not in players:
+            await callback.answer(tu['stone_not_in_game'], show_alert=True)
+            return
+
+        limit = data["limit"]
+        taken = data["taken"]
+        takers = data.setdefault("takers_map", [])
+        sender_id = data["creator"]
+
+        if user_id in taken:
+            await callback.answer(tu['stone_already_taken'], show_alert=True)
+            return
+
+        if len(taken) >= limit:
+            await callback.answer(tu['stone_ended'], show_alert=True)
+            gsend_taken.pop(chat_id, None)
+            return
+
+        sender = await sync_to_async(
+            lambda: User.objects.filter(telegram_id=int(sender_id)).first()
+        )()
+
+        user_taker = await sync_to_async(
+            lambda: User.objects.filter(telegram_id=user_id).first()
+        )()
+
+        if not user_taker:
+            user_taker = await sync_to_async(User.objects.create)(
+                telegram_id=user_id,
+                first_name=callback.from_user.first_name,
+                username=callback.from_user.username
+            )
+
+        taken.append(user_id)
+        takers.append(user_taker)
+
+        taken_text = "".join(
+            f"\n {i}. 💎 <a href='tg://user?id={u.telegram_id}'>{u.first_name}</a>"
+            for i, u in enumerate(takers, 1)
         )
 
-    users_qs = User.objects.filter(telegram_id__in=taken)
-    taken_text = ""
-    for i, user in enumerate(users_qs, start=1):
-        taken_text += f"\n {i}. 💎 <a href='tg://user?id={user.telegram_id}'>{user.first_name}</a>"
+        text = (
+            f"💎 <a href='tg://user?id={sender.telegram_id}'>{sender.first_name}</a> "
+            f"{t['group_sender'].format(count=limit)}"
+            f"{taken_text}"
+        )
 
-    text = (
-        f"💎 <a href='tg://user?id={sender.telegram_id}'>{sender.first_name}</a> {t['group_sender'].format(count=limit)}\n"
-        f"{taken_text}"
-    )
+        try:
+            if len(taken) >= limit:
+                await callback.message.edit_text(
+                    text,
+                    reply_markup=None,
+                    parse_mode="HTML"
+                )
+                gsend_taken.pop(chat_id, None)
+            else:
+                await callback.message.edit_text(
+                    text,
+                    reply_markup=take_gsend_stone_btn(chat_id),
+                    parse_mode="HTML"
+                )
+        except Exception:
+            pass
 
-    if len(taken) >= limit:
-        await callback.message.edit_text(text, reply_markup=None, parse_mode="HTML")
-        gsend_taken.pop(chat_id, None)
-    else:
-        await callback.message.edit_text(text, reply_markup=take_gsend_stone_btn(chat_id), parse_mode="HTML")
-    user_taker.stones += 1
-    user_taker.save()
+        await sync_to_async(
+            lambda: User.objects.filter(id=user_taker.id).update(
+                stones=MF("stones") + 1
+            )
+        )()
+
     await callback.answer(tu['stone_taken'])
     
 
@@ -3525,11 +3622,11 @@ async def process_broadcast_message(message: Message, state: FSMContext):
                 try:
                     await send_safe_message(uid, f"📢 Botdan umumiy xabar:\n\n{text}")
                     success += 1
-                    await sleep(DELAY)
+                    await asyncio.sleep(DELAY)
                 except TelegramForbiddenError:
                     fail += 1
                 except TelegramRetryAfter as e:
-                    await sleep(e.retry_after)
+                    await asyncio.sleep(e.retry_after)
                 except:
                     fail += 1
             batch.clear()
@@ -3538,7 +3635,7 @@ async def process_broadcast_message(message: Message, state: FSMContext):
         try:
             await send_safe_message(uid, f"📢 Botdan umumiy xabar:\n\n{text}")
             success += 1
-            await sleep(DELAY)
+            await asyncio.sleep(DELAY)
         except:
             fail += 1
 
