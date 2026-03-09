@@ -907,7 +907,7 @@ async def stop_command(message: Message) -> None:
     await send_safe_message(chat_id=chat_id, text=tu["game_stopped"])
 
             
-@dp.message(Command("mute"), Command("kick"), Command("ban"), StateFilter(None))
+@dp.message( Command("kik"), StateFilter(None))
 async def admin_moderation_commands(message: Message) -> None:
     await message.delete()
     if message.chat.type not in ("group", "supergroup"):
