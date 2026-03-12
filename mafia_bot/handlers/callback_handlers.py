@@ -4088,7 +4088,8 @@ async def user_block_callback(callback: CallbackQuery,state: FSMContext):
     await state.set_state(UserBlock.user_id)
         
         
-@dp.message(UserBlock.block_user_id)
+        
+@dp.message(UserBlock.user_id)
 async def process_block_user_id(message: Message, state: FSMContext):
     tg_id_text = message.text.strip() if message.text else None
     if not tg_id_text or not tg_id_text.isdigit():
@@ -4110,3 +4111,5 @@ async def process_block_user_id(message: Message, state: FSMContext):
         user.is_blocked = False
         user.save()
         await message.answer(f"✅ Foydalanuvchi (ID: {tg_id}) blokdan chiqarildi.",reply_markup=admin_inline_btn())
+        
+    await state.clear()
