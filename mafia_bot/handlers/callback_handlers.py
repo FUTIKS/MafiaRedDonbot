@@ -16,7 +16,7 @@ from aiogram.exceptions import TelegramForbiddenError, TelegramRetryAfter
 from mafia_bot.utils import stones_taken,gsend_taken,giveaways,games_state,USER_LANG_CACHE
 from aiogram.types import Message, LabeledPrice, PreCheckoutQuery,CallbackQuery
 from mafia_bot.models import Game, MoneySendHistory, User,PremiumGroup,MostActiveUser,CasesOpened,GameSettings,GroupTrials,PriceStones, UserRole,BotCredentials, default_end_date
-from mafia_bot.state import AddGroupState, BeginInstanceState,SendMoneyState,ChangeStoneCostState,ChangeMoneyCostState,ExtendGroupState,QuestionState,Register,CredentialsState
+from mafia_bot.state import AddGroupState, BeginInstanceState,SendMoneyState,ChangeStoneCostState,ChangeMoneyCostState,ExtendGroupState,QuestionState,Register,CredentialsState,UserBlock
 from mafia_bot.handlers.main_functions import (add_visit, get_mafia_members,get_first_name_from_players, kill, remove_prefix,send_safe_message,get_description_lang,get_hero_level,
                                                mark_confirm_done, mark_hang_done,mark_night_action_done,get_week_range,get_month_range,role_label,get_lang_text,get_role_labels_lang,get_actions_lang)
 from mafia_bot.buttons.inline import (action_inline_btn,
@@ -4078,3 +4078,35 @@ async def toggle_profile_callback(callback: CallbackQuery):
         ),
         parse_mode="HTML",reply_markup=cart_inline_btn(chat_id)
     )
+    
+@dp.callback_query(F.data.startswith("user_"))
+async def user_block_callback(callback: CallbackQuery,state: FSMContext):
+    await callback.answer()
+    action = callback.data.split("_")[1]
+    await state.update_data(action=action)
+    await callback.message.edit_text("❗️ Blokdan chiqarilmoqchi bo'lgan foydalanuvchining Telegram ID sini kiriting:",reply_markup=back_admin_btn())
+    await state.set_state(UserBlock.user_id)
+        
+        
+@dp.message(UserBlock.block_user_id)
+async def process_block_user_id(message: Message, state: FSMContext):
+    tg_id_text = message.text.strip() if message.text else None
+    if not tg_id_text or not tg_id_text.isdigit():
+        await message.answer("❗️ Iltimos, foydalanuvchi ID sini to'g'ri formatda yuboring.",reply_markup=back_admin_btn())
+        return
+
+    tg_id = int(tg_id_text)
+    user = User.objects.filter(telegram_id=tg_id).first()
+    if not user:
+        await message.answer("❗️ Bunday ID li foydalanuvchi topilmadi. Iltimos, to'g'ri ID ni kiriting.",reply_markup=back_admin_btn())
+        return
+    data = await state.get_data()
+    action = data.get("action")
+    if action == "block":
+        user.is_blocked = True
+        user.save()
+        await message.answer(f"✅ Foydalanuvchi (ID: {tg_id}) bloklandi.",reply_markup=admin_inline_btn())
+    elif action == "unblock":
+        user.is_blocked = False
+        user.save()
+        await message.answer(f"✅ Foydalanuvchi (ID: {tg_id}) blokdan chiqarildi.",reply_markup=admin_inline_btn())

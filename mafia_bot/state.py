@@ -47,3 +47,7 @@ class CredentialsState(StatesGroup):
     waiting_for_new_password = State()
     waiting_for_new_username = State()
     login = State()
+    
+    
+class UserBlock(StatesGroup):
+    user_id = State()

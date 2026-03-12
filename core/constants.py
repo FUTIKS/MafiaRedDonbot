@@ -320,7 +320,8 @@ uz_texts ={
         "money_reward":"✅ Siz pulli sandiqni ochdingiz va ichidan 💶 {reward} chiqdi!",
         "stone_reward":"✅ Siz olmosli sandiqni ochdingiz va ichidan 💎 {reward} chiqdi!",
         "already_in_another_game":"❌ Siz allaqachon boshqa o'yinda ishtirok etmoqdasiz!",
-        "gsend_stone":""
+        "gsend_stone":"",
+        "user_blocked":"⚠️ Siz adminlar tomonidan bloklangansiz",
 }
 
 ru_texts ={
@@ -635,6 +636,7 @@ ru_texts ={
 "money_reward": "✅ Вы открыли денежный сундук и получили 💶 {reward}!",
 "stone_reward": "✅ Вы открыли алмазный сундук и получили 💎 {reward}!",
 "already_in_another_game":"⚠️ Вы уже участвуете в другой игре!",
+"user_blocked":"⚠️ Вы были заблокированы администраторами.",
 
 }
 
@@ -952,6 +954,7 @@ en_texts ={
 "money_reward": "✅ You opened a money chest and received 💶 {reward}!",
 "stone_reward": "✅ You opened a diamond chest and received 💎 {reward}!",
 "already_in_another_game":"❌ You are already in another game! Please wait for it to finish.",
+"user_blocked":"⚠️ You have been blocked by the administrators.",
 
 }
 
@@ -1267,6 +1270,7 @@ tr_texts ={
 "money_reward": "✅ Para sandığını açtınız ve içinden 💶 {reward} çıktı!",
 "stone_reward": "✅ Elmas sandığını açtınız ve içinden 💎 {reward} çıktı!",
 "already_in_another_game":"⚠️ Başka bir oyundasınız, önce ona katılmalısınız!",
+"user_blocked":"⚠️ Yöneticiler tarafından engellendiniz.",
 
 }
 
@@ -1591,6 +1595,7 @@ qz_texts = {
 "money_reward": "✅ Сіз ақшалы сандықты аштыңыз және ішінен 💶 {reward} шықты!",
 "stone_reward": "✅ Сіз алмасты сандықты аштыңыз және ішінен 💎 {reward} шықты!",
 "already_in_another_game": "❌ Сіз қазірдің өзінде басқа ойында қатысып жатырсыз!",
+"user_blocked":"⚠️ Сізді әкімшілер бұғаттады.",
 }
 
 

@@ -4,11 +4,11 @@ import asyncio
 from aiogram import F
 from dispatcher import dp,bot
 from datetime import timedelta
-from asgiref.sync import sync_to_async
-from django.db.models import F as MF,Count
 from django.db.models import Sum  
 from django.utils import timezone
+from asgiref.sync import sync_to_async
 from aiogram.filters import StateFilter
+from django.db.models import F as MF,Count
 from aiogram.fsm.context import FSMContext
 from aiogram.filters.command import Command
 from mafia_bot.state import CredentialsState
@@ -41,6 +41,9 @@ async def start(message: Message) -> None:
             parse_mode="HTML",
             reply_markup=language_keyboard()
         )
+        return
+    if user.is_blocked:
+        await message.answer(text=t['user_blocked'])
         return
     if message.from_user.first_name != user.first_name or message.from_user.username != user.username:
         user.first_name = message.from_user.first_name

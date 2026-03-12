@@ -228,6 +228,8 @@ def admin_inline_btn():
     keyboard7 = InlineKeyboardButton(text=" 💎 Olmos jo'natish",callback_data="send_olmos")
     keyboard8 = InlineKeyboardButton(text=" 💶 Pul yechib olish", callback_data="remove_pul")
     keyboard9 = InlineKeyboardButton(text=" 💎 Olmos yechib olish",callback_data="remove_olmos")
+    keyboard17 = InlineKeyboardButton(text=" ⚠️ Foydalanuvchini bloklash",callback_data="user_block")
+    keyboard16 = InlineKeyboardButton(text=" ✅ Foydalanuvchini ochish",callback_data="user_unblock")
     keyboard10 = InlineKeyboardButton(text=" 💰 Pul narxini o'zgartirish",callback_data="change_money")
     keyboard11 = InlineKeyboardButton(text=" 💎 Olmos narxini o'zgartirish",callback_data="change_stone")
     keyboard12 = InlineKeyboardButton(text=" 💳 O'tkazmalar tarixi",callback_data="transfer_history")
@@ -242,6 +244,7 @@ def admin_inline_btn():
         [keyboard5],
         [keyboard6,keyboard7],
         [keyboard8,keyboard9],
+        [keyboard17,keyboard16],
         [keyboard10],
         [keyboard11],
         [keyboard12],
@@ -503,14 +506,14 @@ def cart_inline_btn(tg_id):
         rows.append(conditional_row)
 
     rows += [
-        [InlineKeyboardButton(text=t["shop"], callback_data="cart")],
+        [InlineKeyboardButton(text=t["shop"], style="primary", callback_data="cart")],
         [
-            InlineKeyboardButton(text=t["buy_money"], callback_data="money_money"),
-            InlineKeyboardButton(text=t["buy_stone"], callback_data="money_stone"),
+            InlineKeyboardButton(text=t["buy_money"], style="primary", callback_data="money_money"),
+            InlineKeyboardButton(text=t["buy_stone"], style="primary",   callback_data="money_stone"),
         ],
-        [InlineKeyboardButton(text=t["hero"], callback_data="geroy_no")],
-        [InlineKeyboardButton(text=t["premium"], callback_data="groups")],
-        [InlineKeyboardButton(text=t["cases"], callback_data="cases")],
+        [InlineKeyboardButton(text=t["hero"], style="success", callback_data="geroy_no")],
+        [InlineKeyboardButton(text=t["premium"], style="primary", callback_data="groups")],
+        [InlineKeyboardButton(text=t["cases"], style="success", callback_data="cases")],
     ]
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=rows)

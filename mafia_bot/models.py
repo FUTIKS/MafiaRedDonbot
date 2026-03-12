@@ -35,7 +35,7 @@ class User(SafeBaseModel):
     is_geroy_protected = models.BooleanField(default=True)
     is_active_role_use = models.BooleanField(default=True)
     is_geroy_use = models.BooleanField(default=True)
-    
+    is_blocked = models.BooleanField(default=False)
     def __str__(self):
         return f"{self.username} - {self.telegram_id}"
 class UserRole(SafeBaseModel):
