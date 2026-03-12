@@ -44,7 +44,7 @@ async def send_top():
         if not user:
             continue
 
-        mention = f"<a href='tg://user?id={user.telegram_id}'>{user.first_name}</a>"
+        mention = f"{user.first_name}"
         win = row["wins"] or 0
 
         if idx <= 3:

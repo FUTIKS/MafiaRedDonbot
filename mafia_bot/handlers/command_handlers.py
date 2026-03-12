@@ -1621,7 +1621,7 @@ async def claim_channel_olmos(message: Message, username: str):
         takers_map.append(user_taker)
 
         taken_text = "".join(
-            f"\n{i}. 💎 <a href='tg://user?id={u.telegram_id}'>{u.first_name}</a>"
+            f"\n{i}. 💎 {u.first_name}"
             for i, u in enumerate(takers_map, 1)
         )
 

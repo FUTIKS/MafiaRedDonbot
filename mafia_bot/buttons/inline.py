@@ -506,14 +506,14 @@ def cart_inline_btn(tg_id):
         rows.append(conditional_row)
 
     rows += [
-        [InlineKeyboardButton(text=t["shop"], style="primary", callback_data="cart")],
+        [InlineKeyboardButton(text=t["shop"],  callback_data="cart")],
         [
-            InlineKeyboardButton(text=t["buy_money"], style="primary", callback_data="money_money"),
-            InlineKeyboardButton(text=t["buy_stone"], style="primary",   callback_data="money_stone"),
+            InlineKeyboardButton(text=t["buy_money"],  callback_data="money_money"),
+            InlineKeyboardButton(text=t["buy_stone"],    callback_data="money_stone"),
         ],
-        [InlineKeyboardButton(text=t["hero"], style="success", callback_data="geroy_no")],
-        [InlineKeyboardButton(text=t["premium"], style="primary", callback_data="groups")],
-        [InlineKeyboardButton(text=t["cases"], style="success", callback_data="cases")],
+        [InlineKeyboardButton(text=t["hero"],  callback_data="geroy_no")],
+        [InlineKeyboardButton(text=t["premium"],  callback_data="groups")],
+        [InlineKeyboardButton(text=t["cases"],  callback_data="cases")],
     ]
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=rows)
