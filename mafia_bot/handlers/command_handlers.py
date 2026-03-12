@@ -5,7 +5,7 @@ from aiogram import F
 from dispatcher import dp,bot
 from datetime import timedelta
 from asgiref.sync import sync_to_async
-from django.db.models import F as MF
+from django.db.models import F as MF,Count
 from django.db.models import Sum  
 from django.utils import timezone
 from aiogram.filters import StateFilter
@@ -246,7 +246,14 @@ async def money_command(message: Message) -> None:
     amount = parse_amount(message.text)
     if amount is None:
         return
-    
+    print(amount, type(amount))
+    if amount<10000:
+        komission = 100
+    elif amount<100000:
+        komission = 500
+    else:
+        komission = 1000
+    print(komission)
     sender_id = message.from_user.id
     sender_user = User.objects.filter(telegram_id=sender_id).first()
     if not sender_user:
@@ -256,7 +263,7 @@ async def money_command(message: Message) -> None:
             first_name=message.from_user.first_name,
             username=message.from_user.username
         )
-    if sender_user.coin < amount:
+    if sender_user.coin < amount+komission:
         return
     target_id = message.reply_to_message.from_user.id
     if target_id == sender_id:
@@ -272,7 +279,7 @@ async def money_command(message: Message) -> None:
         )
 
     target_user.coin += amount
-    sender_user.coin -= amount
+    sender_user.coin -= amount+komission
     sender_user.save(update_fields=["coin"])
     target_user.save(update_fields=["coin"])
     t = get_lang_text(message.chat.id)
@@ -365,9 +372,9 @@ async def money_command(message: Message) -> None:
                 username=message.from_user.username
             )
         
-        parts = message.text.split(maxsplit=1)
-        count = int(parts[1]) if len(parts) == 2 and parts[1].isdigit() else 1
-
+        parts = message.text.split(maxsplit=2)
+        count = int(parts[1]) if  parts[1].isdigit() else 1
+        reason = parts[2] if len(parts)>2 else None
         if count <= 0:
             return
         if sender.stones < count:
@@ -380,8 +387,9 @@ async def money_command(message: Message) -> None:
         group_sender = t['group_sender'].format(  
             count=count,
         )
+        reason_text = f"\n{reason}" if reason else ""
         text = (
-            f"💎 <a href='tg://user?id={message.from_user.id}'>{message.from_user.first_name}</a> {group_sender}"
+            f"💎 <a href='tg://user?id={message.from_user.id}'>{message.from_user.first_name}</a> {group_sender}{reason_text}"
         )
 
         sent = await message.answer(text, reply_markup=take_stone_btn(chat_id), parse_mode="HTML")
@@ -398,6 +406,12 @@ async def money_command(message: Message) -> None:
     amount = parse_amount(message.text)
     if amount is None:
         return
+    if amount<10:
+        komission =1
+    elif amount<100:
+        komission = 5
+    else:
+        komission = 10
     
     sender_id = message.from_user.id
     sender_user = User.objects.filter(telegram_id=sender_id).first()
@@ -408,7 +422,7 @@ async def money_command(message: Message) -> None:
             first_name=message.from_user.first_name,
             username=message.from_user.username
         )
-    if sender_user.stones < amount:
+    if sender_user.stones < amount+komission:
         return
     
     target_id = message.reply_to_message.from_user.id
@@ -425,7 +439,7 @@ async def money_command(message: Message) -> None:
         )
 
     target_user.stones += amount
-    sender_user.stones -= amount
+    sender_user.stones -= amount+komission
     sender_user.save(update_fields=["stones"])
     target_user.save(update_fields=["stones"])
 
@@ -906,7 +920,7 @@ async def stop_command(message: Message) -> None:
 
     await send_safe_message(chat_id=chat_id, text=tu["game_stopped"])
 
-            
+
 @dp.message( Command("kik"), StateFilter(None))
 async def admin_moderation_commands(message: Message) -> None:
     await message.delete()
@@ -1062,6 +1076,35 @@ async def top7_command(message: Message):
 async def top30_command(message: Message):
     t = get_lang_text(message.chat.id)
     await send_top(message, days=30, title=t["top_monthly"])
+
+async def get_top3_groups_message():
+    top_groups = (
+        Game.objects
+        .values("chat_id")
+        .annotate(total=Count("id"))
+        .order_by("-total")[:3]
+    )
+
+    chat_ids = [g["chat_id"] for g in top_groups]
+
+    groups = GroupTrials.objects.filter(group_id__in=chat_ids)
+    group_map = {g.group_id: g.group_name for g in groups}
+
+    text = "🏆 Top 3 guruh:\n\n"
+
+    for i, g in enumerate(top_groups, start=1):
+        name = group_map.get(g["chat_id"], "Unknown")
+        text += f"{i}. {name} — {g['total']} ta o‘yin\n"
+
+    return text
+    
+@dp.message(Command("topgroup"), StateFilter(None))
+async def top30_command(message: Message):
+    if message.chat.type in ("group", "supergroup"):
+        return
+    message_text= await get_top3_groups_message()
+    await message.answer(text=message_text)
+    
 
 
 @dp.message(Command("share"), StateFilter(None))

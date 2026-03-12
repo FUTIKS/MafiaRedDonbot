@@ -38,6 +38,7 @@ async def set_bot_commands(bot: Bot):
         BotCommand(command="profile", description="Profil ma'lumotlarini ko'rish"),
         BotCommand(command="start", description="Botni ishga tushirish"),
         BotCommand(command="top30", description="Rating jadvalini ko'rish"),
+        BotCommand(command="topgroup", description="Top 3 guruhni ko'rish"),
         BotCommand(command="language", description="Tilni o'zgartirish"),
         BotCommand(command="help", description="Yordam"),
     ]

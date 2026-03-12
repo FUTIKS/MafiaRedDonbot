@@ -74,7 +74,7 @@ def group_profile_inline_btn(has_stone, chat_id,tg_id):
         url=f"https://t.me/{remove_prefix(config('BOT_USERNAME'))}?start=instance_{chat_id}_{tg_id}"
     )
     keyboard_lang = InlineKeyboardButton(text=t["lang"], callback_data=f"lange_{tg_id}")
-    keyboard5 = InlineKeyboardButton(text=t["close"], callback_data=f"close_{tg_id}")
+    keyboard5 = InlineKeyboardButton(text=t["close"], style="danger", callback_data=f"close_{tg_id}")
 
     design = [
         [keyboard4] if has_stone else [],
@@ -175,7 +175,7 @@ def take_stone_btn(chat_id):
     text = TEXTS.get(lang, TEXTS["uz"])
 
     kb = InlineKeyboardBuilder()
-    kb.add(InlineKeyboardButton(text=text, callback_data="take_stone"))
+    kb.add(InlineKeyboardButton(text=text,style="success", callback_data="take_stone"))
     return kb.as_markup()
 
 def take_gsend_stone_btn(chat_id):
@@ -194,7 +194,7 @@ def take_gsend_stone_btn(chat_id):
     text = TEXTS.get(lang, TEXTS["uz"])
 
     kb = InlineKeyboardBuilder()
-    kb.add(InlineKeyboardButton(text=text, callback_data="take_gsend_stone"))
+    kb.add(InlineKeyboardButton(text=text, style="success",callback_data="take_gsend_stone"))
     return kb.as_markup()
 
 def giveaway_join_btn(tg_id):
@@ -213,7 +213,7 @@ def giveaway_join_btn(tg_id):
     text = TEXTS.get(lang, TEXTS["uz"])
 
     kb = InlineKeyboardBuilder()
-    kb.add(InlineKeyboardButton(text=text, callback_data="giveaway_join"))
+    kb.add(InlineKeyboardButton(text=text, style="success", callback_data="giveaway_join"))
     return kb.as_markup()
 
 
@@ -378,12 +378,12 @@ def cart_inline_btn(tg_id):
 
     TEXTS = {
         "uz": {
-            "toggle_protection":f"🛡 - {'🟢 ON' if user.is_protected else ' 🔴 OFF'}",
-            "toggle_doc": f"📂 - {'🟢 ON' if user.is_doc else ' 🔴 OFF'}",
-            "toggle_hang":f"🎗️ - {'🟢 ON' if user.is_hang_protected else ' 🔴 OFF'}",
-            "toggle_geroy_protect":f"🔰 - {'🟢 ON' if user.is_geroy_protected else ' 🔴 OFF'} ",
-            "toggle_geroy_use":f"🥷 - {'🟢 ON' if user.is_geroy_use else ' 🔴 OFF'} ",
-            "toggle_active_role_use":f"🎭 - {'🟢 ON' if user.is_active_role_use else ' 🔴 OFF'} ",
+            "toggle_protection":f"🛡 - {'ON' if user.is_protected else 'OFF'}",
+            "toggle_doc": f"📂 - {'ON' if user.is_doc else 'OFF'}",
+            "toggle_hang":f"🎗️ - {'ON' if user.is_hang_protected else 'OFF'}",
+            "toggle_geroy_protect":f"🔰 - {'ON' if user.is_geroy_protected else 'OFF'} ",
+            "toggle_geroy_use":f"🥷 - {'ON' if user.is_geroy_use else 'OFF'} ",
+            "toggle_active_role_use":f"🎭 - {'ON' if user.is_active_role_use else 'OFF'} ",
             "shop": "🛒 Do'kon",
             "buy_money": "💶 Sotib olish",
             "buy_stone": "💎 Sotib olish",
@@ -392,12 +392,12 @@ def cart_inline_btn(tg_id):
             "cases": "📦 Sandiqlar",
         },
         "ru": {
-            "toggle_protection":f"🛡 - {'🟢 ВКЛ' if user.is_protected else ' 🔴 ВЫКЛ'}",
-            "toggle_doc": f"📂 - {'🟢 ВКЛ' if user.is_doc else ' 🔴 ВЫКЛ'}",
-            "toggle_hang":f"🎗️ - {'🟢 ВКЛ' if user.is_hang_protected else ' 🔴 ВЫКЛ'}",
-            "toggle_geroy_protect":f"🔰 - {'🟢 ВКЛ' if user.is_geroy_protected else ' 🔴 ВЫКЛ'}",
-            "toggle_geroy_use":f"🥷 - {'🟢 ВКЛ' if user.is_geroy_use else ' 🔴 ВЫКЛ'}",
-            "toggle_active_role_use":f"🎭 - {'🟢 ВКЛ' if user.is_active_role_use else ' 🔴 ВЫКЛ'}",
+            "toggle_protection":f"🛡 - {'ВКЛ' if user.is_protected else 'ВЫКЛ'}",
+            "toggle_doc": f"📂 - {'ВКЛ' if user.is_doc else 'ВЫКЛ'}",
+            "toggle_hang":f"🎗️ - {'ВКЛ' if user.is_hang_protected else 'ВЫКЛ'}",
+            "toggle_geroy_protect":f"🔰 - {'ВКЛ' if user.is_geroy_protected else 'ВЫКЛ'}",
+            "toggle_geroy_use":f"🥷 - {'ВКЛ' if user.is_geroy_use else 'ВЫКЛ'}",
+            "toggle_active_role_use":f"🎭 - {'ВКЛ' if user.is_active_role_use else 'ВЫКЛ'}",
             "shop": "🛒 Магазин",
             "buy_money": "💶 Купить",
             "buy_stone": "💎 Купить",
@@ -406,12 +406,12 @@ def cart_inline_btn(tg_id):
             "cases": "📦 Сундуки",
         },
         "en": {
-            "toggle_protection":f"🛡 - {'🟢 ON' if user.is_protected else ' 🔴 OFF'}",
-            "toggle_doc": f"📂 - {'🟢 ON' if user.is_doc else ' 🔴 OFF'}",
-            "toggle_hang":f"🎗️ - {'🟢 ON' if user.is_hang_protected else ' 🔴 OFF'}",
-            "toggle_geroy_protect":f"🔰 - {'🟢 ON' if user.is_geroy_protected else ' 🔴 OFF'}",
-            "toggle_geroy_use":f"🥷 - {'🟢 ON' if user.is_geroy_use else ' 🔴 OFF'}",
-            "toggle_active_role_use":f"🎭 - {'🟢 ON' if user.is_active_role_use else ' 🔴 OFF'}",
+            "toggle_protection":f"🛡 - {'ON' if user.is_protected else 'OFF'}",
+            "toggle_doc": f"📂 - {'ON' if user.is_doc else 'OFF'}",
+            "toggle_hang":f"🎗️ - {'ON' if user.is_hang_protected else 'OFF'}",
+            "toggle_geroy_protect":f"🔰 - {'ON' if user.is_geroy_protected else 'OFF'}",
+            "toggle_geroy_use":f"🥷 - {'ON' if user.is_geroy_use else 'OFF'}",
+            "toggle_active_role_use":f"🎭 - {'ON' if user.is_active_role_use else 'OFF'}",
             "shop": "🛒 Shop",
             "buy_money": "💶 Buy",
             "buy_stone": "💎 Buy",
@@ -420,12 +420,12 @@ def cart_inline_btn(tg_id):
             "cases": "📦 Chests",
         },
         "tr": {
-            "toggle_protection":f"🛡 - {'🟢 ON' if user.is_protected else ' 🔴 OFF'}",
-            "toggle_doc": f"📂 - {'🟢 ON' if user.is_doc else ' 🔴 OFF'}",
-            "toggle_hang":f"🎗️ - {'🟢 ON' if user.is_hang_protected else ' 🔴 OFF'}",
-            "toggle_geroy_protect":f"🔰 - {'🟢 ON' if user.is_geroy_protected else ' 🔴 OFF'}",
-            "toggle_geroy_use":f"🥷 - {'🟢 ON' if user.is_geroy_use else ' 🔴 OFF'}",
-            "toggle_active_role_use":f"🎭 - {'🟢 ON' if user.is_active_role_use else ' 🔴 OFF'}",
+            "toggle_protection":f"🛡 - {'ON' if user.is_protected else 'OFF'}",
+            "toggle_doc": f"📂 - {'ON' if user.is_doc else 'OFF'}",
+            "toggle_hang":f"🎗️ - {'ON' if user.is_hang_protected else 'OFF'}",
+            "toggle_geroy_protect":f"🔰 - {'ON' if user.is_geroy_protected else 'OFF'}",
+            "toggle_geroy_use":f"🥷 - {'ON' if user.is_geroy_use else 'OFF'}",
+            "toggle_active_role_use":f"🎭 - {'ON' if user.is_active_role_use else 'OFF'}",
             "shop": "🛒 Mağaza",
             "buy_money": "💶 Satın al",
             "buy_stone": "💎 Satın al",
@@ -434,12 +434,12 @@ def cart_inline_btn(tg_id):
             "cases": "📦 Sandıklar",
         },
         "qz": {
-            "toggle_protection":f"🛡 - {'🟢 ВКЛ' if user.is_protected else ' 🔴 ВЫКЛ'}",
-            "toggle_doc": f"📂 - {'🟢 ВКЛ' if user.is_doc else ' 🔴 ВЫКЛ'}",
-            "toggle_hang":f"🎗️ - {'🟢 ВКЛ' if user.is_hang_protected else ' 🔴 ВЫКЛ'}",
-            "toggle_geroy_protect":f"🔰 - {'🟢 ВКЛ' if user.is_geroy_protected else ' 🔴 ВЫКЛ'}",
-            "toggle_geroy_use":f"🥷 - {'🟢 ВКЛ' if user.is_geroy_use else ' 🔴 ВЫКЛ'}",
-            "toggle_active_role_use":f"🎭 - {'🟢 ВКЛ' if user.is_active_role_use else ' 🔴 ВЫКЛ'}",
+            "toggle_protection":f"🛡 - {'ВКЛ' if user.is_protected else 'ВЫКЛ'}",
+            "toggle_doc": f"📂 - {'ВКЛ' if user.is_doc else 'ВЫКЛ'}",
+            "toggle_hang":f"🎗️ - {'ВКЛ' if user.is_hang_protected else 'ВЫКЛ'}",
+            "toggle_geroy_protect":f"🔰 - {'ВКЛ' if user.is_geroy_protected else 'ВЫКЛ'}",
+            "toggle_geroy_use":f"🥷 - {'ВКЛ' if user.is_geroy_use else 'ВЫКЛ'}",
+            "toggle_active_role_use":f"🎭 - {'ВКЛ' if user.is_active_role_use else 'ВЫКЛ'}",
             "shop": "🛒 Дүкен",
             "buy_money": "💶 Сатып алу",
             "buy_stone": "💎 Сатып алу",
@@ -450,15 +450,40 @@ def cart_inline_btn(tg_id):
     }
 
     t = TEXTS.get(lang, TEXTS["uz"])
+    if user.is_protected:
+        style_protect="success"
+    else:
+        style_protect="danger"
+    if user.is_doc:
+        style_doc= "success"
+    else:
+        style_doc = "danger"
+    if user.is_hang_protected:
+        style_hang="success"
+    else:
+        style_hang = "danger"
+    if user.is_geroy_protected:
+        style_geroy = "success"
+    else:
+        style_geroy ="danger"
+    if user.is_geroy_use:
+        style_use = "success"
+    else:
+        style_use ="danger"
+    if user.is_active_role_use:
+        style_active = "success"
+    else:
+        style_active ="danger"
+        
 
     rows = [
         [
-            InlineKeyboardButton(text=t["toggle_protection"], callback_data="toggle_protection"),
-            InlineKeyboardButton(text=t["toggle_doc"], callback_data="toggle_doc"),
+            InlineKeyboardButton(text=t["toggle_protection"], style =style_protect, callback_data="toggle_protection"),
+            InlineKeyboardButton(text=t["toggle_doc"], style =style_doc, callback_data="toggle_doc"),
         ],
         [
-            InlineKeyboardButton(text=t["toggle_hang"], callback_data="toggle_hang"),
-            InlineKeyboardButton(text=t["toggle_geroy_protect"], callback_data="toggle_geroy"),
+            InlineKeyboardButton(text=t["toggle_hang"],style =style_hang, callback_data="toggle_hang"),
+            InlineKeyboardButton(text=t["toggle_geroy_protect"], style=style_geroy, callback_data="toggle_geroy"),
         ],
     ]
 
@@ -466,12 +491,12 @@ def cart_inline_btn(tg_id):
 
     if user and user.is_hero:
         conditional_row.append(
-            InlineKeyboardButton(text=t["toggle_geroy_use"], callback_data="toggle_geroyuse")
+            InlineKeyboardButton(text=t["toggle_geroy_use"],style=style_use, callback_data="toggle_geroyuse")
         )
 
     if user and UserRole.objects.filter(user_id=user.id, quantity__gt=0).exists():
         conditional_row.append(
-            InlineKeyboardButton(text=t["toggle_active_role_use"], callback_data="toggle_activerole")
+            InlineKeyboardButton(text=t["toggle_active_role_use"], style=style_active, callback_data="toggle_activerole")
         )
 
     if conditional_row:
@@ -729,6 +754,7 @@ def join_game_btn(uuid,chat_id):
         inline_keyboard=[
             [InlineKeyboardButton(
                 text=text,
+                style="success",
                 url=f"https://t.me/{remove_prefix(config('BOT_USERNAME'))}?start={uuid}"  # game.code yoki game.uuid
             )]
         ]
@@ -748,6 +774,7 @@ def go_to_bot_inline_btn(chat_id,number=1):
         inline_keyboard=[
             [InlineKeyboardButton(
                 text=text,
+                style="success",
                 url=f"https://t.me/{remove_prefix(config('BOT_USERNAME'))}"  
             )]
         ]
