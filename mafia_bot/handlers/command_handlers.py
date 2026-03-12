@@ -1094,7 +1094,7 @@ async def get_top3_groups_message():
 
     for i, g in enumerate(top_groups, start=1):
         name = group_map.get(g["chat_id"], "Unknown")
-        text += f"{i}. {name} — {g['total']} ta o‘yin\n"
+        text += f"{i}. {name} — {g['total']*40} ball \n"
 
     return text
     
