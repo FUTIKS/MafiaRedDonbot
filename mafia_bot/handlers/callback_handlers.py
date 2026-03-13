@@ -6,15 +6,15 @@ import datetime
 from aiogram import F
 from dispatcher import dp, bot
 from datetime import timedelta
-from django.db.models import Sum, F as MF
-from asgiref.sync import sync_to_async
 from django.utils import timezone
+from asgiref.sync import sync_to_async
 from aiogram.filters import StateFilter
+from django.db.models import Sum, F as MF
 from aiogram.fsm.context import FSMContext 
 from django.contrib.auth.hashers import make_password
 from aiogram.exceptions import TelegramForbiddenError, TelegramRetryAfter
-from mafia_bot.utils import stones_taken,gsend_taken,giveaways,games_state,USER_LANG_CACHE
 from aiogram.types import Message, LabeledPrice, PreCheckoutQuery,CallbackQuery
+from mafia_bot.utils import stones_taken,gsend_taken,giveaways,games_state,USER_LANG_CACHE
 from mafia_bot.models import Game, MoneySendHistory, User,PremiumGroup,MostActiveUser,CasesOpened,GameSettings,GroupTrials,PriceStones, UserRole,BotCredentials, default_end_date
 from mafia_bot.state import AddGroupState, BeginInstanceState,SendMoneyState,ChangeStoneCostState,ChangeMoneyCostState,ExtendGroupState,QuestionState,Register,CredentialsState,UserBlock
 from mafia_bot.handlers.main_functions import (add_visit, get_mafia_members,get_first_name_from_players, kill, remove_prefix,send_safe_message,get_description_lang,get_hero_level,
@@ -60,6 +60,7 @@ async def profile_callback(callback: CallbackQuery):
     await callback.message.edit_text(
         text=t['user_profile'].format(
             first_name=callback.from_user.first_name,
+            user_id=callback.from_user.id,
             coin=user.coin,
             stones=user.stones,
             protection=user.protection,
@@ -220,6 +221,7 @@ async def buy_callback(callback: CallbackQuery):
             await callback.message.edit_text(
                  text=t['user_profile'].format(
                 first_name=callback.from_user.first_name,
+            user_id=callback.from_user.id,
                 coin=user.coin,
                 stones=user.stones,
                 protection=user.protection,
@@ -243,6 +245,7 @@ async def buy_callback(callback: CallbackQuery):
             await callback.message.edit_text(
                 text=t['user_profile'].format(
                     first_name=callback.from_user.first_name,
+            user_id=callback.from_user.id,
                     coin=user.coin,
                     stones=user.stones,
                     protection=user.protection,
@@ -273,6 +276,7 @@ async def buy_callback(callback: CallbackQuery):
         await callback.message.edit_text(
                 text=t['user_profile'].format(
                     first_name=callback.from_user.first_name,
+            user_id=callback.from_user.id,
                     coin=user.coin,
                     stones=user.stones,
                     protection=user.protection,
@@ -299,6 +303,7 @@ async def buy_callback(callback: CallbackQuery):
             await callback.message.edit_text(
                 text=t['user_profile'].format(
                     first_name=callback.from_user.first_name,
+            user_id=callback.from_user.id,
                     coin=user.coin,
                     stones=user.stones,
                     protection=user.protection,
@@ -4066,6 +4071,7 @@ async def toggle_profile_callback(callback: CallbackQuery):
     await callback.message.edit_text(
         text=t['user_profile'].format(
             first_name=callback.from_user.first_name,
+            user_id=callback.from_user.id,
             coin=user.coin,
             stones=user.stones,
             protection=user.protection,

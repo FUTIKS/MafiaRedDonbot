@@ -28,7 +28,7 @@ class UserAdmin(admin.ModelAdmin):
 
     def get_fieldsets(self, request, obj=None):
         base = [
-            ("Asosiy", {"fields": ("telegram_id", "username", "first_name", "lang", "role")}),
+            ("Asosiy", {"fields": ("telegram_id", "username", "first_name", "lang", "role","is_blocked")}),
             ("Balans", {"fields": ("coin", "stones")}),
             ("Status", {"fields": ("is_vip", "is_hero", "active_role")}),
              ("Qo‘shimcha", {"fields": ("protection", "docs","hang_protect","is_protected","is_hang_protected","is_doc","is_geroy_protected")}),

@@ -219,6 +219,7 @@ async def profile_command(message: Message):
     await message.answer(
         text=t['user_profile'].format(
             first_name=message.from_user.first_name,
+            user_id=message.from_user.id,
             coin=user.coin,
             stones=user.stones,
             protection=user.protection,
@@ -725,14 +726,14 @@ async def game_command(message: Message) -> None:
             trial = GroupTrials.objects.filter(group_id=chat_id).first()
             if trial:
                 if trial.end_date <= timezone.now():
-                    if not trial.coins > 5:
+                    if trial.coins < 5:
                     
                         await message.answer(
                         t["trial_expired"]
                     )
                         return
                     else:
-                        trial.coins -5
+                        trial.coins -= 5
                         trial.end_date = default_end_date()
                         trial.save()
             else:

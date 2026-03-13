@@ -106,7 +106,7 @@ class BotMessages(SafeBaseModel):
     
     
 class PremiumGroup(SafeBaseModel):
-    group_id = models.BigIntegerField(unique=True,default=0)
+    group_id = models.BigIntegerField(default=0)
     name = models.CharField(max_length=255)
     link = models.CharField(max_length=255)
     stones_for = models.IntegerField(default=0)
