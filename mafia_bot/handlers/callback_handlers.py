@@ -3189,7 +3189,7 @@ async def process_extend_info(message: Message, state: FSMContext) -> None:
         )
         await state.clear()
         return
-    group.trial_end_date = extend_date
+    group.end_date = extend_date
     group.save()
     await message.answer(
         text=f"✅ Obuna muddati muvaffaqiyatli uzaytirildi. Yangi tugash sanasi: {extend_date}",
