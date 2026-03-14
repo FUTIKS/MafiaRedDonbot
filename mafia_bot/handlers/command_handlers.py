@@ -402,6 +402,7 @@ async def money_command(message: Message) -> None:
             "limit": count,
             "taken": [],
             "takers_map": [],
+            "reason":reason,
             "msg_id": sent.message_id,
             "creator": message.from_user.id
     }   

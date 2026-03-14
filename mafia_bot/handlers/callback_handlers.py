@@ -3282,6 +3282,7 @@ async def take_stone(callback: CallbackQuery):
 
         limit = data["limit"]
         taken = data["taken"]
+        reason = data.get("reason", "")
         takers = data.setdefault("takers_map", [])
         sender_id = data["creator"]
 
@@ -3320,7 +3321,7 @@ async def take_stone(callback: CallbackQuery):
 
         text = (
             f"💎 <a href='tg://user?id={sender.telegram_id}'>{sender.first_name}</a> "
-            f"{t['group_sender'].format(count=limit)}\n"
+            f"{t['group_sender'].format(count=limit)}\n{reason}"
             f"{taken_text}"
         )
 
