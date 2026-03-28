@@ -3227,6 +3227,7 @@ async def process_extend_info(message: Message, state: FSMContext) -> None:
         text=f"✅ Obuna muddati muvaffaqiyatli uzaytirildi. Yangi tugash sanasi: {extend_date}",
         reply_markup=admin_inline_btn()
     )
+    await state.clear()
     
 @dp.callback_query(F.data == "transfer_history")
 async def transfer_history_callback(callback: CallbackQuery):

@@ -1145,8 +1145,8 @@ def compute_daydi_seen(game):
 
 def get_alive_role_id(game, role_key: str):
     roles = game.get("roles", {})
-    for tg_id, r in roles.items() and is_alive(game, tg_id):
-        if r == role_key :
+    for tg_id, r in roles.items():
+        if r == role_key and is_alive(game, tg_id):
             return tg_id
     return None
 
