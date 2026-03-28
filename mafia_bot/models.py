@@ -1,6 +1,6 @@
 import json
-from datetime import timedelta
 from django.db import models
+from datetime import timedelta
 from django.utils import timezone
 from core.models.basemodel import SafeBaseModel
 from core.constants import LANGUAGE_CHOICES,MONEY_FOR_STAR,STONE_FOR_STAR
@@ -57,6 +57,7 @@ class Game(SafeBaseModel):
     is_started = models.BooleanField(default=False)
     is_ended=models.BooleanField(default=False)
     is_active_game=models.BooleanField(default=True)
+    team_count = models.IntegerField(default=2)
     
     def __str__(self):
         return f"Game {self.id} - Chat {self.chat_id}"
@@ -206,6 +207,7 @@ class GameSettings(SafeBaseModel):
     begin_instance_time=models.IntegerField(default=300)  
     number_of_players = models.IntegerField(default=30)
     begin_after_end = models.BooleanField(default=True)
+    turnir_teams_count = models.IntegerField(default=2)
     
     
 class BotCredentials(SafeBaseModel):

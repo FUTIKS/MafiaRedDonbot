@@ -25,7 +25,7 @@ from mafia_bot.handlers.main_functions import (MAFIA_ROLES, find_game,create_mai
                                                get_description_lang,get_role_labels_lang,
                                                send_safe_message,notify_new_com)
 from mafia_bot.buttons.inline import (admin_inline_btn, back_btn, claim_chanel_olmos_inline_btn, giveaway_join_btn, 
-                                      group_profile_inline_btn, join_game_btn, 
+                                      group_profile_inline_btn, join_game_btn, join_game_color_btn, 
                                       start_inline_btn, go_to_bot_inline_btn, cart_inline_btn, take_gsend_stone_btn,
                                       take_stone_btn,stones_to_premium_inline_btn,language_keyboard)
 
@@ -51,6 +51,7 @@ async def start(message: Message) -> None:
         user.save(update_fields=["first_name","username"])
     if ' ' in message.text and message.chat.type == "private": 
         args = message.text.split(' ')[1]
+        turnir_mode= False
         if args == "true":
             return
         elif args.startswith("instance_"):
@@ -77,9 +78,16 @@ async def start(message: Message) -> None:
             username = args.split('_')[1]
             await claim_channel_olmos(message,username)
             return
+        elif args.startswith("vcgame_"):
+            turnir_mode = True
+            color = args.split('_')[1]
+            game_id = args.split('_')[2]
+            chat_id = int(args.split('_')[3])
             
-            
-        game = Game.objects.filter(uuid=args,is_active_game=True).first()
+        if turnir_mode:
+            game = Game.objects.filter(id=game_id,is_active_game=True).first()
+        else:
+            game = Game.objects.filter(uuid=args,is_active_game=True).first()
         if not game:
             await message.reply(text=t['game_not_active'])
             return
@@ -89,18 +97,25 @@ async def start(message: Message) -> None:
         #     await message.reply(text=t['already_in_another_game'])
         #     return
         
-        result = find_game(game.id,tg_id,game.chat_id,user)
+        result = find_game(game.id,tg_id,game.chat_id,user,player_team=color if game.game_type == "turnir" else None,team_count=game.team_count)
         if result.get("message") == "already_in":
             await message.reply(text=t['already_in_game'])
-        elif result.get("message") in ("joined","full"):
+            return
+        elif result.get("message") == "team_full":
+            await message.reply(text=t['team_full'])
+            return
+        elif result.get("message") == "joined":
             trial = GroupTrials.objects.filter(group_id=game.chat_id).first()
             group_name = trial.group_name if trial else ""
             await message.reply(text=t['joined_game'].format(group_name=group_name))
-            result_2 = create_main_messages(game.id,game.chat_id)
+            result_2 = create_main_messages(game.id,game.chat_id,game.game_type)
             bot_message=BotMessages.objects.filter(game_id=game.id,is_main=True,is_deleted=False).first()
             if bot_message:
                 try:
-                    await bot.edit_message_text(chat_id=game.chat_id,message_id=bot_message.message_id,text=result_2,reply_markup=join_game_btn(str(game.uuid),game.chat_id))
+                    if game.game_type == "turnir":
+                        await bot.edit_message_text(chat_id=game.chat_id,message_id=bot_message.message_id,text=result_2,reply_markup=join_game_color_btn(str(game.id),game.chat_id,game.team_count))
+                    else:
+                        await bot.edit_message_text(chat_id=game.chat_id,message_id=bot_message.message_id,text=result_2,reply_markup=join_game_btn(str(game.uuid),game.chat_id))
                 except Exception as e:
                     pass
         if result.get("message") == "full":
@@ -250,14 +265,12 @@ async def money_command(message: Message) -> None:
     amount = parse_amount(message.text)
     if amount is None:
         return
-    print(amount, type(amount))
     if amount<10000:
         komission = 100
     elif amount<100000:
         komission = 500
     else:
         komission = 1000
-    print(komission)
     sender_id = message.from_user.id
     sender_user = User.objects.filter(telegram_id=sender_id).first()
     if not sender_user:
@@ -584,6 +597,10 @@ async def registration_timer(game_id, chat_id):
     game = Game.objects.get(id=game_id)
     uuid = str(game.uuid)
     t = get_lang_text(chat_id)
+    if game.game_type == "turnir":
+        btn = join_game_color_btn(str(game.id),chat_id,game.team_count)
+    else:
+        btn = join_game_btn(uuid,chat_id)
 
     try:
         while True:
@@ -604,7 +621,7 @@ async def registration_timer(game_id, chat_id):
                 msg = await send_safe_message(
                     chat_id,
                     t['59_left'],
-                    reply_markup=join_game_btn(uuid,chat_id)
+                    reply_markup=btn
                 )
                 BotMessages.objects.create(game_id=int(game_id), message_id=msg.message_id, is_main=False)
 
@@ -621,7 +638,7 @@ async def registration_timer(game_id, chat_id):
                 msg = await send_safe_message(
                     chat_id,
                     t['29_left'],
-                    reply_markup=join_game_btn(uuid,chat_id)
+                    reply_markup=btn
                 )
                 BotMessages.objects.create(game_id=int(game_id), message_id=msg.message_id, is_main=False)
 
@@ -631,7 +648,6 @@ async def registration_timer(game_id, chat_id):
         await stop_registration(chat_id=chat_id)
 
     except asyncio.CancelledError:
-        print("returnser")
         return
 
 
@@ -639,7 +655,6 @@ async def registration_timer(game_id, chat_id):
 async def stop_registration(game_id=None, chat_id=None, instant=False):
     if game_id and chat_id is None:
         game = Game.objects.filter(id=game_id,is_active_game=True,is_started=False).first()
-        print(f"Stopping registration for game {game_id} in chat {game.chat_id}")
     else:
         game = Game.objects.filter(chat_id=chat_id, is_active_game=True, is_started=False).first()
     
@@ -755,7 +770,7 @@ async def game_command(message: Message) -> None:
             if not created: 
                 if game.is_started:
                     return
-                text_begining = create_main_messages(game.id,chat_id)
+                text_begining = create_main_messages(game.id,chat_id,game.game_type)
                 bot_message=BotMessages.objects.filter(game_id=game.id,is_main=True,is_deleted=False)
                 if bot_message:
                     for m in bot_message:
@@ -771,7 +786,6 @@ async def game_command(message: Message) -> None:
             if game.is_started:
                 return
             if " " in message.text and message.text.split(' ')[1] == "turnir":
-                print("turnir mode")
                 game.game_type = "turnir"
                 game.save(update_fields=["game_type"])
             user = User.objects.filter(telegram_id=message.from_user.id).first()
@@ -809,14 +823,121 @@ async def game_command(message: Message) -> None:
                     
             task = asyncio.create_task(registration_timer(game.id, chat_id))
             registration_timers[game.id] = [task, wait_time] 
+
+
+
+    
+
+@dp.message(Command("vcgame"), StateFilter(None)) 
+async def vcgame_command(message: Message) -> None:
+    chat_id = message.chat.id
+    lock = get_game_lock(chat_id)
+
+    if lock.locked():
+        return
+
+    async with lock:
+
+        bot_member = await message.chat.get_member(message.bot.id)
+        result = check_bot_rights(bot_member,chat_id)
+        if result:
+            await message.answer(text=result)
+            return
+        await message.delete() 
+        t = get_lang_text(chat_id)
+        if message.chat.type in ("group", "supergroup"): 
+            chat_id = message.chat.id
+            is_admin = await is_group_admin(chat_id, message.from_user.id)
+            if not is_admin:
+                return
+            trial = GroupTrials.objects.filter(group_id=chat_id).first()
+            if trial:
+                if trial.end_date <= timezone.now():
+                    if trial.coins < 5:
+                    
+                        await message.answer(
+                        t["trial_expired"]
+                    )
+                        return
+                    else:
+                        trial.coins -= 5
+                        trial.end_date = default_end_date()
+                        trial.save()
+            else:
+                link = message.chat.username if message.chat.username else ""
+                if link == "":
+                    invite = await bot.create_chat_invite_link(
+                    chat_id=chat_id,
+                    creates_join_request=False
+                )   
+                    link = invite.invite_link
+                
+                GroupTrials.objects.create(
+                    group_id=chat_id,
+                    group_name=message.chat.title if message.chat.title else "",
+                    group_username=link
+                )
+            game , created = Game.objects.get_or_create(chat_id=chat_id,game_type="turnir",is_active_game=True) 
+            if not created: 
+                if game.is_started:
+                    return
+                text_begining = create_main_messages(game.id,chat_id,game.game_type)
+                bot_message=BotMessages.objects.filter(game_id=game.id,is_main=True,is_deleted=False)
+                if bot_message:
+                    for m in bot_message:
+                        try:
+                            await bot.delete_message(chat_id=chat_id,message_id=m.message_id)
+                        except Exception:
+                            pass
+                    bot_message.update(is_deleted=True)
+                msg = await message.answer(text=text_begining,reply_markup=join_game_color_btn(str(game.id), chat_id, game.team_count))
+                await bot.pin_chat_message(chat_id=chat_id,message_id=msg.message_id)
+                BotMessages.objects.create(game_id=game.id,message_id=msg.message_id,is_main=True)
+                return
+            if game.is_started:
+                return
+            user = User.objects.filter(telegram_id=message.from_user.id).first()
+            if not user:
+                user = User.objects.create(
+                    telegram_id=message.from_user.id,
+                    lang ='uz',
+                    first_name=message.from_user.first_name,
+                    username=message.from_user.username
+                )
+                
+            game_settings = GameSettings.objects.filter(group_id=chat_id).first()
+            game.team_count = game_settings.turnir_teams_count if game_settings else 2
+            game.save(update_fields=["team_count"])
+            
+            msg = await message.answer(text=t["registration_started"],reply_markup=join_game_color_btn(str(game.id), chat_id, game.team_count))
+            await bot.pin_chat_message(chat_id=chat_id,message_id=msg.message_id)
+            BotMessages.objects.create(game_id=game.id,message_id=msg.message_id,is_main=True)
+            task = asyncio.create_task(refresh_registration_main_message(game.id, chat_id))
+            registration_refresh_tasks[game.id] = task
+            users_to_notify = list(notify_users.get(chat_id, set()))
+            if users_to_notify:
+                text = t['registration_started_notify']
+
+                for user_id in users_to_notify:
+                    try:
+                        await send_safe_message(chat_id=user_id, text=text,reply_markup=join_game_color_btn(str(game.id), chat_id, game.team_count))
+                    except Exception:
+                        pass
+                notify_users[chat_id].clear()
+            if not game_settings:
+                game_settings = GameSettings.objects.create(group_id=chat_id,user_id=user.id)
+            if game_settings and not game_settings.begin_instance:
+                wait_time = game_settings.begin_instance_time
+            else:
+                return
+                    
+            task = asyncio.create_task(registration_timer(game.id, chat_id))
+            registration_timers[game.id] = [task, wait_time] 
+            
+
         
-async def auto_begin_game(chat_id: int):
-    game , created = Game.objects.get_or_create(chat_id=chat_id,is_active_game=True) 
-    if not created: 
-        return
-    game_settings = GameSettings.objects.filter(group_id=chat_id).first()
-    if not game_settings:
-        return
+async def auto_begin_game(chat_id: int,game_type: str,team_count: int,game_settings: GameSettings):
+    game  = Game.objects.create(chat_id=chat_id,game_type=game_type, team_count=team_count, is_active_game=True) 
     messages = BotMessages.objects.filter(game_id=game.id,is_main=True,is_deleted=False)
     if messages:
         for m in messages:
@@ -830,7 +951,11 @@ async def auto_begin_game(chat_id: int):
             
     messages.update(is_deleted=True)
     t = get_lang_text(chat_id)
-    msg = await send_safe_message(chat_id=chat_id,text=t["registration_started"],reply_markup=join_game_btn(str(game.uuid), chat_id))
+    if game.game_type == "turnir":
+        btn = join_game_color_btn(str(game.id),chat_id,game.team_count)
+    else:
+        btn = join_game_btn(str(game.uuid),chat_id)
+    msg = await send_safe_message(chat_id=chat_id,text=t["registration_started"],reply_markup=btn)
     await bot.pin_chat_message(chat_id=chat_id,message_id=msg.message_id)
     BotMessages.objects.create(game_id=game.id,message_id=msg.message_id,is_main=True)
     task = asyncio.create_task(refresh_registration_main_message(game.id, chat_id))
@@ -1234,8 +1359,6 @@ async def delete_not_alive_messages(message: Message):
     game_id = chat_id_game_id.get(chat_id)
     game = games_state.get(game_id) if game_id else None
     if not game or not game.get("meta", {}).get("is_active_game") :
-        print("No active game in this chat")
-        print("game_id:", game_id)
         print("chat_id_game_id:", chat_id_game_id)
         return 
 
@@ -1297,7 +1420,6 @@ async def private_router(message: Message,state: FSMContext) -> None:
         target_name = data.get("target_name")
         role = data.get("victim_role_label")
         if has_link(text):
-            print("Link detected in last wish", text)
             return
         try:
             t = get_lang_text(chat_id)
@@ -1330,9 +1452,6 @@ async def private_router(message: Message,state: FSMContext) -> None:
     game_id = chat_id_game_id.get(team_chat_id)
     game = games_state.get(game_id) if game_id else None
     if not game:
-        print("No game found for team chat relay")
-        print("team_chat_id:", team_chat_id)
-        print("game_id:", game_id)
         return
 
     if game.get("meta", {}).get("team_chat_open") != "yes":
@@ -1529,12 +1648,15 @@ async def refresh_registration_main_message(game_id: int, chat_id: int):
                         pass
                 old_main.update(is_deleted=True)
 
-            result_2 = create_main_messages(int(game_id),chat_id)
-           
+            result_2 = create_main_messages(int(game_id),chat_id,game.game_type)
+            if game.game_type == "turnir":
+                join_btn = join_game_color_btn(str(game.id), chat_id, game.team_count)
+            else:
+                join_btn = join_game_btn(uuid, chat_id)
             msg = await send_safe_message(
                 chat_id=chat_id,
                 text=result_2,
-                reply_markup=join_game_btn(uuid, chat_id)
+                reply_markup=join_btn
             )
             if msg:
                 await bot.pin_chat_message(chat_id=chat_id, message_id=msg.message_id)

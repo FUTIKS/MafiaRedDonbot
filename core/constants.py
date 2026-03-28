@@ -113,6 +113,17 @@ uz_texts ={
     "professor_box_2": "📦 2-quti",
     "professor_box_3": "📦 3-quti",
 },
+"COLORS":{
+    "red":"🔴 Qizil Jamoa",
+    "blue":"🔵 Ko'k Jamoa",
+    "green":"🟢 Yashil Jamoa",
+    "yellow":"🟡 Sariq Jamoa",
+    "purple":"🟣 Binafsha Jamoa",
+    "orange":"🟠 Apelsin Jamoa",
+    "black":"⚫️ Qora Jamoa",
+    "white":"⚪️ Oq Jamoa",
+    "brown":"🟤 Jigar rang Jamoa",
+},
         "punish_afk":"Tunda {role_label} <a href='tg://user?id={pid}'>{name}</a> vahshiylarcha o‘ldirildi...\nU o‘lim oldidan shunday so‘z qoldirdi:\n'Men o‘yin paytida boshqa uxlamayma-a-a-a-a-a-an!'",
         "santa_gift":"💸 Sizga Boy tomonidan 20 ta pullar berildi!",
         "reg_started": "Ro'yxatdan o'tish boshlandi",
@@ -235,6 +246,7 @@ uz_texts ={
         "action_choose":"ni tanladingiz.",
         "no_go_doc":"🚷 👨🏼‍⚕️ Shifokor hech qayoqqa bormaslikni afzal ko'rdi.",
         "go_doc":"👨🏼‍⚕️ Shifokor tungi navbatchilikka ketdi...",
+        "go_self_heal":"👨🏼‍⚕️ “Avval o‘zim sog‘ bo‘lay, keyin boshqalar” deya o‘ziga ukol qildi",
         "drunk_no_go":"🚷 🍻 Alkash yo'lda uxlab qoldi.",
         "drunk_go":"🍻 Alkash kimningdir uyiga mast holda bostirib kirdi...",
         "action_no_choose":"Siz hech kimni tanlamadingiz.",
@@ -322,6 +334,7 @@ uz_texts ={
         "already_in_another_game":"❌ Siz allaqachon boshqa o'yinda ishtirok etmoqdasiz!",
         "gsend_stone":"",
         "user_blocked":"⚠️ Siz adminlar tomonidan bloklangansiz",
+        "team_full":"⚠️ Bu jamoa to'la, boshqa jamoani tanlang!",
 }
 
 ru_texts ={
@@ -428,7 +441,17 @@ ru_texts ={
     "professor_box_2": "📦 Коробка 2",
     "professor_box_3": "📦 Коробка 3",
 },
-
+"COLORS":{
+    "red":"🔴 Красный Команда",
+    "blue":"🔵 Синий Команда",
+    "green":"🟢 Зеленый Команда",
+    "yellow":"🟡 Желтый Команда",
+    "purple":"🟣 Фиолетовый Команда",
+    "orange":"🟠 Оранжевый Команда",
+    "black":"⚫️ Черный Команда",
+    "white":"⚪️ Белый Команда",
+    "brown":"🟤 Коричневый Команда",
+},
 "punish_afk":"Ночью {role_label} <a href='tg://user?id={pid}'>{name}</a> был жестоко убит...\nПеред смертью он сказал:\n'Я больше никогда не буду спать во время игры-и-и-и!'",
 "santa_gift":"💸 Богач дал вам 20 долларов.",
 "reg_started": "Регистрация началась",
@@ -549,6 +572,7 @@ ru_texts ={
 "action_choose":"вы выбрали.",
 "no_go_doc":"🚷 👨🏼‍⚕️ Доктор решил никуда не идти.",
 "go_doc":"👨🏼‍⚕️ Доктор отправился на ночное дежурство...",
+"go_self_heal":"👨🏼‍⚕️ Он сделал себе укол, сказав: «Сначала я выздоровею, потом остальные».",
 "action_no_choose":"Вы никого не выбрали.",
 "late":"Вы опоздали.",
 "drunk_no_go": "🚷 🍻 Пьяница уснул прямо по дороге.",
@@ -637,6 +661,7 @@ ru_texts ={
 "stone_reward": "✅ Вы открыли алмазный сундук и получили 💎 {reward}!",
 "already_in_another_game":"⚠️ Вы уже участвуете в другой игре!",
 "user_blocked":"⚠️ Вы были заблокированы администраторами.",
+"team_full":"⚠️ Ваша команда уже полная, выберите другую.",
 
 }
 
@@ -745,6 +770,16 @@ en_texts ={
     "professor_box_1": "📦 Box 1",
     "professor_box_2": "📦 Box 2",
     "professor_box_3": "📦 Box 3",
+},"COLORS":{
+    "red":"🔴 Red Team",
+    "blue":"🔵 Blue Team",
+    "green":"🟢 Green Team",
+    "yellow":"🟡 Yellow Team",
+    "purple":"🟣 Purple Team",
+    "orange":"🟠 Orange Team",
+    "black":"⚫️ Black Team",
+    "white":"⚪️ White Team",
+    "brown":"🟤 Brown Team",
 },
 
 "punish_afk":"At night {role_label} <a href='tg://user?id={pid}'>{name}</a> was brutally killed...\nBefore dying, they said:\n'I will never sleep during the game agaaaain!'",
@@ -870,6 +905,7 @@ en_texts ={
 "action_choose":"you selected.",
 "no_go_doc":"🚷 👨🏼‍⚕️ Doctor chose not to go anywhere.",
 "go_doc":"👨🏼‍⚕️ Doctor went on night duty...",
+"go_self_heal":"👨🏼‍⚕️ He gave himself an injection, saying, First I'll get well, then others.",
 "action_no_choose":"You didn’t choose anyone.",
 "late":"You are late.",
 "daydi_no_go":"🚷 🧙🏼‍♂️ Wanderer chose not to go anywhere.",
@@ -955,6 +991,7 @@ en_texts ={
 "stone_reward": "✅ You opened a diamond chest and received 💎 {reward}!",
 "already_in_another_game":"❌ You are already in another game! Please wait for it to finish.",
 "user_blocked":"⚠️ You have been blocked by the administrators.",
+"team_full":"⚠️ Your team is already full, please choose another one.",
 
 }
 
@@ -1062,7 +1099,17 @@ tr_texts ={
     "professor_box_2": "📦 Kutu 2",
     "professor_box_3": "📦 Kutu 3",
 },
-
+"COLORS":{
+    "red":"🔴 Kırmızı Takım",
+    "blue":"🔵 Mavi Takım",
+    "green":"🟢 Yeşil Takım",
+    "yellow":"🟡 Sarı Takım",
+    "purple":"🟣 Mor Takım",
+    "orange":"🟠 Turuncu Takım",
+    "black":"⚫️ Siyah Takım",
+    "white":"⚪️ Beyaz Takım",
+    "brown":"🟤 Kahverengi Takım",
+},
 "punish_afk":"Gece {role_label} <a href='tg://user?id={pid}'>{name}</a> vahşice öldürüldü...\nÖlmeden önce şöyle dedi:\n'Oyun sırasında bir daha asla uyumayacağım!'",
 "santa_gift":"💸 Zengin size 20 para hediye etti!",
 "reg_started": "Kayıt başladı",
@@ -1185,6 +1232,7 @@ tr_texts ={
 "action_choose":"seçtiniz.",
 "no_go_doc":"🚷 👨🏼‍⚕️ Doktor hiçbir yere gitmemeyi seçti.",
 "go_doc":"👨🏼‍⚕️ Doktor gece nöbetine gitti...",
+"go_self_heal":"👨🏼‍⚕️ Kendine bir iğne yaptı ve Önce ben iyileşeceğim, sonra başkaları dedi.",
 "action_no_choose":"Kimseyi seçmediniz.",
 "late":"Geç kaldınız.",
 "daydi_no_go":"🚷 🧙🏼‍♂️ Serseri hiçbir yere gitmedi.",
@@ -1271,6 +1319,7 @@ tr_texts ={
 "stone_reward": "✅ Elmas sandığını açtınız ve içinden 💎 {reward} çıktı!",
 "already_in_another_game":"⚠️ Başka bir oyundasınız, önce ona katılmalısınız!",
 "user_blocked":"⚠️ Yöneticiler tarafından engellendiniz.",
+"team_full":"⚠️ Takımınız zaten dolu, lütfen başka bir takım seçin.",
 
 }
 
@@ -1387,7 +1436,17 @@ qz_texts = {
     "professor_box_2": "📦 2-қорап",
     "professor_box_3": "📦 3-қорап",
 },
-
+"COLORS":{
+    "red":"🔴 Қызыл Команда",
+    "blue":"🔵 Көк Команда",
+    "green":"🟢 Жасыл Команда",
+    "yellow":"🟡 Сары Команда",
+    "purple":"🟣 Күлгін Команда",
+    "orange":"🟠 Апельсин Команда",
+    "black":"⚫️ Қара Команда",
+    "white":"⚪️ Ақ Команда",
+    "brown":"🟤 Қоңыр Команда",
+},
 "punish_afk": "Түнде {role_label} <a href='tg://user?id={pid}'>{name}</a> қатыгездікпен өлтірілді...\nОл өлім алдында мынадай сөз қалдырды:\n'Мен ойын кезінде енді ешқашан ұйықтамаймын-а-а-а-а-а-ан!'",
 "santa_gift": "💸 Сізге Бай тарапынан 20 ақша берілді!",
 "reg_started": "Тіркелу басталды",
@@ -1510,6 +1569,7 @@ qz_texts = {
 "action_choose": " таңдадыңыз.",
 "no_go_doc": "🚷 👨🏼‍⚕️ Дәрігер ешқайда бармауды жөн көрді.",
 "go_doc": "👨🏼‍⚕️ Дәрігер түнгі кезекшілікке кетті...",
+"go_self_heal":"👨🏼‍⚕️ «Әуелі мен сауығып кетемін, сосын басқалар» деп өзіне укол салды.",
 "drunk_no_go": "🚷 🍻 Маскүнем жолда ұйықтап қалды.",
 "drunk_go": "🍻 Маскүнем біреудің үйіне мас күйде басып кірді...",
 "action_no_choose": "Сіз ешкімді таңдамадыңыз.",
@@ -1596,6 +1656,7 @@ qz_texts = {
 "stone_reward": "✅ Сіз алмасты сандықты аштыңыз және ішінен 💎 {reward} шықты!",
 "already_in_another_game": "❌ Сіз қазірдің өзінде басқа ойында қатысып жатырсыз!",
 "user_blocked":"⚠️ Сізді әкімшілер бұғаттады.",
+"team_full":"⚠️ Сіздің командаңыз толып қалды, басқасын таңдаңыз.",
 }
 
 
@@ -1734,3 +1795,14 @@ ROLE_PRICES_IN_MONEY = {
     "hero":50000,
 }
     
+COLOR_EMOJIS = {
+    "red": "🔴",
+    "blue": "🔵",
+    "green": "🟢",
+    "yellow": "🟡",
+    "purple": "🟣",
+    "orange": "🟠",
+    "black": "⚫",
+    "white": "⚪",
+    "brown": "🟤",
+}

@@ -3,10 +3,9 @@ from decouple import config
 from django.utils import timezone
 from mafia_bot.utils import games_state
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from mafia_bot.models import  PriceStones,  PremiumGroup, User, UserRole
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-from core.constants import ROLE_PRICES_IN_MONEY,ROLE_PRICES_IN_STONES
-
+from mafia_bot.models import  PriceStones,  PremiumGroup, User, UserRole
+from core.constants import ROLE_PRICES_IN_MONEY,ROLE_PRICES_IN_STONES,COLOR_EMOJIS
 
 
 
@@ -763,6 +762,20 @@ def join_game_btn(uuid,chat_id):
         ]
     )
     return keyboard
+
+def join_game_color_btn(game_id, chat_id, teams_count):
+    builder = InlineKeyboardBuilder()
+
+    for color, emoji in list(COLOR_EMOJIS.items())[:teams_count]:
+        builder.button(
+            text=f"{emoji} {color.capitalize()}",
+            style="success",
+            url=f"https://t.me/{remove_prefix(config('BOT_USERNAME'))}?start=vcgame_{color}_{game_id}_{chat_id}"
+        )
+
+    builder.adjust(2)
+    return builder.as_markup()
+
 # Go to bot inline button
 def go_to_bot_inline_btn(chat_id,number=1):
     from mafia_bot.handlers.main_functions import get_lang_text
@@ -1352,6 +1365,12 @@ def begin_instance_inline_btn(chat_id):
                 text="🔁 O'yin tugagach auto boshlash",
                 callback_data=f"begin_auto_{chat_id}"
             )],
+            [
+                InlineKeyboardButton(
+                    text="🎨 Red Blue jamoalari sonini belgilash",
+                    callback_data=f"begin_teamcount_{chat_id}"
+                )
+            ],
             [InlineKeyboardButton(
                 text="⬅️ Orqaga",
                 callback_data="back_profile"

@@ -4,12 +4,12 @@ import asyncio
 import traceback
 from dispatcher import bot
 from collections import Counter
-from mafia_bot.models import Game, User
 from aiogram.types import FSInputFile
+from mafia_bot.models import Game, User
 from aiogram.exceptions import TelegramRetryAfter
 from mafia_bot.utils import game_tasks,writing_allowed_groups
 from mafia_bot.buttons.inline import confirm_hang_inline_btn, go_to_bot_inline_btn,action_inline_btn
-from mafia_bot.handlers.main_functions import (can_hang, games_state, get_most_voted_id,night_reset,day_reset, notify_new_com, notify_new_don, prepare_confirm_pending,
+from mafia_bot.handlers.main_functions import (can_hang, games_state, get_most_voted_id,night_reset,day_reset, notify_new_com, notify_new_don, prepare_confirm_pending,COLOR_EMOJIS,
                                                prepare_hang_pending, prepare_night_pending, promote_new_com_if_needed, promote_new_don_if_needed, punish_afk_night_players,send_night_actions_to_all,send_safe_message,
                                                apply_night_actions, stop_game_if_needed,PEACE_ROLES,MAFIA_ROLES_LAB,SOLO_ROLES,hero_day_actions,get_lang_text,get_role_labels_lang)
 
@@ -111,7 +111,12 @@ async def start_game(game_id):
                 if not user:
                     continue
                 first_name = user.get("first_name")
-                msgb += f'<b>{idx}. <a href="tg://user?id={tg_id}">{first_name}</a></b>\n'
+                if game.game_type == "turnir":
+                    player_team = games_state[game_id].get("players_team", {}).get(tg_id)
+                    player_color = COLOR_EMOJIS.get(player_team, "")
+                    msgb += f'<b>{idx}. {player_color} <a href="tg://user?id={tg_id}">{first_name}</a></b>\n'
+                else:
+                    msgb += f'<b>{idx}. <a href="tg://user?id={tg_id}">{first_name}</a></b>\n'
 
             msgb += t['1_min_day_start']
 
@@ -230,7 +235,12 @@ async def start_game(game_id):
                     continue
                 
                 first_name = user.get("first_name")
-                msg += f'<b>{idx}. <a href="tg://user?id={tg_id}">{first_name}</a></b>\n'
+                if game.game_type == "turnir":
+                    player_team = games_state[game_id].get("players_team", {}).get(tg_id)
+                    player_color = COLOR_EMOJIS.get(player_team, "")
+                    msg += f'<b>{idx}. {player_color} <a href="tg://user?id={tg_id}">{first_name}</a></b>\n'
+                else:
+                    msg += f'<b>{idx}. <a href="tg://user?id={tg_id}">{first_name}</a></b>\n'
                 role_key = roles_map.get(tg_id)
                 if tg_id not in games_state[game_id]['alive']:
                     continue
@@ -266,13 +276,13 @@ async def start_game(game_id):
             msg += t['solo_roles'].format(count=len(solo_labels), roles=solo_roles)
 
             msg += t['debate_time']
-            await hero_day_actions(game_id)
 
             await send_safe_message(
                 chat_id=game.chat_id,
                 text=msg,
                 parse_mode="HTML"
             )
+            await hero_day_actions(game_id)
             games_state[game_id]['meta']['message_allowed'] = "yes"
             writing_allowed_groups[game.chat_id] = "yes"
             # ================= DISCUSSION =================
@@ -343,13 +353,18 @@ async def start_game(game_id):
             if not voted_user:
                 await send_safe_message(chat_id=game.chat_id, text="❗ Ovoz berilgan o'yinchi topilmadi.")
                 continue
-
+            
             voted_user_tg_id = voted_user.get('tg_id')
             voted_user_first_name = voted_user.get('first_name')
             # ================= CONFIRM HANG =================
+            if game.game_type == "turnir":
+                voted_player_team = games_state[game_id].get("players_team", {}).get(top_voted)
+                team_color = COLOR_EMOJIS.get(voted_player_team, "")
+            else:
+                team_color = ""
             msg_obj = await send_safe_message(
                 chat_id=game.chat_id,
-                text=t['voted_user'].format(first_name=voted_user_first_name,tg_id = voted_user_tg_id
+                text=t['voted_user'].format(first_name=team_color+voted_user_first_name,tg_id = voted_user_tg_id
                 ),
                 reply_markup=confirm_hang_inline_btn(
                     voted_user_id=voted_user.get('tg_id'),
@@ -381,7 +396,7 @@ async def start_game(game_id):
 
             try:
                 await msg_obj.edit_text(
-                    text=t['confirm_hang'].format(first_name=voted_user_first_name,tg_id = voted_user_tg_id
+                    text=t['confirm_hang'].format(first_name=team_color+voted_user_first_name,tg_id = voted_user_tg_id
                     ),
                     reply_markup=None,
                     parse_mode="HTML"
@@ -393,7 +408,7 @@ async def start_game(game_id):
                     pass
                 await send_safe_message(
                     chat_id=game.chat_id,
-                    text=t['confirm_hang'].format(first_name=voted_user_first_name,tg_id = voted_user_tg_id
+                    text=t['confirm_hang'].format(first_name=team_color+voted_user_first_name,tg_id = voted_user_tg_id
                     ),
                     parse_mode="HTML"
                 )
@@ -419,7 +434,7 @@ async def start_game(game_id):
                 await send_safe_message(
                     chat_id=game.chat_id,
                     text=t['hang_protect'].format(yes=yes, no=no,
-                        first_name=voted_user_first_name,
+                        first_name=team_color+voted_user_first_name,
                         tg_id=voted_user_tg_id
                     ),
                     parse_mode="HTML"
@@ -430,7 +445,7 @@ async def start_game(game_id):
             await send_safe_message(
                 chat_id=game.chat_id,
                 text=t['hang_no_protect'].format(yes=yes, no=no,
-                    first_name=voted_user_first_name,
+                    first_name=team_color+voted_user_first_name,
                     tg_id=voted_user_tg_id
                 ),
                 parse_mode="HTML"
@@ -451,7 +466,7 @@ async def start_game(game_id):
             await asyncio.sleep(2)
             await send_safe_message(
                 chat_id=game.chat_id,
-                text = t['hanged'].format(first_name=voted_user_first_name,tg_id = voted_user_tg_id,role_label=get_role_labels_lang(game.chat_id).get(roles_map.get(voted_user.get('tg_id')), roles_map.get(voted_user.get('tg_id'))))
+                text = t['hanged'].format(first_name=team_color+voted_user_first_name,tg_id = voted_user_tg_id,role_label=get_role_labels_lang(game.chat_id).get(roles_map.get(voted_user.get('tg_id')), roles_map.get(voted_user.get('tg_id'))))
             )
             if roles_map.get(voted_user.get('tg_id')) == "don":
                 new_don_id = promote_new_don_if_needed(games_state[game_id])

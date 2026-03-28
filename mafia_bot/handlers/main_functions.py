@@ -11,9 +11,9 @@ from django.db import transaction
 from aiogram.types import Message
 from django.db.models import F as DF
 from aiogram.enums import ChatMemberStatus
-from core.constants import uz_texts,ROLES_BY_COUNT,ru_texts,en_texts,tr_texts,qz_texts
-from mafia_bot.models import Game, GameSettings,User,MostActiveUser, UserRole, GroupTrials
 from aiogram.types import ChatPermissions,ChatMemberAdministrator, ChatMemberOwner
+from mafia_bot.models import Game, GameSettings,User,MostActiveUser, UserRole, GroupTrials
+from core.constants import COLOR_EMOJIS, uz_texts,ROLES_BY_COUNT,ru_texts,en_texts,tr_texts,qz_texts
 from mafia_bot.utils import games_state, last_wishes,game_tasks, active_role_used,writing_allowed_groups,USER_LANG_CACHE,game_locks,chat_id_game_id
 from mafia_bot.buttons.inline import cart_inline_btn, doc_btn, com_inline_btn, don_inline_btn, mafia_inline_btn, adv_inline_btn, spy_inline_btn, lab_inline_btn, action_inline_btn,use_hero_inline_btn
 
@@ -57,7 +57,13 @@ DESCRIPTIONS = {
     "tr": tr_texts["DESCRIPTIONS"],
     "qz": qz_texts["DESCRIPTIONS"],
 }
-
+COLORS= {
+    "uz": uz_texts["COLORS"],
+    "ru": ru_texts["COLORS"],
+    "en": en_texts["COLORS"],
+    "tr": tr_texts["COLORS"],
+    "qz": qz_texts["COLORS"],
+}
 
 
 MAFIA_ROLES = {"don", "mafia", "adv", "spy"}
@@ -311,19 +317,14 @@ def init_game(game_id: int, chat_id: int | None = None):
         if game_settings and game_settings.begin_instance:
             max_players = game_settings.number_of_players if game_settings else max_players
         game = Game.objects.filter(id=game_id).first()
-        if game and game.game_type == 'turnir':
-            type_game = 'turnir'
-        else:
-            type_game = 'classic'
        
-
         games_state[game_id] = {
             "meta": {
                 "game_id": game_id,
                 "chat_id": chat_id,
                 "created_at": int(time.time()),
                 "phase": "lobby",
-                "game_type": type_game,
+                "game_type": game.game_type,
                 "day": 0,
                 "night": 0,
                 "message_allowed":"yes",
@@ -346,6 +347,7 @@ def init_game(game_id: int, chat_id: int | None = None):
 
             "allowed_to_send_message":[] ,
             "players": [],
+            "players_team": {},
             "users_map": {},
             "alive": [],
             "dead": [],
@@ -736,8 +738,8 @@ def is_alive(game, tg_id: int) -> bool:
 
 
 
-def find_game(game_id, tg_id,chat_id,user):
-    init_game(game_id,chat_id)
+def find_game(game_id, tg_id, chat_id, user, player_team=None, team_count=None):
+    init_game(game_id, chat_id)
     tg_id = int(tg_id)
 
     with lock:
@@ -745,24 +747,48 @@ def find_game(game_id, tg_id,chat_id,user):
 
         if tg_id in game["players"]:
             return {"message": "already_in"}
+
         max_players = game["meta"].get("max_players", 30)
+
         if len(game["players"]) >= max_players:
             return {"message": "full"}
 
+        # 🔹 Turnir jamoa limit tekshiruvi
+        if game["meta"]["game_type"] == "turnir" and player_team and team_count:
+            team_limit = max_players // team_count
+
+            current_team_count = sum(
+                1 for team in game["players_team"].values() if team == player_team
+            )
+
+            if current_team_count >= team_limit:
+                return {"message": "team_full"}
+
         game["players"].append(tg_id)
-        if game['meta']['game_type']=='turnir':
-            game["users_map"][tg_id]={"first_name":html.escape(user.first_name),"protection":1 if user.protection>=1 and user.is_protected else 0,"docs": 1 if user.docs>=1 and user.is_doc else 0,"hang_protect": 1 if user.hang_protect>=1 and user.is_hang_protected else 0,"geroy_protect": 1 if user.geroy_protection>=1 and user.is_geroy_protected else 0,"tg_id":tg_id,"hero":False}
-        else:
-            game["users_map"][tg_id]={"first_name":html.escape(user.first_name),"protection":1 if user.protection>=1 and user.is_protected else 0,"docs": 1 if user.docs>=1 and user.is_doc else 0,"hang_protect": 1 if user.hang_protect>=1 and user.is_hang_protected else 0,"geroy_protect": 1 if user.geroy_protection>=1 and user.is_geroy_protected else 0,"tg_id":tg_id,"hero":user.is_hero and user.is_geroy_use}
+
+        game["users_map"][tg_id] = {
+            "first_name": html.escape(user.first_name),
+            "protection": 1 if user.protection >= 1 and user.is_protected else 0,
+            "docs": 1 if user.docs >= 1 and user.is_doc else 0,
+            "hang_protect": 1 if user.hang_protect >= 1 and user.is_hang_protected else 0,
+            "geroy_protect": 1 if user.geroy_protection >= 1 and user.is_geroy_protected else 0,
+            "tg_id": tg_id,
+            "hero": user.is_hero and user.is_geroy_use
+        }
+
+        if game["meta"]["game_type"] == "turnir" and player_team:
+            game["players_team"][tg_id] = player_team
+
         game["alive"].append(tg_id)
-        if len(game["players"])==max_players:
+
+        if len(game["players"]) == max_players:
             return {"message": "full"}
 
     return {"message": "joined"}
 
 
 
-def create_main_messages(game_id, tg_id_for_lang):
+def create_main_messages(game_id, tg_id_for_lang, game_type):
     tg_ids = games_state.get(game_id, {}).get("players", [])
     t = get_lang_text(int(tg_id_for_lang))
 
@@ -772,16 +798,41 @@ def create_main_messages(game_id, tg_id_for_lang):
         return msg + f"\n\n{t['no_players']}"
 
     users_map = games_state.get(game_id, {}).get("users_map", {})
-    
-    count = 0
-    for tg_id in tg_ids:
-        user = users_map.get(tg_id)
-        if not user:
-            continue
-        msg += f'<a href="tg://user?id={tg_id}">{html.escape(user.get("first_name", ""))}</a>, '
-        count += 1
+    if game_type == "turnir":
+        teams = {}
+        players_team = games_state.get(game_id, {}).get("players_team", {})
 
-    msg += f"\n\n{t['total'].format(count=count)}"
+        for tg_id, team in players_team.items():
+            teams.setdefault(team, []).append(tg_id)
+
+        for team, members in teams.items():
+            emoji = COLOR_EMOJIS.get(team, "")
+            team = get_color_lang(int(tg_id_for_lang)).get(team, team)
+            msg += f"\n<b>{team} ({len(members)})</b>\n"
+
+            for i, tg_id in enumerate(members):
+                user = users_map.get(tg_id)
+                if not user:
+                    continue
+
+                name = html.escape(user.get("first_name", ""))
+                link = f'<a href="tg://user?id={tg_id}">{name}</a>'
+
+                if i == len(members) - 1:
+                    msg += f" └ {link}\n"
+                else:
+                    msg += f" ├ {link}\n"
+    else:
+    
+        count = 0
+        for tg_id in tg_ids:
+            user = users_map.get(tg_id)
+            if not user:
+                continue
+            msg += f'<a href="tg://user?id={tg_id}">{html.escape(user.get("first_name", ""))}</a>, '
+            count += 1
+
+        msg += f"\n\n{t['total'].format(count=count)}"
     return msg
 
 
@@ -1094,7 +1145,7 @@ def compute_daydi_seen(game):
 
 def get_alive_role_id(game, role_key: str):
     roles = game.get("roles", {})
-    for tg_id, r in roles.items():
+    for tg_id, r in roles.items() and is_alive(game, tg_id):
         if r == role_key :
             return tg_id
     return None
@@ -1749,6 +1800,7 @@ def get_alive_teams(game):
             solo.append(tg_id)
 
     return mafia, peace, solo
+
 def check_game_over(game_id: int) -> str | None:
     game = games_state.get(game_id)
     if not game:
@@ -1803,6 +1855,41 @@ def check_game_over(game_id: int) -> str | None:
     # =========================
     return None
 
+def check_turnir_game_over(game_id: int):
+    game = games_state.get(game_id)
+    if not game:
+        return None
+
+    alive = game.get("alive", [])
+    players_team = game.get("players_team", {})
+
+    teams = {}
+
+    for tg_id in alive:
+        team = players_team.get(tg_id)
+        if team:
+            teams.setdefault(team, []).append(tg_id)
+
+    alive_teams = list(teams.keys())
+
+    # 1 ta jamoa qolsa
+    if len(alive_teams) == 1:
+        return alive_teams[0]
+
+    # 2 vs 1 holati
+    if len(alive_teams) == 2:
+        team_list = list(teams.items())
+
+        team1, members1 = team_list[0]
+        team2, members2 = team_list[1]
+
+        if len(members1) > 1 and len(members2) == 1:
+            return team1
+
+        if len(members2) > 1 and len(members1) == 1:
+            return team2
+
+    return None
 
 async def is_user_in_chat( user_id: int) -> bool:
     chat_id = "@MafiaRedDonOfficial"
@@ -1820,16 +1907,22 @@ async def stop_game_if_needed(game_id: int):
     game_state = games_state.get(game_id)
     if not game_state:
         return False
-
-    winner_key = check_game_over(game_id)
+    game_type = game_state.get("meta", {}).get("game_type")
+    if game_type == "turnir":
+        winner_key = check_turnir_game_over(game_id)
+    else:
+        winner_key = check_game_over(game_id)
     if not winner_key:
         return False
 
     game_state["meta"]["phase"] = "ended"
     game_state["meta"]["winner"] = winner_key
     chat_id = game_state.get("meta", {}).get("chat_id")
-
-    final_text, winners, loosers = await build_final_game_text(game_id, winner_key)
+    
+    if game_type == "turnir":
+        final_text, winners, loosers = await build_final_turnir_text(game_id, winner_key)
+    else:
+        final_text, winners, loosers = await build_final_game_text(game_id, winner_key,)
 
     try:
         await send_safe_message(chat_id=chat_id, text=final_text, parse_mode="HTML")
@@ -1935,10 +2028,10 @@ async def stop_game_if_needed(game_id: int):
     writing_allowed_groups.pop(chat_id, None)
     game_tasks.pop(game_id, None)
 
-    game_settings = GameSettings.objects.first()
+    game_settings = GameSettings.objects.filter(group_id=chat_id).first()
     if game_settings and game_settings.begin_after_end:
         from mafia_bot.handlers.command_handlers import auto_begin_game
-        await auto_begin_game(chat_id)
+        await auto_begin_game(chat_id,game.game_type,game.team_count,game_settings)
 
     return True
 
@@ -1947,6 +2040,59 @@ def format_duration(seconds: int) -> str:
     m = seconds // 60
     s = seconds % 60
     return f"{m} min. {s} sek."
+
+async def build_final_turnir_text(game_id: int, winner_team: str):
+    game = games_state.get(game_id)
+    if not game:
+        return "O'yin tugadi."
+
+    players_team = game.get("players_team", {})
+    all_players = game.get("players", [])
+    users_map = game.get("users_map", {})
+
+    chat_id = int(game.get("meta", {}).get("chat_id"))
+    created_at = int(game.get("meta", {}).get("created_at", int(time.time())))
+    duration = int(time.time()) - created_at
+
+    ids_in_order = [tg_id for tg_id in all_players if tg_id in players_team]
+
+    winners = []
+    others = []
+    winners_list = []
+    loosers_list = []
+
+    for tg_id in ids_in_order:
+        team = players_team.get(tg_id)
+        user = users_map.get(tg_id)
+
+        name = user.get("first_name") if user else str(tg_id)
+        line = f"    {COLOR_EMOJIS.get(team, '')}{name}"
+
+        # ❗ alive tekshirilmaydi
+        if team == winner_team:
+            winners.append(line)
+            winners_list.append(tg_id)
+        else:
+            others.append(line)
+            loosers_list.append(tg_id)
+
+    t = get_lang_text(chat_id)
+
+    text = (
+        f"{t['title']}\n"
+        f"{t['winner'].format(winner=get_color_lang(chat_id).get(winner_team, ''))}\n\n"
+        f"{t['winners']}\n"
+    )
+
+    text += "\n".join(winners) if winners else t["no_one"]
+
+    text += f"\n\n{t['others']}\n"
+
+    text += "\n".join(others) if others else t["no_one"]
+
+    text += f"\n\n{t['duration'].format(time=format_duration(duration))}"
+
+    return text, winners_list, loosers_list
 
 async def build_final_game_text(game_id: int, winner_key: str) -> str:
     game = games_state.get(game_id)
@@ -2140,3 +2286,6 @@ def get_winner_label_lang(tg_id: int) -> dict:
 
 def get_description_lang(tg_id: int) -> dict:
     return DESCRIPTIONS.get(get_lang(tg_id), DESCRIPTIONS["uz"])
+
+def get_color_lang(tg_id: int) -> dict:
+    return COLORS.get(get_lang(tg_id), COLORS["uz"])

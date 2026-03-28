@@ -4,6 +4,7 @@ import time
 import asyncio 
 import datetime
 from aiogram import F
+from core.constants import COLOR_EMOJIS
 from dispatcher import dp, bot
 from datetime import timedelta
 from django.utils import timezone
@@ -504,13 +505,17 @@ async def doc_heal_callback(callback: CallbackQuery):
     text = f"{get_actions_lang(callback.from_user.id).get('doc_heal')}\n\n<a href='tg://user?id={target_id}'>{target_name}</a> {t['action_choose']}"
 
     await callback.message.edit_text(text=text, parse_mode="HTML")
-    try:
+    
+    if target_id == doctor_id:
+            await send_safe_message(
+        chat_id=chat_id,
+        text=tg['go_self_heal']
+    )
+    else:
         await send_safe_message(
-            chat_id=chat_id,
-            text=tg['go_doc']
-        )
-    except:
-        pass
+        chat_id=chat_id,
+        text=tg['go_doc']
+    )
     
 
 @dp.callback_query(F.data.startswith("daydi_"))
@@ -1786,8 +1791,19 @@ async def hang_callback(callback: CallbackQuery):
     
     user_map = game.get("users_map",{})
     user = user_map.get(int(target_id))
+    
     await callback.message.edit_text(text=f"{t['hang_action']}\n\n<a href='tg://user?id={target_id}'>{user.get('first_name')}</a> {t['action_choose']}", parse_mode="HTML")
-    await send_safe_message(
+    if game['meta']['game_type'] == "turnir":
+        player_team = game.get("players_team", {}).get(int(target_id))
+        shooter_team = game.get("players_team", {}).get(int(shooter_id))
+        player_color = COLOR_EMOJIS.get(player_team, "")
+        shooter_color = COLOR_EMOJIS.get(shooter_team, "")
+        await send_safe_message(
+            chat_id=chat_id,
+            text=f"<a href='tg://user?id={shooter_id}'>{shooter_color}{shooter_name}</a> -> <a href='tg://user?id={target_id}'>{player_color}{user.get('first_name')}</a> {tg['hang_choose']}"
+        )
+    else:
+        await send_safe_message(
         chat_id=chat_id,
         text=f"<a href='tg://user?id={shooter_id}'>{shooter_name}</a> -> <a href='tg://user?id={target_id}'>{user.get('first_name')}</a> {tg['hang_choose']}"
     )
@@ -2975,6 +2991,13 @@ async def begin_new_instance_callback(callback: CallbackQuery,state: FSMContext)
             
         game_settings.save()
         return
+    elif action == "teamcount":
+        await state.update_data(action = "teamcount")
+        await state.update_data(chat_id=chat_id)
+        await callback.message.edit_text(
+            text="🚀 Yangi o'yinni jamoalar sonini kiriting (2-9):",
+            reply_markup=back_btn(callback.from_user.id)
+        )
     await state.set_state(BeginInstanceState.waiting_for_instant_time)
         
         
@@ -3009,6 +3032,15 @@ async def process_begin_instant_count(message: Message, state: FSMContext) -> No
         game_settings.begin_instance = False
         game_settings.begin_instance_time = count
         await message.answer(f"✅ Yangi o'yin boshlanish vaqti {count} soniyaga o'rnatildi.",reply_markup=start_inline_btn(message.from_user.id))
+    elif action == "teamcount":
+        if count < 2 or count > 9:
+            await message.answer(
+                text="❌ Iltimos, 2 dan 9 gacha bo'lgan son kiriting:",
+                reply_markup=back_btn(message.from_user.id)
+            )
+            return
+        game_settings.turnir_teams_count = count
+        await message.answer(f"✅ Yangi o'yin jamoalar soni {count} ga o'rnatildi.",reply_markup=start_inline_btn(message.from_user.id))
     game_settings.save()
     await state.clear()
     
