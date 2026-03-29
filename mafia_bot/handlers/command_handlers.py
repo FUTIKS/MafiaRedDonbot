@@ -424,12 +424,7 @@ async def money_command(message: Message) -> None:
     amount = parse_amount(message.text)
     if amount is None:
         return
-    if amount<10:
-        komission =1
-    elif amount<100:
-        komission = 5
-    else:
-        komission = 10
+    komission = 1
     
     sender_id = message.from_user.id
     sender_user = User.objects.filter(telegram_id=sender_id).first()

@@ -500,7 +500,7 @@ async def doc_heal_callback(callback: CallbackQuery):
 
 
     # username olish (players object bo'lsa)
-    target_name = get_first_name_from_players(target_id)
+    target_name = get_first_name_from_players(game, target_id)
 
     text = f"{get_actions_lang(callback.from_user.id).get('doc_heal')}\n\n<a href='tg://user?id={target_id}'>{target_name}</a> {t['action_choose']}"
 
@@ -564,7 +564,7 @@ async def daydi_callback(callback: CallbackQuery):
     
 
     # username topish (players object list bo‘lsa)
-    target_name = get_first_name_from_players(house_id)
+    target_name = get_first_name_from_players(game,house_id)
     await callback.message.edit_text(
         text=f"{get_actions_lang(callback.from_user.id).get('daydi_watch')}\n\n<a href='tg://user?id={house_id}'>{target_name}</a> {t['action_choose']}",
         parse_mode="HTML"
@@ -667,7 +667,7 @@ async def com_shoot_callback(callback: CallbackQuery):
     add_visit(game, com_id, target_id, False)
 
 
-    target_name = get_first_name_from_players( target_id)
+    target_name = get_first_name_from_players(game, target_id)
 
     await callback.message.edit_text(
         text=f"{get_actions_lang(callback.from_user.id).get('com_shoot')}\n\n<a href='tg://user?id={target_id}'>{target_name}</a> {t['action_choose']}.",
@@ -701,7 +701,7 @@ async def com_protect_callback(callback: CallbackQuery):
     add_visit(game, com_id, target_id, False)
 
 
-    target_name = get_first_name_from_players( target_id)
+    target_name = get_first_name_from_players(game, target_id)
 
     await callback.message.edit_text(
         text=f"{get_actions_lang(callback.from_user.id).get('com_check')}\n\n<a href='tg://user?id={target_id}'>{target_name}</a> {t['action_choose']}.",
@@ -751,7 +751,7 @@ async def lover_callback(callback: CallbackQuery):
     game["night_actions"]["lover_block_target"] = target_id
     add_visit(game=game, visitor_id=lover_id, house_id=target_id, invisible=False)
 
-    target_name = get_first_name_from_players(target_id)
+    target_name = get_first_name_from_players(game,target_id)
 
     text = f"{get_actions_lang(callback.from_user.id).get('lover_block')}\n\n<a href='tg://user?id={target_id}'>{target_name}</a> {t['action_choose']}."
 
@@ -801,7 +801,7 @@ async def killer_callback(callback: CallbackQuery):
     # ✅ killer action saqlash
     game["night_actions"]["killer_target"].append(target_id)
 
-    target_name = get_first_name_from_players(target_id)
+    target_name = get_first_name_from_players(game,target_id)
     add_visit(game=game, visitor_id=killer_id, house_id=target_id, invisible=False)
 
     text = f"{get_actions_lang(callback.from_user.id).get('killer_kill')}\n\n<a href='tg://user?id={target_id}'>{target_name}</a> {t['action_choose']}."
@@ -860,7 +860,7 @@ async def santa_callback(callback: CallbackQuery):
         )
     user.coin += 20
     user.save()
-    target_name = get_first_name_from_players(target_id)
+    target_name = get_first_name_from_players(game,target_id)
     add_visit(game=game, visitor_id=santa_id, house_id=target_id, invisible=False)
 
     text = f"{get_actions_lang(callback.from_user.id).get('santa')}\n\n<a href='tg://user?id={target_id}'>{target_name}</a> {t['action_choose']}."
@@ -917,7 +917,7 @@ async def kaldun_callback(callback: CallbackQuery):
     game["night_actions"]["kaldun_target"] = target_id
     
     add_visit(game=game, visitor_id=kaldun_id, house_id=target_id, invisible=False)
-    target_name = get_first_name_from_players(target_id)
+    target_name = get_first_name_from_players(game,target_id)
 
     text = f"{get_actions_lang(callback.from_user.id).get('kaldun_spell')}\n\n<a href='tg://user?id={target_id}'>{target_name}</a> {t['action_choose']}."
 
@@ -976,7 +976,7 @@ async def drunk_callback(callback: CallbackQuery):
     game["night_actions"]["drunk_target"] = target_id
     add_visit(game=game, visitor_id=drunk_id, house_id=target_id, invisible=False)
 
-    target_name = get_first_name_from_players(target_id)
+    target_name = get_first_name_from_players(game,target_id)
 
     await send_safe_message(
         chat_id=chat_id,
@@ -1027,8 +1027,8 @@ async def don_callback(callback: CallbackQuery):
     add_visit(game=game, visitor_id=don_id, house_id=target_id, invisible=False)
     
     
-    target_name = get_first_name_from_players(int(target_id))
-    mafia_name = get_first_name_from_players(don_id)
+    target_name = get_first_name_from_players(game,int(target_id))
+    mafia_name = get_first_name_from_players(game,don_id)
     mafia_members = get_mafia_members(int(game_id))
     
 
@@ -1084,8 +1084,8 @@ async def mafia_callback(callback: CallbackQuery):
     game["night_actions"]["mafia_vote"].append(int(target_id))
     
     
-    target_name = get_first_name_from_players(int(target_id))
-    mafia_name = get_first_name_from_players(mafia_id)
+    target_name = get_first_name_from_players(game,int(target_id))
+    mafia_name = get_first_name_from_players(game,mafia_id)
     mafia_members = get_mafia_members(int(game_id))
     
 
@@ -1152,8 +1152,8 @@ async def adv_callback(callback: CallbackQuery):
         text=tg['adv_go'],
     )
     
-    target_name = get_first_name_from_players(int(target_id))
-    adv_name = get_first_name_from_players(adv_id)
+    target_name = get_first_name_from_players(game,int(target_id))
+    adv_name = get_first_name_from_players(game,adv_id)
     mafia_members = get_mafia_members(int(game_id))
     
 
@@ -1222,8 +1222,8 @@ async def spy_callback(callback: CallbackQuery):
         text=tg['spy_go'],
     )
     
-    target_name = get_first_name_from_players(int(target_id))
-    spy_name = get_first_name_from_players(spy_id)
+    target_name = get_first_name_from_players(game,int(target_id))
+    spy_name = get_first_name_from_players(game,spy_id)
     mafia_members = get_mafia_members(int(game_id))
     text_for_mafia = (
         f"🦇 Ayg'oqchi {spy_name} tanlovi: <a href='tg://user?id={target_id}'>{target_name}</a>"
@@ -1290,7 +1290,7 @@ async def lab_callback(callback: CallbackQuery):
         text=tg['lab_go'],
     )
     
-    target_name = get_first_name_from_players(int(target_id))
+    target_name = get_first_name_from_players(game,int(target_id))
     
     await callback.message.edit_text(text=f"{get_actions_lang(callback.from_user.id).get('lab_action')}\n\n<a href='tg://user?id={target_id}'>{target_name}</a> {t['action_choose']}")
 
@@ -1340,7 +1340,7 @@ async def arrow_callback(callback: CallbackQuery):
         text=tg['arrow_go'],
     )
     
-    target_name = get_first_name_from_players(int(target_id))
+    target_name = get_first_name_from_players(game,int(target_id))
     
     await callback.message.edit_text(text=f"{get_actions_lang(callback.from_user.id).get('arrow_kill')}\n\n<a href='tg://user?id={target_id}'>{target_name}</a> {t['action_choose']}")
 
@@ -1389,7 +1389,7 @@ async def trap_callback(callback: CallbackQuery):
         text=tg['trap_go'],
     )
     
-    target_name = get_first_name_from_players(int(target_id))
+    target_name = get_first_name_from_players(game,int(target_id))
     
     await callback.message.edit_text(text=f"{get_actions_lang(callback.from_user.id).get('trap_place')}\n\n<a href='tg://user?id={target_id}'>{target_name}</a> {t['action_choose']}")
 
@@ -1440,7 +1440,7 @@ async def snyper_callback(callback: CallbackQuery):
         text=tg['snyper_go']
     )
     
-    target_name = get_first_name_from_players(int(target_id))
+    target_name = get_first_name_from_players(game,int(target_id))
     
     await callback.message.edit_text(text=f"{get_actions_lang(callback.from_user.id).get('snyper_kill')}\n\n<a href='tg://user?id={target_id}'>{target_name}</a> {t['action_choose']}")
 
@@ -1488,7 +1488,7 @@ async def spy_callback(callback: CallbackQuery):
         chat_id=int(chat_id),
         text=tg['traitor_go']
     )
-    target_name = get_first_name_from_players(int(target_id))
+    target_name = get_first_name_from_players(game,int(target_id))
     await callback.message.edit_text(text=f"{get_actions_lang(callback.from_user.id).get('traitor_choose')}\n\n<a href='tg://user?id={target_id}'>{target_name}</a> {t['action_choose']}")
     
 
@@ -1535,7 +1535,7 @@ async def snowball_callback(callback: CallbackQuery):
         chat_id=int(chat_id),
         text=tg['snowball_go']
     )
-    target_name = get_first_name_from_players(int(target_id))
+    target_name = get_first_name_from_players(game,int(target_id))
     await callback.message.edit_text(text=f"{get_actions_lang(callback.from_user.id).get('snowball_kill')}\n\n<a href='tg://user?id={target_id}'>{target_name}</a> {t['action_choose']}")
 
 
@@ -1589,7 +1589,7 @@ async def pirate_callback(callback: CallbackQuery):
         chat_id=int(chat_id),
         text=tg['pirate_go'],
     )
-    target_name = get_first_name_from_players(int(target_id))
+    target_name = get_first_name_from_players(game,int(target_id))
     await callback.message.edit_text(text=f"{get_actions_lang(callback.from_user.id).get('pirate_steal')}\n\n<a href='tg://user?id={target_id}'>{target_name}</a> {t['action_choose']}")
 
 
@@ -1615,7 +1615,7 @@ async def pirpay_callback(callback: CallbackQuery):
     target_id = callback.from_user.id
     if not target_id in game["alive"]:
         return
-    target_name = get_first_name_from_players(int(target_id))
+    target_name = get_first_name_from_players(game,int(target_id))
     if confirmation == "no":
         await callback.message.edit_text(text=f"👺 {t['pirate_pay_no']}")
         await send_safe_message(
@@ -1695,7 +1695,7 @@ async def professor_callback(callback: CallbackQuery):
         text=tg['professor_go']
     )
     
-    target_name = get_first_name_from_players(int(target_id))
+    target_name = get_first_name_from_players(game,int(target_id))
     await send_safe_message(
         chat_id=int(target_id),
         text=t['professor_gift'],
@@ -1755,7 +1755,7 @@ async def prof_callback(callback: CallbackQuery):
     await callback.message.edit_text(text=t['prof_chosen'].format(reward=reward))
     await send_safe_message(
         chat_id=professor_id,
-        text=f"<a href='tg://user?id={prof_id}'>{get_first_name_from_players(prof_id)}</a> : {reward} ",
+        text=f"<a href='tg://user?id={prof_id}'>{get_first_name_from_players(game,prof_id)}</a> : {reward} ",
     )
 
 @dp.callback_query(F.data.startswith("hang_"))

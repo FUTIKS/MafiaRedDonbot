@@ -746,6 +746,10 @@ def find_game(game_id, tg_id, chat_id, user, player_team=None, team_count=None):
         game = games_state[game_id]
 
         if tg_id in game["players"]:
+            current_team = game["players_team"].get(tg_id)
+            if player_team !=current_team:
+                game["players_team"][tg_id] = player_team
+                return {"message":"joined"}
             return {"message": "already_in"}
 
         max_players = game["meta"].get("max_players", 30)
@@ -1080,11 +1084,17 @@ def get_mafia_kill_target(night_actions):
 
     return top[0]
 
-def get_first_name_from_players(tg_id):
-    user = User.objects.filter(telegram_id=tg_id).only("telegram_id", "first_name").first()
+def get_first_name_from_players(game,tg_id):
+    users_map = game.get("users_map", {})
+    user = users_map.get(int(tg_id))
+    game_type = game.get("meta", {}).get("game_type")
+    player_team = game.get("players_team", {}).get(int(tg_id))
     if user:
-        return html.escape(user.first_name)
-    return str(tg_id)
+        if game_type == "turnir":
+            color_team = COLOR_EMOJIS.get(player_team, "")
+            return f"{color_team} {user.get('first_name', '')}"
+        return user.get("first_name", "")
+    return ""
 
 def has_link(text: str) -> bool:
     if not text:
@@ -1377,9 +1387,18 @@ async def apply_night_actions(game_id: int):
 
     alive_ids = game.get("alive", [])
     alive_users_map = game.get("users_map", {})
+    game_type = game.get("meta", {}).get("game_type")
+    players_team = game.get("players_team", {})
     
     def uname(tg_id):
+        if game_type == "turnir":
+            team = players_team.get(int(tg_id))
+            color_emoji = COLOR_EMOJIS.get(team, "")
+            user = alive_users_map.get(int(tg_id))
+            name = user.get("first_name", "") if user else str(tg_id)
+            return f"{color_emoji} {name}"
         user = alive_users_map.get(int(tg_id))
+        
         return user.get("first_name") if user else str(tg_id)
 
     protected = effects.setdefault("protected", {})
@@ -1666,7 +1685,7 @@ async def apply_night_actions(game_id: int):
 
     if spy_id and spy_target and is_alive(game, spy_id):
         target_user = alive_users_map.get(int(spy_target))
-        target_name = target_user.get("first_name") if target_user else str(spy_target)
+        target_name = uname(spy_target) if target_user else str(spy_target)
 
         real_role_key = roles.get(int(spy_target))
         real_role_text = get_role_labels_lang(int(spy_target)).get(real_role_key, "Unknown")
@@ -2045,7 +2064,7 @@ async def build_final_turnir_text(game_id: int, winner_team: str):
     game = games_state.get(game_id)
     if not game:
         return "O'yin tugadi."
-
+    roles = game.get("roles", {})
     players_team = game.get("players_team", {})
     all_players = game.get("players", [])
     users_map = game.get("users_map", {})
@@ -2062,11 +2081,13 @@ async def build_final_turnir_text(game_id: int, winner_team: str):
     loosers_list = []
 
     for tg_id in ids_in_order:
+        role_key = roles.get(tg_id)
         team = players_team.get(tg_id)
         user = users_map.get(tg_id)
 
         name = user.get("first_name") if user else str(tg_id)
-        line = f"    {COLOR_EMOJIS.get(team, '')}{name}"
+        role_txt = role_label(role_key,chat_id)
+        line = f"    {COLOR_EMOJIS.get(team, '')}{name} - {role_txt}"
 
         # ❗ alive tekshirilmaydi
         if team == winner_team:

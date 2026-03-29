@@ -802,7 +802,13 @@ def doc_btn(players,doctor_id=None,game_id=None,chat_id=None,day=None):
     builder = InlineKeyboardBuilder()
     game = games_state.get(int(game_id), {})
     used_self = game.get("limits", {}).get("doc_self_heal_used", set())
+    game_type= game.get("meta", {}).get("game_type")
+    players_team = game.get("players_team", {})
     for player in players :
+        if game_type == "turnir":
+            team_emoji = COLOR_EMOJIS.get(players_team.get(player.get("tg_id")), "")
+        else:
+            team_emoji = "" 
         first_name = player.get("first_name")
         tg_id = player.get("tg_id")
         if tg_id == doctor_id and doctor_id in used_self:
@@ -810,7 +816,7 @@ def doc_btn(players,doctor_id=None,game_id=None,chat_id=None,day=None):
         callback=f"doc_{tg_id}_{game_id}_{chat_id}_{day}"
     
         button = InlineKeyboardButton(
-            text=first_name,
+            text=f"{team_emoji} {first_name}",
             callback_data=callback
         )
         builder.add(button)
@@ -848,12 +854,19 @@ def com_inline_action_btn(action,game_id,chat_id,day=None,com_id=None):
     alive_players = game.get("alive", [])
     users_map = game.get("users_map", {})
     alive_users_qs = [users_map[tg_id] for tg_id in alive_players if tg_id in users_map]
+    game_type= game.get("meta", {}).get("game_type")
+    players_team = game.get("players_team", {})
     for user in alive_users_qs:
         
         if user.get("tg_id") == com_id:
             continue
+        if game_type == "turnir":
+            team_emoji = COLOR_EMOJIS.get(players_team.get(user.get("tg_id")), "")
+        else:
+            team_emoji = ""
+        
         button = InlineKeyboardButton(
-            text=f"{user.get("first_name")}",
+            text=f"{team_emoji} {user.get("first_name")}",
             callback_data=f"{action}_{user.get("tg_id")}_{game_id}_{day}"
         )
         builder.add(button)
@@ -870,13 +883,19 @@ def com_inline_action_btn(action,game_id,chat_id,day=None,com_id=None):
 
 def action_inline_btn(action,own_id,players,game_id,chat_id,day=None):
     builder = InlineKeyboardBuilder()
-
+    game = games_state.get(int(game_id), {})
+    game_type= game.get("meta", {}).get("game_type")
+    players_team = game.get("players_team", {})
     for player in players:
         tg_id = player.get("tg_id")
         first_name = player.get("first_name")
         if tg_id == own_id:
             continue
-        text = first_name 
+        if game_type == "turnir":
+            team_emoji = COLOR_EMOJIS.get(players_team.get(tg_id), "")
+        else:
+            team_emoji = ""
+        text = f"{team_emoji} {first_name}"
         button = InlineKeyboardButton(
             text=text,
             callback_data=f"{action}_{tg_id}_{game_id}_{chat_id}_{day}"
@@ -913,12 +932,19 @@ def confirm_hang_inline_btn(voted_user_id,game_id,chat_id,yes=0, no=0):
 
 def don_inline_btn(players,  game_id, chat_id, don_id,day=None):
     builder = InlineKeyboardBuilder()
-
-    roles_map = games_state.get(int(game_id), {}).get("roles", {})
+    game = games_state.get(int(game_id), {})
+    roles_map = game.get("roles", {})
+    game_type= game.get("meta", {}).get("game_type")
+    players_team = game.get("players_team", {})
 
     for player in players:
+        if game_type == "turnir":
+            team_emoji = COLOR_EMOJIS.get(players_team.get(player.get("tg_id")), "")
+        else:
+            team_emoji = ""
+            
         tg_id = player.get("tg_id")
-        first_name = player.get("first_name")
+        first_name = f"{team_emoji} {player.get("first_name")}"
         role = roles_map.get(tg_id)
 
         if tg_id == don_id:
@@ -951,12 +977,18 @@ def don_inline_btn(players,  game_id, chat_id, don_id,day=None):
 
 def mafia_inline_btn(players, game_id,day=None):
     builder = InlineKeyboardBuilder()
-
-    roles_map = games_state.get(int(game_id), {}).get("roles", {})
+    game = games_state.get(int(game_id), {})
+    roles_map = game.get("roles", {})
+    game_type = game.get("meta", {}).get("game_type")
+    players_team = game.get("players_team", {})
 
     for player in players:
+        if game_type == "turnir":
+            team_emoji = COLOR_EMOJIS.get(players_team.get(player.get("tg_id")), "")
+        else:
+            team_emoji = ""
         tg_id = player.get("tg_id")
-        first_name = player.get("first_name")
+        first_name = f"{team_emoji} {player.get("first_name")}"
         role = roles_map.get(tg_id)
 
         
@@ -989,10 +1021,17 @@ def mafia_inline_btn(players, game_id,day=None):
 
 def adv_inline_btn(players,  game_id, chat_id,day=None):
     builder = InlineKeyboardBuilder()
-    roles_map = games_state.get(int(game_id), {}).get("roles", {})
+    game = games_state.get(int(game_id), {})
+    roles_map = game.get("roles", {})
+    game_type = game.get("meta", {}).get("game_type")
+    players_team = game.get("players_team", {})
     for player in players:
+        if game_type == "turnir":
+            team_emoji = COLOR_EMOJIS.get(players_team.get(player.get("tg_id")), "")
+        else:
+            team_emoji = ""
         tg_id = player.get("tg_id")
-        first_name = player.get("first_name")
+        first_name = f"{team_emoji} {player.get('first_name')}"
         role = roles_map.get(tg_id)
         if role not in ["don", "mafia"]:
             continue
@@ -1018,10 +1057,17 @@ def adv_inline_btn(players,  game_id, chat_id,day=None):
 
 def spy_inline_btn(players,  game_id, chat_id,day=None,spy_id=None):
     builder = InlineKeyboardBuilder()
-    roles_map = games_state.get(int(game_id), {}).get("roles", {})
+    game = games_state.get(int(game_id), {})
+    roles_map = game.get("roles", {})
+    game_type = game.get("meta", {}).get("game_type")
+    players_team = game.get("players_team", {})
     for player in players:
+        if game_type == "turnir":
+            team_emoji = COLOR_EMOJIS.get(players_team.get(player.get("tg_id")), "")
+        else:
+            team_emoji = ""
         tg_id = player.get("tg_id")
-        first_name = player.get("first_name")
+        first_name = f"{team_emoji} {player.get('first_name')}"
         role = roles_map.get(tg_id)
         
         if tg_id == spy_id:
@@ -1052,9 +1098,16 @@ def spy_inline_btn(players,  game_id, chat_id,day=None,spy_id=None):
 
 def lab_inline_btn(players, lab_id, game_id, chat_id,day=None):
     builder = InlineKeyboardBuilder()
+    game = games_state.get(int(game_id), {})
+    game_type = game.get("meta", {}).get("game_type")
+    players_team = game.get("players_team", {})
     for player in players:
+        if game_type == "turnir":
+            team_emoji = COLOR_EMOJIS.get(players_team.get(player.get("tg_id")), "")
+        else:
+            team_emoji = ""
         tg_id = player.get("tg_id")
-        first_name = player.get("first_name")
+        first_name = f"{team_emoji} {player.get('first_name')}"
         if tg_id == lab_id:
             continue
         
@@ -1126,10 +1179,15 @@ def professor_gift_inline_btn(game_id,day=None,professor_id=None,chat_id=None):
     
 def hang_inline_btn(players, own_id, game_id, chat_id,day=None):
     builder = InlineKeyboardBuilder()
-
+    game = games_state.get(int(game_id), {})
+    game_type = game.get("meta", {}).get("game_type")
+    players_team = game.get("players_team", {})
     for tg_id, first_name in players.values():
         if tg_id == own_id:
             continue
+        if game_type == "turnir":
+            team_emoji = COLOR_EMOJIS.get(players_team.get(tg_id), "")
+            first_name = f"{team_emoji} {first_name}"
         text = first_name
         button = InlineKeyboardButton(
             text=text,
