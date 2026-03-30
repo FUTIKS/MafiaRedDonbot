@@ -652,6 +652,8 @@ async def stop_registration(game_id=None, chat_id=None, instant=False):
         game = Game.objects.filter(id=game_id,is_active_game=True,is_started=False).first()
     else:
         game = Game.objects.filter(chat_id=chat_id, is_active_game=True, is_started=False).first()
+    if not game:
+        return
     
     all_players = games_state.get(game.id, {}).get("players", [])
     players_count = len(all_players)
@@ -1057,7 +1059,7 @@ async def admin_moderation_commands(message: Message) -> None:
     is_admin = await is_group_admin(chat_id, tg_id)
     if not is_admin:
         return
-    if  message.reply_to_message or  message.reply_to_message.from_user:
+    if  message.reply_to_message and  message.reply_to_message.from_user:
         game_db = Game.objects.filter(chat_id=chat_id, is_active_game=True).first()
         if not game_db:
             return

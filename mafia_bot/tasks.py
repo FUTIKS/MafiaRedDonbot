@@ -1,8 +1,7 @@
 from celery import shared_task
-import asyncio
 from django.utils import timezone
 from django.db.models import Sum
-from asgiref.sync import sync_to_async
+from asgiref.sync import async_to_sync, sync_to_async
 
 from mafia_bot.models import MostActiveUser, User
 from dispatcher import bot
@@ -10,10 +9,9 @@ from dispatcher import bot
 
 @shared_task
 def my_daily_task():
-    asyncio.run(send_top())
+    async_to_sync(send_top)()
 
 
-@sync_to_async
 def get_top():
     now = timezone.now()
     since = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -34,7 +32,7 @@ def get_top():
 
 
 async def send_top():
-    top, users_map = await get_top()
+    top, users_map = await sync_to_async(get_top)()
 
     medals = ["🥇", "🥈", "🥉"]
     lines = []
@@ -44,7 +42,7 @@ async def send_top():
         if not user:
             continue
 
-        mention = f"{user.first_name}"
+        mention = user.first_name or "User"
         win = row["wins"] or 0
 
         if idx <= 3:
@@ -52,7 +50,10 @@ async def send_top():
         else:
             lines.append(f"{idx}. {mention} — {win * 5} ball")
 
-    text = "🏆 Oyning top 30 óyinchilari\n\n" + "\n".join(lines)
+    if not lines:
+        text = "🏆 Bu oy hali natijalar yo‘q"
+    else:
+        text = "🏆 Oyning top 30 óyinchilari\n\n" + "\n".join(lines)
 
     await bot.send_message(
         chat_id="@MafiaRedDonOfficial",
