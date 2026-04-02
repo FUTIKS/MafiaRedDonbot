@@ -1,15 +1,16 @@
 from celery import shared_task
 from django.utils import timezone
 from django.db.models import Sum
-from asgiref.sync import async_to_sync, sync_to_async
+from asgiref.sync import  sync_to_async
 
+from decouple import config
 from mafia_bot.models import MostActiveUser, User
-from dispatcher import bot
-
-
+from aiogram import Bot
+TOKEN = config("BOT_TOKEN")
 @shared_task
 def my_daily_task():
-    async_to_sync(send_top)()
+    import asyncio
+    asyncio.run(send_top())
 
 
 def get_top():
@@ -32,7 +33,7 @@ def get_top():
 
 
 async def send_top():
-    top, users_map = await sync_to_async(get_top)()
+    top, users_map = await sync_to_async(get_top, thread_sensitive=True)()
 
     medals = ["🥇", "🥈", "🥉"]
     lines = []
@@ -54,9 +55,12 @@ async def send_top():
         text = "🏆 Bu oy hali natijalar yo‘q"
     else:
         text = "🏆 Oyning top 30 óyinchilari\n\n" + "\n".join(lines)
+    
+    bot = Bot(TOKEN)
 
     await bot.send_message(
         chat_id="@MafiaRedDonOfficial",
         text=text,
         parse_mode="HTML"
     )
+    await bot.session.close()
