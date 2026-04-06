@@ -603,22 +603,18 @@ def shop_inline_btn(tg_id):
 
 
 def parse_role_text(text: str):
-    emoji_id = None
-
-    # custom emoji id olish
+    # emoji id olish
     id_match = re.search(r"emoji-id=['\"](\d+)['\"]", text)
-    if id_match:
-        emoji_id = id_match.group(1)
+    emoji_id = id_match.group(1) if id_match else None
 
-    # HTML taglarni olib tashlash
-    clean = re.sub(r"<.*?>", "", text)
+    # <tg-emoji>...</tg-emoji> ni to‘liq olib tashlaymiz
+    clean = re.sub(r"<tg-emoji[^>]*>.*?</tg-emoji>", "", text)
 
-    if emoji_id:
-        # agar custom emoji bo‘lsa → oldidagi emoji ham olib tashlaymiz
-        clean = re.sub(r"^[\U00010000-\U0010ffff]+", "", clean).strip()
-    else:
-        # agar custom emoji yo‘q bo‘lsa → oddiy emoji qolsin
-        clean = clean.strip()
+    # boshqa HTML taglar bo‘lsa ham olib tashlaymiz
+    clean = re.sub(r"<.*?>", "", clean)
+
+    # boshidagi oddiy emoji(lar) ni ham olib tashlash
+    clean = re.sub(r"^[^\w\s]+", "", clean).strip()
 
     return {
         "emoji_id": emoji_id,
