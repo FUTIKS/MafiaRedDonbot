@@ -27,6 +27,7 @@ class User(SafeBaseModel):
     role = models.CharField(max_length=50, choices=USER_ROLES, default='user')
     is_vip=models.BooleanField(default=False)
     is_hero = models.BooleanField(default=False)
+    is_premium = models.BooleanField(default=False)
     hero_level = models.IntegerField(default=1)
     geroy_protection = models.IntegerField(default=0)
     is_protected = models.BooleanField(default=True)
@@ -144,25 +145,25 @@ class GroupTrials(SafeBaseModel):
     
   
 money_in_money_default = (
-    "77 Рубль | 10 000 UZS - 💶 13 000\n"
-"385 Рубль | 50 000 UZS - 💶 65 000\n"
-"770 Рубль | 100 000 UZS - 💶 130 000\n"
-"3850 Рубль | 500 000 UZS - 💶 650 000\n"
-"7700 Рубль | 1 000 000 UZS - 💶 1 300 000"
+    "77 Рубль | 10 000 UZS - <tg-emoji emoji-id='5472030678633684592'>💶</tg-emoji> 13 000\n"
+"385 Рубль | 50 000 UZS - <tg-emoji emoji-id='5472030678633684592'>💶</tg-emoji> 65 000\n"
+"770 Рубль | 100 000 UZS - <tg-emoji emoji-id='5472030678633684592'>💶</tg-emoji> 130 000\n"
+"3850 Рубль | 500 000 UZS - <tg-emoji emoji-id='5472030678633684592'>💶</tg-emoji> 650 000\n"
+"7700 Рубль | 1 000 000 UZS - <tg-emoji emoji-id='5472030678633684592'>💶</tg-emoji> 1 300 000"
 )
 
 stone_in_money_default = (
-    "77 Рубль | 10 000 UZS - 💎 10\n"
-    "208 Рубль | 27 000 UZS - 💎 30\n"
-    "323 Рубль | 42 000 UZS - 💎 50\n"
-    "431 Рубль | 56 000 UZS - 💎 70\n"
-    "577 Рубль | 75 000 UZS - 💎 100\n"
-    "1154 Рубль | 150 000 UZS - 💎 200\n"
-    "1731 Рубль | 225 000 UZS - 💎 300\n"
-    "2770 Рубль | 360 000 UZS - 💎 500\n"
-    "5834 Рубль | 700 000 UZS - 💎 1000\n"
-    "10154 Рубль | 1 320 000 UZS - 💎 2000\n"
-    "14308 Рубль | 1 860 000 UZS - 💎 3000"
+    "77 Рубль | 10 000 UZS - <tg-emoji emoji-id='5471952986970267163'>💎</tg-emoji>10\n"
+    "208 Рубль | 27 000 UZS - <tg-emoji emoji-id='5471952986970267163'>💎</tg-emoji>30\n"
+    "323 Рубль | 42 000 UZS - <tg-emoji emoji-id='5471952986970267163'>💎</tg-emoji>50\n"
+    "431 Рубль | 56 000 UZS - <tg-emoji emoji-id='5471952986970267163'>💎</tg-emoji>70\n"
+    "577 Рубль | 75 000 UZS - <tg-emoji emoji-id='5471952986970267163'>💎</tg-emoji>100\n"
+    "1154 Рубль | 150 000 UZS - <tg-emoji emoji-id='5471952986970267163'>💎</tg-emoji>200\n"
+    "1731 Рубль | 225 000 UZS - <tg-emoji emoji-id='5471952986970267163'>💎</tg-emoji>300\n"
+    "2770 Рубль | 360 000 UZS - <tg-emoji emoji-id='5471952986970267163'>💎</tg-emoji>500\n"
+    "5834 Рубль | 700 000 UZS - <tg-emoji emoji-id='5471952986970267163'>💎</tg-emoji>1000\n"
+    "10154 Рубль | 1 320 000 UZS - <tg-emoji emoji-id='5471952986970267163'>💎</tg-emoji>2000\n"
+    "14308 Рубль | 1 860 000 UZS - <tg-emoji emoji-id='5471952986970267163'>💎</tg-emoji>3000"
 )
 
 

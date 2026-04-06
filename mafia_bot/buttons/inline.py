@@ -1,4 +1,5 @@
 import random
+import re
 from decouple import config
 from django.utils import timezone
 from mafia_bot.utils import games_state
@@ -20,14 +21,14 @@ def group_profile_inline_btn(has_stone, chat_id,tg_id):
     TEXTS = {
         "uz": {
             "premium": "💎 Olmosni premiumga o'tkazish",
-            "buy_star": "⭐ evaziga 💎 sotib olish",
+            "buy_star": "⭐ evaziga  💎 sotib olish",
             "card": "💳 Kartadan 💳 kartaga",
             "manage": "🛠 O'yin boshqarish",
             "lang":"🌐 Tilni o'zgartirish",
             "close": "✖️ Yopish",
         },
         "ru": {
-            "premium": "💎 Перевести алмазы в премиум",
+            "premium": "  💎 Перевести алмазы в премиум",
             "buy_star": "⭐ Купить 💎 за звёзды",
             "card": "💳 С карты на карту",
             "manage": "🛠 Управление игрой",
@@ -64,10 +65,12 @@ def group_profile_inline_btn(has_stone, chat_id,tg_id):
 
     keyboard4 = InlineKeyboardButton(
         text=t["premium"],
-        url=f"https://t.me/{remove_prefix(config('BOT_USERNAME'))}?start=stone_{chat_id}_{tg_id}"
+        url=f"https://t.me/{remove_prefix(config('BOT_USERNAME'))}?start=stone_{chat_id}_{tg_id}",
+        icon_custom_emoji_id="5471952986970267163"
     )
-    keyboard1 = InlineKeyboardButton(text=t["buy_star"], callback_data=f"star_group_{tg_id}")
-    keyboard2 = InlineKeyboardButton(text=t["card"], url="https://t.me/RedDon_Mafia")
+    keyboard1 = InlineKeyboardButton(text=t["buy_star"], callback_data=f"star_group_{tg_id}",
+                                     icon_custom_emoji_id="5471952986970267163")
+    keyboard2 = InlineKeyboardButton(text=t["card"], url="https://t.me/RedDon_Mafia", icon_custom_emoji_id="5445353829304387411")
     keyboard3 = InlineKeyboardButton(
         text=t["manage"],
         url=f"https://t.me/{remove_prefix(config('BOT_USERNAME'))}?start=instance_{chat_id}_{tg_id}"
@@ -164,17 +167,17 @@ def take_stone_btn(chat_id):
     lang = get_lang(chat_id)
 
     TEXTS = {
-        "uz": "💎 Olmosni olish",
-        "ru": "💎 Забрать алмаз",
-        "en": "💎 Take diamond",
-        "tr": "💎 Elması al",
-        "qz": "💎 Алмосты алу",
+        "uz": "Olmosni olish",
+        "ru": "Забрать алмаз",
+        "en": "Take diamond",
+        "tr": "Elması al",
+        "qz": "Алмосты алу",
     }
 
     text = TEXTS.get(lang, TEXTS["uz"])
 
     kb = InlineKeyboardBuilder()
-    kb.add(InlineKeyboardButton(text=text,style="success", callback_data="take_stone"))
+    kb.add(InlineKeyboardButton(text=text,style="success", callback_data="take_stone",icon_custom_emoji_id="5471952986970267163"))
     return kb.as_markup()
 
 def take_gsend_stone_btn(chat_id):
@@ -183,17 +186,17 @@ def take_gsend_stone_btn(chat_id):
     lang = get_lang(chat_id)
 
     TEXTS = {
-        "uz": "💎 Olmosni olish",
-        "ru": "💎 Забрать алмаз",
-        "en": "💎 Take diamond",
-        "tr": "💎 Elması al",
-        "qz": "💎 Алмосты алу",
+        "uz": "Olmosni olish",
+        "ru": "Забрать алмаз",
+        "en": "Take diamond",
+        "tr": "Elması al",
+        "qz": "Алмосты алу",
     }
 
     text = TEXTS.get(lang, TEXTS["uz"])
 
     kb = InlineKeyboardBuilder()
-    kb.add(InlineKeyboardButton(text=text, style="success",callback_data="take_gsend_stone"))
+    kb.add(InlineKeyboardButton(text=text, style="success",callback_data="take_gsend_stone",icon_custom_emoji_id="5471952986970267163"))
     return kb.as_markup()
 
 def giveaway_join_btn(tg_id):
@@ -202,24 +205,24 @@ def giveaway_join_btn(tg_id):
     lang = get_lang(tg_id)
 
     TEXTS = {
-        "uz": "✅ Giveawayga qo‘shilish",
-        "ru": "✅ Участвовать в розыгрыше",
-        "en": "✅ Join giveaway",
-        "tr": "✅ Çekilişe katıl",
-        "qz": "✅ Giveawayға қосылу",
+        "uz": "Giveawayga qo‘shilish",
+        "ru": "Участвовать в розыгрыше",
+        "en": "Join giveaway",
+        "tr": "Çekilişe katıl",
+        "qz": "Giveawayға қосылу",
     }
 
     text = TEXTS.get(lang, TEXTS["uz"])
 
     kb = InlineKeyboardBuilder()
-    kb.add(InlineKeyboardButton(text=text, style="success", callback_data="giveaway_join"))
+    kb.add(InlineKeyboardButton(text=text, style="success", callback_data="giveaway_join",icon_custom_emoji_id="5465327879657102830"))
     return kb.as_markup()
 
 
 def admin_inline_btn():
     keyboard1 = InlineKeyboardButton(text=" 💬 Guruhlar obunasi", callback_data="trial")
     keyboard2 = InlineKeyboardButton(text=" ⭐ Premium guruhlar", callback_data="premium_group")
-    keyboard15 = InlineKeyboardButton(text="💎 Kanalga olmos jo'natish", callback_data="send_channel")
+    keyboard15 = InlineKeyboardButton(text=" 💎 Kanalga olmos jo'natish", callback_data="send_channel")
     keyboard3 = InlineKeyboardButton(text=" 👥 Foydalanuvchi bilan aloqa", callback_data="user_talk")
     keyboard4 = InlineKeyboardButton(text=" 📢 Botga habar jo'natish", callback_data="broadcast_message")
     keyboard5 = InlineKeyboardButton(text=" 📊 Statistika", callback_data="statistics")
@@ -229,7 +232,7 @@ def admin_inline_btn():
     keyboard9 = InlineKeyboardButton(text=" 💎 Olmos yechib olish",callback_data="remove_olmos")
     keyboard17 = InlineKeyboardButton(text=" ⚠️ Foydalanuvchini bloklash",callback_data="user_block")
     keyboard16 = InlineKeyboardButton(text=" ✅ Foydalanuvchini ochish",callback_data="user_unblock")
-    keyboard10 = InlineKeyboardButton(text=" 💰 Pul narxini o'zgartirish",callback_data="change_money")
+    keyboard10 = InlineKeyboardButton(text=" 📦 Pul narxini o'zgartirish",callback_data="change_money")
     keyboard11 = InlineKeyboardButton(text=" 💎 Olmos narxini o'zgartirish",callback_data="change_stone")
     keyboard12 = InlineKeyboardButton(text=" 💳 O'tkazmalar tarixi",callback_data="transfer_history")
     keyboard13 = InlineKeyboardButton(text="📥 Users Excel", callback_data="export_users_excel")
@@ -261,11 +264,11 @@ def answer_admin(tg_id, msg_id):
     lang = get_lang(tg_id)
 
     TEXTS = {
-        "uz": "✍️ Javob berish",
-        "ru": "✍️ Ответить",
-        "en": "✍️ Reply",
-        "tr": "✍️ Yanıtla",
-        "qz": "✍️ Жауап беру",
+        "uz": "Javob berish",
+        "ru": "Ответить",
+        "en": "Reply",
+        "tr": "Yanıtla",
+        "qz": "Жауап беру",
     }
 
     text = TEXTS.get(lang, TEXTS["uz"])
@@ -274,7 +277,8 @@ def answer_admin(tg_id, msg_id):
         [
             InlineKeyboardButton(
                 text=text,
-                callback_data=f"answer_admin_{tg_id}_{msg_id}"
+                callback_data=f"answer_admin_{tg_id}_{msg_id}",
+                icon_custom_emoji_id="5192825506239616944"
             ),
         ],
     ])
@@ -286,7 +290,7 @@ def answer_admin(tg_id, msg_id):
 def end_talk_keyboard():
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(text="🛑 Suhbatni yakunlash", callback_data="end_talk"),
+            InlineKeyboardButton(text="Suhbatni yakunlash", callback_data="end_talk",icon_custom_emoji_id="5445080884132719243"),
         ],
     ])
     return keyboard
@@ -297,18 +301,18 @@ def back_btn(tg_id, place="profile"):
     lang = get_lang(tg_id)
 
     TEXTS = {
-        "uz": "⬅️ Orqaga",
-        "ru": "⬅️ Назад",
-        "en": "⬅️ Back",
-        "tr": "⬅️ Geri",
-        "qz": "⬅️ Артқа",
+        "uz": "Orqaga",
+        "ru": "Назад",
+        "en": "Back",
+        "tr": "Geri",
+        "qz": "Артқа",
     }
 
     text = TEXTS.get(lang, TEXTS["uz"])
 
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text=text, callback_data=f"back_{place}")]
+            [InlineKeyboardButton(text=text, callback_data=f"back_{place}",icon_custom_emoji_id="5854967531793550989")]
         ]
     )
     return keyboard
@@ -317,7 +321,7 @@ def back_btn(tg_id, place="profile"):
 def back_admin_btn():
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="⬅️ Orqaga", callback_data="back_admin")]
+            [InlineKeyboardButton(text="Orqaga", callback_data="back_admin",icon_custom_emoji_id="5854967531793550989")]
         ]
     )
     return keyboard
@@ -328,34 +332,34 @@ def case_inline_btn(tg_id):
 
     TEXTS = {
         "uz": {
-            "money": "💰 Pulli sandiq",
-            "stone": "💎 Olmosli sandiq",
-            "vip": "⭐ Vip foydalanuvchi",
-            "back": "⬅️ Orqaga",
+            "money": "Pulli sandiq",
+            "stone": "Olmosli sandiq",
+            "vip": "Vip foydalanuvchi",
+            "back": "Orqaga",
         },
         "ru": {
-            "money": "💰 Денежный сундук",
-            "stone": "💎 Алмазный сундук",
-            "vip": "⭐ VIP пользователь",
-            "back": "⬅️ Назад",
+            "money": "Денежный сундук",
+            "stone": "Алмазный сундук",
+            "vip": "VIP пользователь",
+            "back": "Назад",
         },
         "en": {
-            "money": "💰 Money chest",
-            "stone": "💎 Diamond chest",
-            "vip": "⭐ VIP user",
-            "back": "⬅️ Back",
+            "money": "Money chest",
+            "stone": "Diamond chest",
+            "vip": "VIP user",
+            "back": "Back",
         },
         "tr": {
-            "money": "💰 Para sandığı",
-            "stone": "💎 Elmas sandığı",
-            "vip": "⭐ VIP kullanıcı",
-            "back": "⬅️ Geri",
+            "money": "Para sandığı",
+            "stone": "Elmas sandığı",
+            "vip": "VIP kullanıcı",
+            "back": "Geri",
         },
         "qz": {
-            "money": "💰 Ақша сандық",
-            "stone": "💎 Алмас сандық",
-            "vip": "⭐ VIP қолданушы",
-            "back": "⬅️ Артқа",
+            "money": "Ақша сандық",
+            "stone": "Алмас сандық",
+            "vip": "VIP қолданушы",
+            "back": "Артқа",
         },
     }
 
@@ -363,10 +367,10 @@ def case_inline_btn(tg_id):
 
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text=t["money"], callback_data="case_money")],
-            [InlineKeyboardButton(text=t["stone"], callback_data="case_stone")],
+            [InlineKeyboardButton(text=t["money"], callback_data="case_money",icon_custom_emoji_id="5472030678633684592")],
+            [InlineKeyboardButton(text=t["stone"], callback_data="case_stone",icon_custom_emoji_id="5471952986970267163")],
             # [InlineKeyboardButton(text=t["vip"], callback_data="case_vip")],
-            [InlineKeyboardButton(text=t["back"], callback_data="back_profile")],
+            [InlineKeyboardButton(text=t["back"], callback_data="back_profile",icon_custom_emoji_id="5854967531793550989")],
         ]
     )
 
@@ -380,74 +384,79 @@ def cart_inline_btn(tg_id):
 
     TEXTS = {
         "uz": {
-            "toggle_protection":f"🛡 - {'ON' if user.is_protected else 'OFF'}",
-            "toggle_doc": f"📂 - {'ON' if user.is_doc else 'OFF'}",
-            "toggle_hang":f"🎗️ - {'ON' if user.is_hang_protected else 'OFF'}",
-            "toggle_geroy_protect":f"🔰 - {'ON' if user.is_geroy_protected else 'OFF'} ",
-            "toggle_geroy_use":f"🥷 - {'ON' if user.is_geroy_use else 'OFF'} ",
-            "toggle_active_role_use":f"🎭 - {'ON' if user.is_active_role_use else 'OFF'} ",
-            "shop": "🛒 Do'kon",
-            "buy_money": "💶 Sotib olish",
-            "buy_stone": "💎 Sotib olish",
-            "hero": "🥷 Mening Geroyim",
-            "premium": "⭐ Premium guruhlar",
-            "cases": "📦 Sandiqlar",
+            "toggle_protection":f"- {'ON' if user.is_protected else 'OFF'}",
+            "toggle_doc": f"- {'ON' if user.is_doc else 'OFF'}",
+            "toggle_hang":f"- {'ON' if user.is_hang_protected else 'OFF'}",
+            "toggle_geroy_protect":f"- {'ON' if user.is_geroy_protected else 'OFF'} ",
+            "toggle_geroy_use":f" - {'ON' if user.is_geroy_use else 'OFF'} ",
+            "toggle_active_role_use":f"- {'ON' if user.is_active_role_use else 'OFF'} ",
+            "toggle_premium":f"- {'ON' if user.is_premium else 'OFF'} ",
+            "shop": "Do'kon",
+            "buy_money": "Sotib olish",
+            "buy_stone": "Sotib olish",
+            "hero": " Mening Geroyim",
+            "premium": "Premium guruhlar",
+            "cases": "Sandiqlar",
         },
         "ru": {
-            "toggle_protection":f"🛡 - {'ВКЛ' if user.is_protected else 'ВЫКЛ'}",
-            "toggle_doc": f"📂 - {'ВКЛ' if user.is_doc else 'ВЫКЛ'}",
-            "toggle_hang":f"🎗️ - {'ВКЛ' if user.is_hang_protected else 'ВЫКЛ'}",
-            "toggle_geroy_protect":f"🔰 - {'ВКЛ' if user.is_geroy_protected else 'ВЫКЛ'}",
-            "toggle_geroy_use":f"🥷 - {'ВКЛ' if user.is_geroy_use else 'ВЫКЛ'}",
-            "toggle_active_role_use":f"🎭 - {'ВКЛ' if user.is_active_role_use else 'ВЫКЛ'}",
-            "shop": "🛒 Магазин",
-            "buy_money": "💶 Купить",
-            "buy_stone": "💎 Купить",
-            "hero": "🥷 Мой Герой",
-            "premium": "⭐ Премиум группы",
-            "cases": "📦 Сундуки",
+            "toggle_protection":f"- {'ВКЛ' if user.is_protected else 'ВЫКЛ'}",
+            "toggle_doc": f"- {'ВКЛ' if user.is_doc else 'ВЫКЛ'}",
+            "toggle_hang":f"- {'ВКЛ' if user.is_hang_protected else 'ВЫКЛ'}",
+            "toggle_geroy_protect":f"- {'ВКЛ' if user.is_geroy_protected else 'ВЫКЛ'}",
+            "toggle_geroy_use":f" - {'ВКЛ' if user.is_geroy_use else 'ВЫКЛ'}",
+            "toggle_active_role_use":f"- {'ВКЛ' if user.is_active_role_use else 'ВЫКЛ'}",
+            "toggle_premium":f"- {'ВКЛ' if user.is_premium else 'ВЫКЛ'}",
+            "shop": "Магазин",
+            "buy_money": "Купить",
+            "buy_stone": "Купить",
+            "hero": " Мой Герой",
+            "premium": "Премиум группы",
+            "cases": "Сундуки",
         },
         "en": {
-            "toggle_protection":f"🛡 - {'ON' if user.is_protected else 'OFF'}",
-            "toggle_doc": f"📂 - {'ON' if user.is_doc else 'OFF'}",
-            "toggle_hang":f"🎗️ - {'ON' if user.is_hang_protected else 'OFF'}",
-            "toggle_geroy_protect":f"🔰 - {'ON' if user.is_geroy_protected else 'OFF'}",
-            "toggle_geroy_use":f"🥷 - {'ON' if user.is_geroy_use else 'OFF'}",
-            "toggle_active_role_use":f"🎭 - {'ON' if user.is_active_role_use else 'OFF'}",
-            "shop": "🛒 Shop",
-            "buy_money": "💶 Buy",
-            "buy_stone": "💎 Buy",
-            "hero": "🥷 My Hero",
-            "premium": "⭐ Premium groups",
-            "cases": "📦 Chests",
+            "toggle_protection":f"- {'ON' if user.is_protected else 'OFF'}",
+            "toggle_doc": f"- {'ON' if user.is_doc else 'OFF'}",
+            "toggle_hang":f"- {'ON' if user.is_hang_protected else 'OFF'}",
+            "toggle_geroy_protect":f"- {'ON' if user.is_geroy_protected else 'OFF'}",
+            "toggle_geroy_use":f" - {'ON' if user.is_geroy_use else 'OFF'}",
+            "toggle_active_role_use":f"- {'ON' if user.is_active_role_use else 'OFF'}",
+            "toggle_premium":f"- {'ON' if user.is_premium else 'OFF'}",
+            "shop": "Shop",
+            "buy_money": "Buy",
+            "buy_stone": "Buy",
+            "hero": " My Hero",
+            "premium": "Premium groups",
+            "cases": "Chests",
         },
         "tr": {
-            "toggle_protection":f"🛡 - {'ON' if user.is_protected else 'OFF'}",
-            "toggle_doc": f"📂 - {'ON' if user.is_doc else 'OFF'}",
-            "toggle_hang":f"🎗️ - {'ON' if user.is_hang_protected else 'OFF'}",
-            "toggle_geroy_protect":f"🔰 - {'ON' if user.is_geroy_protected else 'OFF'}",
-            "toggle_geroy_use":f"🥷 - {'ON' if user.is_geroy_use else 'OFF'}",
-            "toggle_active_role_use":f"🎭 - {'ON' if user.is_active_role_use else 'OFF'}",
-            "shop": "🛒 Mağaza",
-            "buy_money": "💶 Satın al",
-            "buy_stone": "💎 Satın al",
-            "hero": "🥷 Kahramanım",
-            "premium": "⭐ Premium gruplar",
-            "cases": "📦 Sandıklar",
+            "toggle_protection":f"- {'ON' if user.is_protected else 'OFF'}",
+            "toggle_doc": f"- {'ON' if user.is_doc else 'OFF'}",
+            "toggle_hang":f"- {'ON' if user.is_hang_protected else 'OFF'}",
+            "toggle_geroy_protect":f"- {'ON' if user.is_geroy_protected else 'OFF'}",
+            "toggle_geroy_use":f" - {'ON' if user.is_geroy_use else 'OFF'}",
+            "toggle_active_role_use":f"- {'ON' if user.is_active_role_use else 'OFF'}",
+            "toggle_premium":f"- {'ON' if user.is_premium else 'OFF'}",
+            "shop": "Mağaza",
+            "buy_money": "Satın al",
+            "buy_stone": "Satın al",
+            "hero": " Kahramanım",
+            "premium": "Premium gruplar",
+            "cases": "Sandıklar",
         },
         "qz": {
-            "toggle_protection":f"🛡 - {'ВКЛ' if user.is_protected else 'ВЫКЛ'}",
-            "toggle_doc": f"📂 - {'ВКЛ' if user.is_doc else 'ВЫКЛ'}",
-            "toggle_hang":f"🎗️ - {'ВКЛ' if user.is_hang_protected else 'ВЫКЛ'}",
-            "toggle_geroy_protect":f"🔰 - {'ВКЛ' if user.is_geroy_protected else 'ВЫКЛ'}",
-            "toggle_geroy_use":f"🥷 - {'ВКЛ' if user.is_geroy_use else 'ВЫКЛ'}",
-            "toggle_active_role_use":f"🎭 - {'ВКЛ' if user.is_active_role_use else 'ВЫКЛ'}",
-            "shop": "🛒 Дүкен",
-            "buy_money": "💶 Сатып алу",
-            "buy_stone": "💎 Сатып алу",
-            "hero": "🥷 Менің Кейіпкерім",
-            "premium": "⭐ Премиум топтар",
-            "cases": "📦 Сандықтар",
+            "toggle_protection":f"- {'ВКЛ' if user.is_protected else 'ВЫКЛ'}",
+            "toggle_doc": f"- {'ВКЛ' if user.is_doc else 'ВЫКЛ'}",
+            "toggle_hang":f"- {'ВКЛ' if user.is_hang_protected else 'ВЫКЛ'}",
+            "toggle_geroy_protect":f"- {'ВКЛ' if user.is_geroy_protected else 'ВЫКЛ'}",
+            "toggle_geroy_use":f" - {'ВКЛ' if user.is_geroy_use else 'ВЫКЛ'}",
+            "toggle_active_role_use":f"- {'ВКЛ' if user.is_active_role_use else 'ВЫКЛ'}",
+            "toggle_premium":f"- {'ВКЛ' if user.is_premium else 'ВЫКЛ'}",
+            "shop": "Дүкен",
+            "buy_money": "Сатып алу",
+            "buy_stone": "Сатып алу",
+            "hero": " Менің Кейіпкерім",
+            "premium": "Премиум топтар",
+            "cases": "Сандықтар",
         },
     }
 
@@ -476,16 +485,19 @@ def cart_inline_btn(tg_id):
         style_active = "success"
     else:
         style_active ="danger"
-        
+    if user.is_premium:
+        style_premium = "success"
+    else:
+        style_premium = "danger"
 
     rows = [
         [
-            InlineKeyboardButton(text=t["toggle_protection"], style =style_protect, callback_data="toggle_protection"),
-            InlineKeyboardButton(text=t["toggle_doc"], style =style_doc, callback_data="toggle_doc"),
+            InlineKeyboardButton(text=t["toggle_protection"], style =style_protect, callback_data="toggle_protection",icon_custom_emoji_id="5465154440287757794"),
+            InlineKeyboardButton(text=t["toggle_doc"], style =style_doc, callback_data="toggle_doc",icon_custom_emoji_id="5431721976769027887"),
         ],
         [
-            InlineKeyboardButton(text=t["toggle_hang"],style =style_hang, callback_data="toggle_hang"),
-            InlineKeyboardButton(text=t["toggle_geroy_protect"], style=style_geroy, callback_data="toggle_geroy"),
+            InlineKeyboardButton(text=t["toggle_hang"],style =style_hang, callback_data="toggle_hang",icon_custom_emoji_id="5454172415070315962"),
+            InlineKeyboardButton(text=t["toggle_geroy_protect"], style=style_geroy, callback_data="toggle_geroy",icon_custom_emoji_id="5422729500662209912"),
         ],
     ]
 
@@ -493,26 +505,27 @@ def cart_inline_btn(tg_id):
 
     if user and user.is_hero:
         conditional_row.append(
-            InlineKeyboardButton(text=t["toggle_geroy_use"],style=style_use, callback_data="toggle_geroyuse")
+            InlineKeyboardButton(text=t["toggle_geroy_use"],style=style_use, callback_data="toggle_geroyuse",icon_custom_emoji_id="5325750848515488719")
         )
 
     if user and UserRole.objects.filter(user_id=user.id, quantity__gt=0).exists():
         conditional_row.append(
-            InlineKeyboardButton(text=t["toggle_active_role_use"], style=style_active, callback_data="toggle_activerole")
+            InlineKeyboardButton(text=t["toggle_active_role_use"], style=style_active, callback_data="toggle_activerole",icon_custom_emoji_id="5359441070201513074")
         )
 
     if conditional_row:
         rows.append(conditional_row)
 
     rows += [
-        [InlineKeyboardButton(text=t["shop"],  callback_data="cart")],
+        [InlineKeyboardButton(text=t["toggle_premium"], style=style_premium, callback_data="toggle_premium",icon_custom_emoji_id="5460646983779761865")],
+        [InlineKeyboardButton(text=t["shop"],  callback_data="cart",icon_custom_emoji_id="5431499171045581032")],
         [
-            InlineKeyboardButton(text=t["buy_money"],  callback_data="money_money"),
-            InlineKeyboardButton(text=t["buy_stone"],    callback_data="money_stone"),
+            InlineKeyboardButton(text=t["buy_money"],  callback_data="money_money",icon_custom_emoji_id="5472030678633684592"),
+            InlineKeyboardButton(text=t["buy_stone"],    callback_data="money_stone",icon_custom_emoji_id="5471952986970267163"),
         ],
-        [InlineKeyboardButton(text=t["hero"],  callback_data="geroy_no")],
-        [InlineKeyboardButton(text=t["premium"],  callback_data="groups")],
-        [InlineKeyboardButton(text=t["cases"],  callback_data="cases")],
+        [InlineKeyboardButton(text=t["hero"],  callback_data="geroy_no",icon_custom_emoji_id="5325750848515488719")],
+        [InlineKeyboardButton(text=t["premium"],  callback_data="groups",icon_custom_emoji_id="5229227046290343318")],
+        [InlineKeyboardButton(text=t["cases"],  callback_data="cases",icon_custom_emoji_id="6005639597332110711")],
     ]
 
     keyboard = InlineKeyboardMarkup(inline_keyboard=rows)
@@ -526,49 +539,49 @@ def shop_inline_btn(tg_id):
 
     TEXTS = {
         "uz": {
-            "protect": "🛡 Ximoya - 250 💵",
-            "docs": "📂 Hujjatlar - 500 💵",
-            "hang_money": "🎗️ Osilishdan ximoya - 20000 💵",
-            "hang_stone": "🎗️ Osilishdan ximoya - 20 💎",
-            "geroy_protect": "🔰 Geroy himoyasi - 10000 💵",
-            "role": "🎭 Rol sotib olish",
-            "back": "⬅️ Orqaga",
+            "protect": "Ximoya - 250 💵",
+            "docs": "Hujjatlar - 500 💵",
+            "hang_money": "Osilishdan ximoya - 20000 💵",
+            "hang_stone": "Osilishdan ximoya - 20 💎",
+            "geroy_protect": "Geroy himoyasi - 10000 💵",
+            "role": "Rol sotib olish",
+            "back": "Orqaga",
         },
         "ru": {
-            "protect": "🛡 Защита - 250 💵",
-            "docs": "📂 Документы - 500 💵",
-            "hang_money": "🎗️ Защита от повешения - 20000 💵",
-            "hang_stone": "🎗️ Защита от повешения - 20 💎",
-            "geroy_protect": "🔰 Защита героя - 10000 💵",
-            "role": "🎭 Купить роль",
-            "back": "⬅️ Назад",
+            "protect": "Защита - 250 💵",
+            "docs": "Документы - 500 💵",
+            "hang_money": "Защита от повешения - 20000 💵",
+            "hang_stone": "Защита от повешения - 20 💎",
+            "geroy_protect": "Защита героя - 10000 💵",
+            "role": "Купить роль",
+            "back": "Назад",
         },
         "en": {
-            "protect": "🛡 Protection - 250 💵",
-            "docs": "📂 Documents - 500 💵",
-            "hang_money": "🎗️ Hanging protection - 20000 💵",
-            "hang_stone": "🎗️ Hanging protection - 20 💎",
-            "geroy_protect": "🔰 Hero protection - 10000 💵",
-            "role": "🎭 Buy role",
-            "back": "⬅️ Back",
+            "protect": "Protection - 250 💵",
+            "docs": "Documents - 500 💵",
+            "hang_money": "Hanging protection - 20000 💵",
+            "hang_stone": "Hanging protection - 20 💎",
+            "geroy_protect": "Hero protection - 10000 💵",
+            "role": "Buy role",
+            "back": "Back",
         },
         "tr": {
-            "protect": "🛡 Koruma - 250 💵",
-            "docs": "📂 Belgeler - 500 💵",
-            "hang_money": "🎗️ Asılmaya karşı koruma - 20000 💵",
-            "hang_stone": "🎗️ Asılmaya karşı koruma - 20 💎",
-            "geroy_protect": "🔰 Kahraman koruması - 10000 💵",
-            "role": "🎭 Rol satın al",
-            "back": "⬅️ Geri",
+            "protect": "Koruma - 250 💵",
+            "docs": "Belgeler - 500 💵",
+            "hang_money": "Asılmaya karşı koruma - 20000 💵",
+            "hang_stone": "Asılmaya karşı koruma - 20 💎",
+            "geroy_protect": "Kahraman koruması - 10000 💵",
+            "role": "Rol satın al",
+            "back": "Geri",
         },
         "qz": {
-            "protect": "🛡 Қорғау - 250 💵",
-            "docs": "📂 Құжаттар - 500 💵",
-            "hang_money": "🎗️ Асудан қорғау - 20000 💵",
-            "hang_stone": "🎗️ Асудан қорғау - 20 💎",
-            "geroy_protect": "🔰 Герой қорғауы - 10000 💵",
-            "role": "🎭 Роль сатып алу",
-            "back": "⬅️ Артқа",
+            "protect": "Қорғау - 250 💵",
+            "docs": "Құжаттар - 500 💵",
+            "hang_money": "Асудан қорғау - 20000 💵",
+            "hang_stone": "Асудан қорғау - 20 💎",
+            "geroy_protect": "Герой қорғауы - 10000 💵",
+            "role": "Роль сатып алу",
+            "back": "Артқа",
         },
     }
 
@@ -576,18 +589,41 @@ def shop_inline_btn(tg_id):
 
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text=t["protect"], callback_data="buy_protection_0")],
-            [InlineKeyboardButton(text=t["docs"], callback_data="buy_docs_0")],
-            [InlineKeyboardButton(text=t["hang_money"], callback_data="buy_hangprotect_1")],
-            [InlineKeyboardButton(text=t["hang_stone"], callback_data="buy_hangprotect_2")],
-            [InlineKeyboardButton(text=t["geroy_protect"], callback_data="buy_geroyprotect_0")],
-            [InlineKeyboardButton(text=t["role"], callback_data="buy_activerole_0")],
-            [InlineKeyboardButton(text=t["back"], callback_data="back_profile")],
+            [InlineKeyboardButton(text=t["protect"], callback_data="buy_protection_0",icon_custom_emoji_id="5465154440287757794")],
+            [InlineKeyboardButton(text=t["docs"], callback_data="buy_docs_0",icon_custom_emoji_id="5431721976769027887")],
+            [InlineKeyboardButton(text=t["hang_money"], callback_data="buy_hangprotect_1",icon_custom_emoji_id="5454172415070315962")],
+            [InlineKeyboardButton(text=t["hang_stone"], callback_data="buy_hangprotect_2",icon_custom_emoji_id="5454172415070315962")],
+            [InlineKeyboardButton(text=t["geroy_protect"], callback_data="buy_geroyprotect_0",icon_custom_emoji_id="5422729500662209912")],
+            [InlineKeyboardButton(text=t["role"], callback_data="buy_activerole_0",icon_custom_emoji_id="5359441070201513074")],
+            [InlineKeyboardButton(text=t["back"], callback_data="back_profile",icon_custom_emoji_id="5854967531793550989")],
         ]
     )
 
     return keyboard
 
+
+def parse_role_text(text: str):
+    emoji_id = None
+
+    # custom emoji id olish
+    id_match = re.search(r"emoji-id=['\"](\d+)['\"]", text)
+    if id_match:
+        emoji_id = id_match.group(1)
+
+    # HTML taglarni olib tashlash
+    clean = re.sub(r"<.*?>", "", text)
+
+    if emoji_id:
+        # agar custom emoji bo‘lsa → oldidagi emoji ham olib tashlaymiz
+        clean = re.sub(r"^[\U00010000-\U0010ffff]+", "", clean).strip()
+    else:
+        # agar custom emoji yo‘q bo‘lsa → oddiy emoji qolsin
+        clean = clean.strip()
+
+    return {
+        "emoji_id": emoji_id,
+        "text": clean,
+    }
 
 def get_role_price(role_key: str):
     if role_key in ROLE_PRICES_IN_STONES:
@@ -604,18 +640,21 @@ def role_shop_inline_keyboard(user_id):
 
     for role_key, role_name in roles:
         cur, price = get_role_price(role_key)
+        parsed = parse_role_text(role_name)
 
         builder.add(
             InlineKeyboardButton(
-                text=f"{role_name} - {cur} {price}",
+                text=f"{parsed['text']} - {cur} {price}",
                 callback_data=f"active_{role_key}_{price}",
+                icon_custom_emoji_id=parsed['emoji_id']
             )
         )
 
     builder.add(
         InlineKeyboardButton(
-            text="⬅️ ",
-            callback_data="back_profile"
+            text="-",
+            callback_data="back_profile",
+            icon_custom_emoji_id="5854967531793550989"
         )
     )
 
@@ -630,27 +669,27 @@ def pay_for_money_inline_btn(tg_id, is_money):
         "uz": {
             "card": "💳 Kartadan 💳 kartaga",
             "stars": "⭐ Telegram yulduzlar evaziga",
-            "back": "⬅️ Orqaga",
+            "back": "Orqaga",
         },
         "ru": {
             "card": "💳 С карты на карту",
             "stars": "⭐ За Telegram звёзды",
-            "back": "⬅️ Назад",
+            "back": "Назад",
         },
         "en": {
             "card": "💳 Card to card",
             "stars": "⭐ Pay with Telegram Stars",
-            "back": "⬅️ Back",
+            "back": "Back",
         },
         "tr": {
             "card": "💳 Karttan karta",
             "stars": "⭐ Telegram yıldızları ile",
-            "back": "⬅️ Geri",
+            "back": "Geri",
         },
         "qz": {
             "card": "💳 Карттан карта",
             "stars": "⭐ Telegram жұлдыздарымен",
-            "back": "⬅️ Артқа",
+            "back": "Артқа",
         },
     }
 
@@ -672,7 +711,7 @@ def pay_for_money_inline_btn(tg_id, is_money):
         InlineKeyboardButton(text=t["stars"], callback_data=callback2)
     )
     builder.add(
-        InlineKeyboardButton(text=t["back"], callback_data="back_profile")
+        InlineKeyboardButton(text=t["back"], callback_data="back_profile", icon_custom_emoji_id="5854967531793550989")
     )
 
     builder.adjust(1)
@@ -710,23 +749,26 @@ def pay_using_stars_inline_btn(is_money: bool):
         for money_amount, star_amount in money_map.items():
             builder.add(
                 InlineKeyboardButton(
-                    text=f"💶 {money_amount} - ⭐ {star_amount}",
-                    callback_data=f"pul_{money_amount}_{star_amount}"
+                    text=f"{money_amount} - ⭐ {star_amount}",
+                    callback_data=f"pul_{money_amount}_{star_amount}",
+                    icon_custom_emoji_id="5472030678633684592"
                 )
             )
     else:
         for stone_amount, star_amount in stone_map.items():
             builder.add(
                 InlineKeyboardButton(
-                    text=f"💎 {stone_amount} - ⭐ {star_amount}",
-                    callback_data=f"olmos_{stone_amount}_{star_amount}"
+                    text=f"{stone_amount} - ⭐ {star_amount}",
+                    callback_data=f"olmos_{stone_amount}_{star_amount}",
+                    icon_custom_emoji_id="5471952986970267163"
                 )
             )
 
     builder.add(
         InlineKeyboardButton(
-            text="⬅️",
-            callback_data="back_profile"
+            text="-",
+            callback_data="back_profile",
+            icon_custom_emoji_id="5854967531793550989"
         )
     )
 
@@ -757,7 +799,8 @@ def join_game_btn(uuid,chat_id):
             [InlineKeyboardButton(
                 text=text,
                 style="success",
-                url=f"https://t.me/{remove_prefix(config('BOT_USERNAME'))}?start={uuid}"  # game.code yoki game.uuid
+                url=f"https://t.me/{remove_prefix(config('BOT_USERNAME'))}?start={uuid}",
+                icon_custom_emoji_id="5936138290519349485"  # game.code yoki game.uuid
             )]
         ]
     )
@@ -782,16 +825,20 @@ def go_to_bot_inline_btn(chat_id,number=1):
     t = get_lang_text(int(chat_id))
     if number == 1:
         text = t["view_role"]
+        emoji_id = "5359441070201513074"
     elif number == 2:
         text = t["go_to_bot"]
+        emoji_id = "5372981976804366741"
     elif number == 3:
         text = t["vote"]
+        emoji_id = "5359741159566484212"
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(
                 text=text,
                 style="success",
-                url=f"https://t.me/{remove_prefix(config('BOT_USERNAME'))}"  
+                url=f"https://t.me/{remove_prefix(config('BOT_USERNAME'))}"  ,
+                icon_custom_emoji_id=emoji_id
             )]
         ]
     )
@@ -822,7 +869,7 @@ def doc_btn(players,doctor_id=None,game_id=None,chat_id=None,day=None):
         builder.add(button)
     builder.add(
         InlineKeyboardButton(
-            text="🚷",
+            text="<tg-emoji emoji-id='5240241223632954241'>🚷</tg-emoji>",
             callback_data=f"doc_no_{game_id}_{chat_id}_{day}"
         )
     )
@@ -834,13 +881,13 @@ def doc_btn(players,doctor_id=None,game_id=None,chat_id=None,day=None):
 # Commander inline button
 def com_inline_btn(game_id,chat_id,day=None):
     builder = InlineKeyboardBuilder()
-    button1 = InlineKeyboardButton(text="🔫", callback_data=f"com_shoot_{game_id}_{chat_id}_{day}")
-    button2 = InlineKeyboardButton(text="🔍", callback_data=f"com_protect_{game_id}_{chat_id}_{day}")
+    button1 = InlineKeyboardButton(text="-", callback_data=f"com_shoot_{game_id}_{chat_id}_{day}",icon_custom_emoji_id="5406955262605019469")
+    button2 = InlineKeyboardButton(text="-", callback_data=f"com_protect_{game_id}_{chat_id}_{day}",icon_custom_emoji_id="5188217332748527444")
     builder.add(button1)
     builder.add(button2)
     builder.add(
         InlineKeyboardButton(
-            text="🚷",
+            text="<tg-emoji emoji-id='5240241223632954241'>🚷</tg-emoji>",
             callback_data=f"com_no_{game_id}_{chat_id}_{day}"
         )
     )
@@ -872,8 +919,9 @@ def com_inline_action_btn(action,game_id,chat_id,day=None,com_id=None):
         builder.add(button)
     builder.add(
         InlineKeyboardButton(
-            text="🔙",
-            callback_data=f"com_back_{game_id}_{chat_id}_{day}"
+            text="-",
+            callback_data=f"com_back_{game_id}_{chat_id}_{day}",
+            icon_custom_emoji_id="5854967531793550989"
         )
     )
     builder.adjust(1)
@@ -903,7 +951,7 @@ def action_inline_btn(action,own_id,players,game_id,chat_id,day=None):
         builder.add(button)
     
     button = InlineKeyboardButton(
-        text="🚷 ",
+        text="<tg-emoji emoji-id='5240241223632954241'>🚷</tg-emoji> ",
         callback_data=f"{action}_no_{game_id}_{chat_id}_{day}"
     )
     builder.add(button)
@@ -914,12 +962,14 @@ def action_inline_btn(action,own_id,players,game_id,chat_id,day=None):
 def confirm_hang_inline_btn(voted_user_id,game_id,chat_id,yes=0, no=0):
     builder = InlineKeyboardBuilder()
     button_yes = InlineKeyboardButton(
-        text=f"👍 {yes}",
-        callback_data=f"con_yes_{voted_user_id}_{game_id}_{chat_id}"
+        text=f"{yes}",
+        callback_data=f"con_yes_{voted_user_id}_{game_id}_{chat_id}",
+        icon_custom_emoji_id="5469770542288478598"
     )
     button_no = InlineKeyboardButton(
-        text=f"👎 {no}",
-        callback_data=f"con_no_{voted_user_id}_{game_id}_{chat_id}"
+        text=f"{no}",
+        callback_data=f"con_no_{voted_user_id}_{game_id}_{chat_id}",
+        icon_custom_emoji_id="5472309400536358507"
     )
     builder.add(button_yes)
     builder.add(button_no)
@@ -946,28 +996,31 @@ def don_inline_btn(players,  game_id, chat_id, don_id,day=None):
         tg_id = player.get("tg_id")
         first_name = f"{team_emoji} {player.get("first_name")}"
         role = roles_map.get(tg_id)
-
+        icon_emoji_id = None
         if tg_id == don_id:
             continue
         
         if role == "mafia":
             continue
         elif role == "spy":
-            text = f"🦇 {first_name}"
+            text = f"{first_name}"
+            icon_emoji_id = "5442769745050871204"
         elif role == "adv":
-            text = f"👨🏻‍💻 {first_name}"
+            text = f"{first_name}"
+            icon_emoji_id = "5190498849440931467"
         else:
             text = first_name
 
         builder.add(
             InlineKeyboardButton(
                 text=text,
-                callback_data=f"don_{tg_id}_{game_id}_{chat_id}_{day}"
+                callback_data=f"don_{tg_id}_{game_id}_{chat_id}_{day}",
+                icon_custom_emoji_id=icon_emoji_id
             )
         )
     builder.add(
         InlineKeyboardButton(
-            text="🚷 ",
+            text="<tg-emoji emoji-id='5240241223632954241'>🚷</tg-emoji> ",
             callback_data=f"don_no_{game_id}_{chat_id}_{day}"
     ))
 
@@ -991,28 +1044,31 @@ def mafia_inline_btn(players, game_id,day=None):
         first_name = f"{team_emoji} {player.get("first_name")}"
         role = roles_map.get(tg_id)
 
-        
+        icon_emoji_id = None
         
         if role == "mafia":
             continue
         elif role == "don":
             continue
         elif role == "spy":
-            text = f"🦇 {first_name}"
+            text = f"{first_name}"
+            icon_emoji_id = "5442769745050871204"
         elif role == "adv":
-            text = f"👨🏻‍💻 {first_name}"
+            text = f"{first_name}"
+            icon_emoji_id = "5190498849440931467"
         else:
             text = first_name
 
         builder.add(
             InlineKeyboardButton(
                 text=text,
-                callback_data=f"mafia_{tg_id}_{game_id}_{day}"
+                callback_data=f"mafia_{tg_id}_{game_id}_{day}",
+                icon_custom_emoji_id=icon_emoji_id
             )
         )
     builder.add(
         InlineKeyboardButton(
-            text="🚷 ",
+            text="<tg-emoji emoji-id='5240241223632954241'>🚷</tg-emoji> ",
             callback_data=f"mafia_no_{game_id}_{day}"
     ))
     builder.adjust(1)
@@ -1036,18 +1092,21 @@ def adv_inline_btn(players,  game_id, chat_id,day=None):
         if role not in ["don", "mafia"]:
             continue
         if role == "don":
-            text = f"🤵🏻 {first_name}"
+            text = f"{first_name}"
+            emoji_id = "5936138290519349485"
         else:
-            text = f"🤵🏼 {first_name}"
+            text = f"{first_name}"
+            emoji_id = "5897622767565543503"
         builder.add(
             InlineKeyboardButton(
                 text=text,
-                callback_data=f"adv_{tg_id}_{game_id}_{chat_id}_{day}"
+                callback_data=f"adv_{tg_id}_{game_id}_{chat_id}_{day}",
+                icon_custom_emoji_id=emoji_id
             )
         )
     builder.add(
         InlineKeyboardButton(
-            text="🚷 ",
+            text="<tg-emoji emoji-id='5240241223632954241'>🚷</tg-emoji> ",
             callback_data=f"adv_no_{game_id}_{chat_id}_{day}"
     ))
 
@@ -1069,27 +1128,31 @@ def spy_inline_btn(players,  game_id, chat_id,day=None,spy_id=None):
         tg_id = player.get("tg_id")
         first_name = f"{team_emoji} {player.get('first_name')}"
         role = roles_map.get(tg_id)
-        
+        icon_emoji_id = None
         if tg_id == spy_id:
             continue
         
         if role == "don":
-            text = f"🤵🏻 {first_name}"
+            text = f"{first_name}"
+            icon_emoji_id = "5936138290519349485"
         elif role == "mafia":
-            text = f"🤵🏼 {first_name}"
+            text = f"{first_name}"
+            icon_emoji_id = "5897622767565543503"
         elif role == "adv":
-            text = f"👨🏻‍💻 {first_name}"
+            text = f"{first_name}"
+            icon_emoji_id = "5190498849440931467"
         else:
             text = first_name
         builder.add(
             InlineKeyboardButton(
                 text=text,
-                callback_data=f"spy_{tg_id}_{game_id}_{chat_id}_{day}"
+                callback_data=f"spy_{tg_id}_{game_id}_{chat_id}_{day}",
+                icon_custom_emoji_id=icon_emoji_id
             )
         )
     builder.add(
         InlineKeyboardButton(
-            text="🚷 ",
+            text="<tg-emoji emoji-id='5240241223632954241'>🚷</tg-emoji> ",
             callback_data=f"spy_no_{game_id}_{chat_id}_{day}"
     ))
     builder.adjust(1)
@@ -1119,7 +1182,7 @@ def lab_inline_btn(players, lab_id, game_id, chat_id,day=None):
         )
     builder.add(
         InlineKeyboardButton(
-            text="🚷 ",
+            text="<tg-emoji emoji-id='5240241223632954241'>🚷</tg-emoji> ",
             callback_data=f"lab_no_{game_id}_{chat_id}_{day}"
     ))
 
@@ -1132,14 +1195,15 @@ def pirate_steal_inline_btn( pirate_id,game_id,day=None):
     builder = InlineKeyboardBuilder()
     builder.add(
         InlineKeyboardButton(
-            text="10💶 ",
-            callback_data=f"pirpay_yes_{pirate_id}_{game_id}_{day}"
+            text="💰",
+            callback_data=f"pirpay_yes_{pirate_id}_{game_id}_{day}",
+            icon_custom_emoji_id="105472030678633684592"
         )
     )
 
     builder.add(
         InlineKeyboardButton(
-            text="🚷 ",
+            text="<tg-emoji emoji-id='5240241223632954241'>🚷</tg-emoji> ",
             callback_data=f"pirpay_no_{pirate_id}_{game_id}_{day}"
         )
     )
@@ -1154,22 +1218,25 @@ def professor_gift_inline_btn(game_id,day=None,professor_id=None,chat_id=None):
     random.shuffle(callbacks)
     bulider.add(
         InlineKeyboardButton(
-            text="📦",
-            callback_data=f"prof_{callbacks[0]}_{game_id}_{day}_{professor_id}_{chat_id}"
+            text="-",
+            callback_data=f"prof_{callbacks[0]}_{game_id}_{day}_{professor_id}_{chat_id}",
+            icon_custom_emoji_id="6005639597332110711"
         )
         
     )
     bulider.add(
         InlineKeyboardButton(
-            text="📦",
-            callback_data=f"prof_{callbacks[1]}_{game_id}_{day}_{professor_id}_{chat_id}"
+            text="-",
+            callback_data=f"prof_{callbacks[1]}_{game_id}_{day}_{professor_id}_{chat_id}",
+            icon_custom_emoji_id="6005639597332110711"
         )
         
     )
     bulider.add(
         InlineKeyboardButton(
-            text="📦",
-            callback_data=f"prof_{callbacks[2]}_{game_id}_{day}_{professor_id}_{chat_id}"
+            text="-",
+            callback_data=f"prof_{callbacks[2]}_{game_id}_{day}_{professor_id}_{chat_id}",
+            icon_custom_emoji_id="6005639597332110711"
         )
         
     )
@@ -1214,13 +1281,15 @@ def groups_inline_btn():
             url = group.link
         button = InlineKeyboardButton(
             text=f"{group.name} - {group.stones_for} 💎",
-            url=url
+            url=url,
+            icon_custom_emoji_id="5229227046290343318"
         )
         builder.add(button)
     builder.add(
         InlineKeyboardButton(
-            text="⬅️ Orqaga",
-            callback_data="back_profile"
+            text="Orqaga",
+            callback_data="back_profile",
+            icon_custom_emoji_id="5854967531793550989"
         )
     )
     builder.adjust(1)
@@ -1244,15 +1313,17 @@ def groupes_keyboard(questions, page: int, total: int, per_page: int, all=False)
     if page > 1:
         nav_buttons.append(
             InlineKeyboardButton(
-                text="⬅️ Oldingi",
-                callback_data=f"quiz_page:{page - 1}"
+                text="Oldingi",
+                callback_data=f"quiz_page:{page - 1}",
+                icon_custom_emoji_id="5854967531793550989"
             )
         )
     if page < total_pages:
         nav_buttons.append(
             InlineKeyboardButton(
-                text="Keyingi ➡️",
-                callback_data=f"quiz_page:{page + 1}"
+                text="Keyingi",
+                callback_data=f"quiz_page:{page + 1}",
+                icon_custom_emoji_id="5974121443686878290"
             )
         )
 
@@ -1262,12 +1333,14 @@ def groupes_keyboard(questions, page: int, total: int, per_page: int, all=False)
     # Orqaga tugmasi
     builder.row(
         InlineKeyboardButton(
-            text="Guruh qo'shish ➕",
-            callback_data="add_group"
+            text="Guruh qo'shish",
+            callback_data="add_group",
+            icon_custom_emoji_id="5226945370684140473"
         ),
         InlineKeyboardButton(
-            text="🔙 Orqaga",
-            callback_data="back_admin"
+            text="Orqaga",
+            callback_data="back_admin",
+            icon_custom_emoji_id="5854967531793550989"
         ),
     )
 
@@ -1290,15 +1363,17 @@ def trial_groupes_keyboard(questions, page: int, total: int, per_page: int, all=
     if page > 1:
         nav_buttons.append(
             InlineKeyboardButton(
-                text="⬅️ Oldingi",
-                callback_data=f"olga_page:{page - 1}"
+                text="Oldingi",
+                callback_data=f"olga_page:{page - 1}",
+                icon_custom_emoji_id="5854967531793550989"
             )
         )
     if page < total_pages:
         nav_buttons.append(
             InlineKeyboardButton(
-                text="Keyingi ➡️",
-                callback_data=f"olga_page:{page + 1}"
+                text="Keyingi",
+                callback_data=f"olga_page:{page + 1}",
+                icon_custom_emoji_id="5974121443686878290"
             )
         )
 
@@ -1308,8 +1383,9 @@ def trial_groupes_keyboard(questions, page: int, total: int, per_page: int, all=
     # Orqaga tugmasi
     builder.row(
         InlineKeyboardButton(
-            text="🔙 Orqaga",
-            callback_data="back_admin"
+            text="Orqaga",
+            callback_data="back_admin",
+            icon_custom_emoji_id="5854967531793550989"
         ),
     )
 
@@ -1344,7 +1420,7 @@ def change_money_cost():
     keyboard1 = InlineKeyboardButton(
         text="⭐ Starsdagi narxni o'zgartirish", callback_data="aziz_star")
     keyboard2 = InlineKeyboardButton(
-        text="⬅️ Orqaga", callback_data="back_admin")
+        text="Orqaga", callback_data="back_admin")
     design = [
         [keyboard],
         [keyboard1],
@@ -1359,7 +1435,7 @@ def change_stones_cost():
     keyboard1 = InlineKeyboardButton(
         text="⭐ Starsdagi narxni o'zgartirish", callback_data="ozgar_star")
     keyboard2 = InlineKeyboardButton(
-        text="⬅️ Orqaga", callback_data="back_admin")
+        text="Orqaga", callback_data="back_admin")
     design = [
         [keyboard],
         [keyboard1],
@@ -1382,8 +1458,9 @@ def money_case():
     builder.adjust(5)
     builder.row(
         InlineKeyboardButton(
-            text="⬅️ Orqaga",
-            callback_data="back_case"
+            text=" Orqaga",
+            callback_data="back_case",
+            icon_custom_emoji_id="5854967531793550989"
         )
     )
     return builder.as_markup()
@@ -1401,8 +1478,9 @@ def stone_case():
     builder.adjust(5)
     builder.row(
         InlineKeyboardButton(
-            text="⬅️ Orqaga",
-            callback_data="back_case"
+            text= "Orqaga",
+            callback_data="back_case",
+            icon_custom_emoji_id="5854967531793550989"
         )
     )
     return builder.as_markup()
@@ -1430,7 +1508,7 @@ def begin_instance_inline_btn(chat_id):
                 )
             ],
             [InlineKeyboardButton(
-                text="⬅️ Orqaga",
+                text="Orqaga",
                 callback_data="back_profile"
             )]
         ]
@@ -1478,16 +1556,18 @@ def history_groupes_keyboard(page: int, total: int, per_page: int):
     if page > 1:
         nav_buttons.append(
             InlineKeyboardButton(
-                text="⬅️ Oldingi",
-                callback_data=f"history_page:{page - 1}"
+                text="Oldingi",
+                callback_data=f"history_page:{page - 1}",
+                icon_custom_emoji_id="5854967531793550989"
             )
         )
 
     if page < total_pages:
         nav_buttons.append(
             InlineKeyboardButton(
-                text="Keyingi ➡️",
-                callback_data=f"history_page:{page + 1}"
+                text="Keyingi",
+                callback_data=f"history_page:{page + 1}",
+                icon_custom_emoji_id="5974121443686878290"
             )
         )
 
@@ -1496,8 +1576,9 @@ def history_groupes_keyboard(page: int, total: int, per_page: int):
 
     builder.row(
         InlineKeyboardButton(
-            text="🔙 Orqaga",
-            callback_data="back_admin"
+            text="Orqaga",
+            callback_data="back_admin",
+            icon_custom_emoji_id="5854967531793550989"
         )
     )
 
@@ -1522,8 +1603,9 @@ def groups_buy_stars(chat_id):
     
     builder.add(
         InlineKeyboardButton(
-            text="⬅️ Orqaga",
-            callback_data="back_group"
+            text="Orqaga",
+            callback_data="back_group",
+            icon_custom_emoji_id="5854967531793550989"
         )
     )
     builder.adjust(1)
@@ -1576,24 +1658,24 @@ def use_hero_inline_btn(attack,game_id, chat_id, tg_id, day=None):
 
     TEXTS = {
         "uz": {
-            "attack": "🥷 Hujum qilish",
-            "protect": "🛡 Himoyalanish",
+            "attack": "Hujum qilish",
+            "protect": "Himoyalanish",
         },
         "ru": {
-            "attack": "🥷 Атаковать",
-            "protect": "🛡 Защититься",
+            "attack": "Атаковать",
+            "protect": "Защититься",
         },
         "en": {
-            "attack": "🥷 Attack",
-            "protect": "🛡 Defend",
+            "attack": "Attack",
+            "protect": "Defend",
         },
         "tr": {
-            "attack": "🥷 Saldır",
-            "protect": "🛡 Savun",
+            "attack": "Saldır",
+            "protect": "Savun",
         },
         "qz": {
-            "attack": "🥷 Hujum",
-            "protect": "🛡 Qorğau",
+            "attack": "Hujum",
+            "protect": "Qorğau",
         },
     }
 
@@ -1604,13 +1686,16 @@ def use_hero_inline_btn(attack,game_id, chat_id, tg_id, day=None):
         builder.add(
             InlineKeyboardButton(
                 text=t["attack"],
-                callback_data=f"hero_attack_{game_id}_{chat_id}_{day}"
+                callback_data=f"hero_attack_{game_id}_{chat_id}_{day}",
+                icon_custom_emoji_id="5325750848515488719"
             )
         )
     builder.add(
         InlineKeyboardButton(
             text=t["protect"],
-            callback_data=f"hero_protect_{game_id}_{chat_id}_{day}"
+            callback_data=f"hero_protect_{game_id}_{chat_id}_{day}",
+            icon_custom_emoji_id="5465154440287757794"
+
         )
     )
 
@@ -1630,43 +1715,43 @@ def geroy_inline_btn(tg_id):
 
     TEXTS = {
         "uz": {
-            "buy_stone": "🥷 Sotib olish 💎 100",
-            "upgrade_geroy":f"➕ Geroyni kuchaytirish 💎 {price}",
-            "remove": "✖️ Geroyni olib tashlash",
-            "back": "⬅️ Orqaga",
+            "buy_stone": "Sotib olish 💎 100",
+            "upgrade_geroy":f"Geroyni kuchaytirish 💎 {price}",
+            "remove": "Geroyni olib tashlash",
+            "back": "Orqaga",
         },
         "ru": {
-            "buy_stone": "🥷 Купить 💎 100",
-            "upgrade_geroy":f"➕ Улучшить Героя 💎 {price}",
-            "remove": "✖️ Убрать Героя",
-            "back": "⬅️ Назад",
+            "buy_stone": "Купить 💎 100",
+            "upgrade_geroy":f"Улучшить Героя 💎 {price}",
+            "remove": "Убрать Героя",
+            "back": "Назад",
         },
         "en": {
-            "buy_stone": "🥷 Buy for 💎 100",
-            "upgrade_geroy":f"➕ Upgrade Hero 💎 {price}",
-            "remove": "✖️ Remove Hero",
-            "back": "⬅️ Back",
+            "buy_stone": "Buy for 💎 100",
+            "upgrade_geroy":f"Upgrade Hero 💎 {price}",
+            "remove": "Remove Hero",
+            "back": "Back",
         },
         "tr": {
-            "buy_stone": "🥷 💎 100 ile satın al",
-            "upgrade_geroy":f"➕ Kahramanı yükselt 💎 {price}",
-            "remove": "✖️ Kahramanı kaldır",
-            "back": "⬅️ Geri",
+            "buy_stone": "💎 100 ile satın al",
+            "upgrade_geroy":f"Kahramanı yükselt 💎 {price}",
+            "remove": "Kahramanı kaldır",
+            "back": "Geri",
         },
         "qz": {
-            "buy_stone": "🥷 Сатып алу 💎 100",
-            "upgrade_geroy":f"➕ Кейіпкерді күшейту 💎 {price}",
-            "remove": "✖️ Кейіпкерді алып тастау",
-            "back": "⬅️ Артқа",
+            "buy_stone": "Сатып алу 💎 100",
+            "upgrade_geroy":f"Кейіпкерді күшейту 💎 {price}",
+            "remove": "Кейіпкерді алып тастау",
+            "back": "Артқа",
         },
     }
 
     t = TEXTS.get(lang, TEXTS["uz"])
 
-    keyboard1 = InlineKeyboardButton(text=t["buy_stone"], callback_data="geroy_buy")
-    keyboard2 = InlineKeyboardButton(text=t["upgrade_geroy"], callback_data="geroy_upgrade")
-    keyboard3 = InlineKeyboardButton(text=t["remove"], callback_data="geroy_sold")
-    keyboard4 = InlineKeyboardButton(text=t["back"], callback_data="back_profile")
+    keyboard1 = InlineKeyboardButton(text=t["buy_stone"], callback_data="geroy_buy", icon_custom_emoji_id="5325750848515488719")
+    keyboard2 = InlineKeyboardButton(text=t["upgrade_geroy"], callback_data="geroy_upgrade", icon_custom_emoji_id="5226945370684140473")
+    keyboard3 = InlineKeyboardButton(text=t["remove"], callback_data="geroy_sold", icon_custom_emoji_id="5226660202035554522")
+    keyboard4 = InlineKeyboardButton(text=t["back"], callback_data="back_profile", icon_custom_emoji_id="5854967531793550989")
 
     if is_geroy:
         if is_hero_max:
@@ -1692,15 +1777,15 @@ def geroy_inline_btn(tg_id):
 def language_keyboard():
     return InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(text="🇺🇿 O'zbek", callback_data="lang_uz"),
-            InlineKeyboardButton(text="🇷🇺 Русский", callback_data="lang_ru"),
+            InlineKeyboardButton(text="O'zbek", callback_data="lang_uz",icon_custom_emoji_id="5456133703296097741"),
+            InlineKeyboardButton(text="Русский", callback_data="lang_ru",icon_custom_emoji_id="5449408995691341691"),
         ],
         [
-            InlineKeyboardButton(text="🇬🇧 English", callback_data="lang_en"),
-            InlineKeyboardButton(text="🇹🇷 Türkçe", callback_data="lang_tr"),
+            InlineKeyboardButton(text="English", callback_data="lang_en",icon_custom_emoji_id="5202021044105257611"),
+            InlineKeyboardButton(text="Türkçe", callback_data="lang_tr",icon_custom_emoji_id="5226948110873278599"),
         ],
         [
-            InlineKeyboardButton(text="🇰🇿 Қазақша", callback_data="lang_qz"),
+            InlineKeyboardButton(text="Қазақша", callback_data="lang_qz",icon_custom_emoji_id="5228718354658769982"),
             
         ]
     ])
@@ -1727,8 +1812,9 @@ def claim_chanel_olmos_inline_btn(username):
     return InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(
-                text="💎 Olmosni olish",
-                url=f"https://t.me/{remove_prefix(config('BOT_USERNAME'))}?start=claim_{username}"      
+                text="Olmosni olish",
+                url=f"https://t.me/{remove_prefix(config('BOT_USERNAME'))}?start=claim_{username}"    ,
+                icon_custom_emoji_id="5226945370684140473"  
                 )
         ]
     ])

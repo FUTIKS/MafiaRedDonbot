@@ -22,13 +22,12 @@ from mafia_bot.handlers.main_functions import (MAFIA_ROLES, find_game,create_mai
                                                kill, notify_new_don, promote_new_com_if_needed,get_game_lock,
                                                promote_new_don_if_needed,  shuffle_roles ,check_bot_rights,
                                                role_label,is_group_admin,mute_user,has_link,parse_amount,
-                                               get_description_lang,get_role_labels_lang,
+                                               get_description_lang,get_role_labels_lang,strip_tags,
                                                send_safe_message,notify_new_com)
 from mafia_bot.buttons.inline import (admin_inline_btn, back_btn, claim_chanel_olmos_inline_btn, giveaway_join_btn, 
                                       group_profile_inline_btn, join_game_btn, join_game_color_btn, 
                                       start_inline_btn, go_to_bot_inline_btn, cart_inline_btn, take_gsend_stone_btn,
                                       take_stone_btn,stones_to_premium_inline_btn,language_keyboard)
-
 
 @dp.message(Command("start"), StateFilter(None))
 async def start(message: Message) -> None:
@@ -52,6 +51,7 @@ async def start(message: Message) -> None:
     if ' ' in message.text and message.chat.type == "private": 
         args = message.text.split(' ')[1]
         turnir_mode= False
+        color = None
         if args == "true":
             return
         elif args.startswith("instance_"):
@@ -189,7 +189,7 @@ async def profile_command(message: Message):
         is_active = group_trial.end_date > timezone.now() if group_trial.end_date else False
         has_stone = group_trial.stones >= 20
         coins = group_trial.coins if group_trial else 0
-        active_text = "✅ Aktiv" if is_active else "❌ Aktiv emas"
+        active_text = "<tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> Aktiv" if is_active else "<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> Aktiv emas"
         next_activation = group_trial.end_date.strftime('%Y-%m-%d %H:%M:%S') if group_trial.end_date else "Noma'lum"
         stones = group_trial.stones if group_trial else 0
         premium_stones = group_trial.premium_stones if group_trial else 0
@@ -222,7 +222,7 @@ async def profile_command(message: Message):
     for user_r in user_role:
         ROLES_CHOICES = get_role_labels_lang(message.from_user.id)
         role_name = dict(ROLES_CHOICES).get(user_r.role_key, "Noma'lum rol")
-        text += f"🎭 {role_name} - {user_r.quantity}\n"
+        text += f"<tg-emoji emoji-id='5359441070201513074'>🎭</tg-emoji> {role_name} - {user_r.quantity}\n"
     result = MostActiveUser.objects.filter(user_id=user.id).aggregate(
     total_played=Sum('games_played'),
     total_wins=Sum('games_win')
@@ -230,9 +230,8 @@ async def profile_command(message: Message):
 
     total_played = result['total_played'] or 0
     total_wins = result['total_wins'] or 0
-
-    await message.answer(
-        text=t['user_profile'].format(
+    if user.is_premium:
+        main_text = t['user_profile'].format(
             first_name=message.from_user.first_name,
             user_id=message.from_user.id,
             coin=user.coin,
@@ -244,8 +243,26 @@ async def profile_command(message: Message):
             wins=total_wins,
             all_played=total_played,
             text=text
-        ),
-        parse_mode="HTML",reply_markup=cart_inline_btn(message.from_user.id)
+        )
+    else:
+        main_text = strip_tags(t['user_profile'].format(
+            first_name=message.from_user.first_name,
+            user_id=message.from_user.id,
+            coin=user.coin,
+            stones=user.stones,
+            protection=user.protection,
+            hang_protect=user.hang_protect,
+            docs=user.docs,
+            geroy_protect=user.geroy_protection,
+            wins=total_wins,
+            all_played=total_played,
+            text=text
+        ))
+
+    await message.answer(
+        text=main_text,
+        parse_mode="HTML",
+        reply_markup=cart_inline_btn(message.from_user.id)
     )
     
     
@@ -253,7 +270,7 @@ async def profile_command(message: Message):
 @dp.message(Command("help"), StateFilter(None))
 async def help_command(message: Message) -> None:
     await message.delete()
-    await message.answer("Admin.\n\n@RedDon_Mafia")
+    await message.answer("Admin.\n\n@your_ibragimov")
     
 
 @dp.message(Command("money"), F.chat.type.in_({"group", "supergroup"}), StateFilter(None))
@@ -335,14 +352,14 @@ async def gsend_command(message: Message) -> None:
     chat_id = message.chat.id
     game = Game.objects.filter(chat_id=message.chat.id, is_active_game=True).first()
     if not game:
-        await message.answer("❌ O'yin boshlanmagan.")
+        await message.answer("<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> O'yin boshlanmagan.")
         return
     game = games_state.get(game.id)
     if not game or not game.get("players"):
-        await message.answer("❌ O'yin boshlanmagan yoki o'yinchilar yo'q.")
+        await message.answer("<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> O'yin boshlanmagan yoki o'yinchilar yo'q.")
         return
     if sender.stones < amount:
-        await message.answer("❌ Sizda yetarli olmos yo'q.")
+        await message.answer("<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> Sizda yetarli olmos yo'q.")
         return
     t = get_lang_text(message.chat.id)
     
@@ -354,7 +371,7 @@ async def gsend_command(message: Message) -> None:
         count=amount,
     )
     text = (
-        f"💎 <a href='tg://user?id={message.from_user.id}'>{message.from_user.first_name}</a> {group_sender}"
+        f"<tg-emoji emoji-id='5471952986970267163'>💎</tg-emoji><a href='tg://user?id={message.from_user.id}'>{message.from_user.first_name}</a> {group_sender}"
     )
 
     sent = await message.answer(text, reply_markup=take_gsend_stone_btn(chat_id), parse_mode="HTML")
@@ -395,7 +412,7 @@ async def money_command(message: Message) -> None:
         if count <= 0:
             return
         if sender.stones < count:
-            await message.answer("❌ Sizda yetarli olmos yo'q.")
+            await message.answer("<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> Sizda yetarli olmos yo'q.")
             return
         sender.stones -= count
         sender.save(update_fields=["stones"])
@@ -406,7 +423,7 @@ async def money_command(message: Message) -> None:
         )
         reason_text = f"\n{reason}" if reason else ""
         text = (
-            f"💎 <a href='tg://user?id={message.from_user.id}'>{message.from_user.first_name}</a> {group_sender}{reason_text}"
+            f"<tg-emoji emoji-id='5471952986970267163'>💎</tg-emoji><a href='tg://user?id={message.from_user.id}'>{message.from_user.first_name}</a> {group_sender}{reason_text}"
         )
 
         sent = await message.answer(text, reply_markup=take_stone_btn(chat_id), parse_mode="HTML")
@@ -491,13 +508,13 @@ async def change_command(message: Message) -> None:
 
     chat_id = message.chat.id
     if sender.stones< amount:
-        await message.answer("❌ Sizda yetarli olmos yo'q.")
+        await message.answer("<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> Sizda yetarli olmos yo'q.")
         return
 
     sender.stones -= amount
     sender.save(update_fields=["stones"])
 
-    duration = 300  # ⏳ seconds
+    duration = 300  # <tg-emoji emoji-id='5451732530048802485'>⏳</tg-emoji> seconds
     minut = duration // 60
     end_at = int(time.time()) + duration
     t = get_lang_text(message.chat.id)
@@ -526,11 +543,15 @@ async def leave(message: Message) -> None:
     tg_id = message.from_user.id
     chat_id = message.chat.id
     game_db = Game.objects.filter(chat_id=chat_id, is_active_game=True).first()
-    if not game_db or not game_db.is_started:
+    if not game_db :
         return
     
     game = games_state.get(game_db.id)
     if not game:
+        return
+    if not game_db.is_started:
+        game.get("players",[]).remove(tg_id)
+        game.get("alive",[]).remove(tg_id)
         return
     if tg_id not in game.get("alive", []):
         return
@@ -577,7 +598,7 @@ async def language(message: Message):
         await message.delete()
         return
     await message.answer(
-        "🌐 Tilni tanlang:",
+        "<tg-emoji emoji-id='5460935476733033386'>🌐</tg-emoji> Tilni tanlang:",
         reply_markup=language_keyboard()
     )
 
@@ -764,6 +785,8 @@ async def game_command(message: Message) -> None:
                     group_username=link
                 )
             game , created = Game.objects.get_or_create(chat_id=chat_id,is_active_game=True) 
+            if game.game_type == "turnir":
+                return
             if not created: 
                 if game.is_started:
                     return
@@ -875,6 +898,8 @@ async def vcgame_command(message: Message) -> None:
                     group_username=link
                 )
             game , created = Game.objects.get_or_create(chat_id=chat_id,game_type="turnir",is_active_game=True) 
+            if game.game_type == "classic":
+                return
             if not created: 
                 if game.is_started:
                     return
@@ -1047,36 +1072,66 @@ async def stop_command(message: Message) -> None:
 
     await send_safe_message(chat_id=chat_id, text=tu["game_stopped"])
 
+@dp.message(Command("kik"), StateFilter(None))
+async def admin_moderation_commands(message: Message):
+    try:
+        await message.delete()
+    except:
+        pass
 
-@dp.message( Command("kik"), StateFilter(None))
-async def admin_moderation_commands(message: Message) -> None:
-    await message.delete()
     if message.chat.type not in ("group", "supergroup"):
         return
 
     chat_id = message.chat.id
     tg_id = message.from_user.id
+
     is_admin = await is_group_admin(chat_id, tg_id)
     if not is_admin:
         return
-    if  message.reply_to_message and  message.reply_to_message.from_user:
-        game_db = Game.objects.filter(chat_id=chat_id, is_active_game=True).first()
-        if not game_db:
-            return
-        game = games_state.get(game_db.id)
-        if game is not None:
-            kill(game,message.reply_to_message.from_user.id)
-            await send_safe_message(chat_id=message.reply_to_message.from_user.id,text="🔇 Siz o'yindan chetlatildingiz!")
-        return
-    tg_id = message.text.split(' ')[1]
+
     game_db = Game.objects.filter(chat_id=chat_id, is_active_game=True).first()
     if not game_db:
         return
+
     game = games_state.get(game_db.id)
-    if game is not None:
-        kill(game,int(tg_id))
-        await send_safe_message(chat_id=int(tg_id),text="🔇 Siz o'yindan chetlatildingiz!")
-    return
+    if not game:
+        return
+
+    target_id = None
+
+    # ✅ 1. reply orqali kick
+    if message.reply_to_message and message.reply_to_message.from_user:
+        target_id = message.reply_to_message.from_user.id
+
+    # ✅ 2. id orqali kick (/kik 123456)
+    else:
+        parts = message.text.split()
+
+        if len(parts) < 2:
+            await message.answer("❌ Foydalanuvchi ID yoki reply kerak")
+            return
+
+        try:
+            target_id = int(parts[1])
+        except ValueError:
+            await message.answer("❌ ID noto‘g‘ri formatda")
+            return
+
+    # ✅ kill qilish
+    try:
+        kill(game, target_id)
+    except Exception as e:
+        await message.answer("❌ O‘yinchi topilmadi yoki xatolik")
+        return
+
+    # ✅ userga xabar yuborish (safe)
+    try:
+        await send_safe_message(
+            chat_id=target_id,
+            text="🔇 Siz o'yindan chetlatildingiz!"
+        )
+    except:
+        pass
 
     
 
@@ -1098,7 +1153,7 @@ async def next_command(message: Message) -> None:
 
     await send_safe_message(
         chat_id=user_id,
-        text="✅ Siz keyingi o'yin haqida eslatma olasiz."
+        text="<tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> Siz keyingi o'yin haqida eslatma olasiz."
     )
 
 
@@ -1217,7 +1272,7 @@ async def get_top3_groups_message():
     groups = GroupTrials.objects.filter(group_id__in=chat_ids)
     group_map = {g.group_id: g.group_name for g in groups}
 
-    text = "🏆 Top 3 guruh:\n\n"
+    text = "<tg-emoji emoji-id='5409008750893734809'>🏆</tg-emoji> Top 3 guruh:\n\n"
 
     for i, g in enumerate(top_groups, start=1):
         name = group_map.get(g["chat_id"], "Unknown")
@@ -1391,6 +1446,14 @@ async def delete_not_alive_messages(message: Message):
 
 @dp.message(F.chat.type.in_({"private"}),StateFilter(None))
 async def private_router(message: Message,state: FSMContext) -> None:
+    
+    for entity in message.entities or []:
+        if entity.type == "custom_emoji":
+            await message.answer(
+                f'<tg-emoji emoji-id="{entity.custom_emoji_id}"></tg-emoji> {entity.custom_emoji_id}',
+                parse_mode="HTML"
+            )
+    return
     tg_id = int(message.from_user.id)
     if message.text == "admin_parol":
         await message.answer("Iltimos, login va parolni bitta qatorda yuboring:\n\nlogin password",reply_markup=back_btn(message.from_user.id))
@@ -1477,7 +1540,7 @@ async def private_router(message: Message,state: FSMContext) -> None:
 
     relay_text = (
         f"🕶 <b>Mafiya chat</b>\n"
-        f"👤 <a href='tg://user?id={tg_id}'>{sender_name}</a>:\n\n"
+        f"<tg-emoji emoji-id='5373012449597335010'>👤</tg-emoji> <a href='tg://user?id={tg_id}'>{sender_name}</a>:\n\n"
         f"{text}"
     )
 
@@ -1507,7 +1570,7 @@ async def process_admin_password(message: Message, state: FSMContext) -> None:
 
     user = User.objects.filter(telegram_id=message.from_user.id).first()
     if not user:
-        await message.answer("Siz botda ro‘yxatdan o‘tmagansiz ❌")
+        await message.answer("Siz botda ro‘yxatdan o‘tmagansiz <tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji>")
         await state.clear()
         return
 
@@ -1527,7 +1590,7 @@ async def process_admin_password(message: Message, state: FSMContext) -> None:
 
     admin = BotCredentials.objects.filter(login=login).first()
     if not admin:
-        await message.answer("Login noto‘g‘ri ❌")
+        await message.answer("Login noto‘g‘ri <tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji>")
         await state.clear()
         return
 
@@ -1535,13 +1598,13 @@ async def process_admin_password(message: Message, state: FSMContext) -> None:
         # Agar oldin 1 kun ban olgan bo‘lsa (demak ikkinchi xato) => umrbod ban
         if attempts_obj.ban_until is not None:
             attempts_obj.ban_forever()
-            await message.answer("Parol noto‘g‘ri ❌\nSiz umrbod bloklandingiz 🚫")
+            await message.answer("Parol noto‘g‘ri <tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji>\nSiz umrbod bloklandingiz 🚫")
             await state.clear()
             return
 
         # Birinchi xato => 1 kun ban
         attempts_obj.ban_for_1_day()
-        await message.answer("Parol noto‘g‘ri ❌\nSiz 1 kunga bloklandingiz 🚫")
+        await message.answer("Parol noto‘g‘ri <tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji>\nSiz 1 kunga bloklandingiz 🚫")
         await state.clear()
         return
 
@@ -1556,7 +1619,7 @@ async def process_admin_password(message: Message, state: FSMContext) -> None:
         user.role = 'admin'
         user.save(update_fields=["role"])
 
-    await message.answer("Muvaffaqiyatli kirdingiz ✅", reply_markup=admin_inline_btn())
+    await message.answer("Muvaffaqiyatli kirdingiz <tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji>", reply_markup=admin_inline_btn())
     await state.clear()
     
 
@@ -1670,7 +1733,7 @@ async def refresh_registration_main_message(game_id: int, chat_id: int):
 async def olmos_star_handler(message,olmos_amount: int, star_amount: int,chat_id: int):
 
     prices = [
-        LabeledPrice(label=f"💎 {olmos_amount} sotib olish", amount=star_amount)
+        LabeledPrice(label=f"<tg-emoji emoji-id='5471952986970267163'>💎</tg-emoji>{olmos_amount} sotib olish", amount=star_amount)
     ]
     t = get_lang_text(chat_id)
     await bot.send_invoice(
@@ -1685,7 +1748,7 @@ async def olmos_star_handler(message,olmos_amount: int, star_amount: int,chat_id
 async def stones_to_premium(message:Message, chat_id: int):
     game_trials = GroupTrials.objects.filter(group_id=chat_id).first()
     if not game_trials:
-        await message.answer("❌ Guruhda obuna muddati yo'q.")
+        await message.answer("<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> Guruhda obuna muddati yo'q.")
         return 
     t = get_lang_text(chat_id)
     text = f"{t['become_premium_group']} {game_trials.stones} "
@@ -1742,11 +1805,11 @@ async def claim_channel_olmos(message: Message, username: str):
         takers_map.append(user_taker)
 
         taken_text = "".join(
-            f"\n{i}. 💎 {u.first_name}"
+            f"\n{i}. <tg-emoji emoji-id='5471952986970267163'>💎</tg-emoji>{u.first_name}"
             for i, u in enumerate(takers_map, 1)
         )
 
-        text = f"Kanalga {limit} ta 💎 olmos yuborildi.{taken_text}"
+        text = f"Kanalga {limit} ta <tg-emoji emoji-id='5471952986970267163'>💎</tg-emoji>olmos yuborildi.{taken_text}"
 
         current_len = len(taken)
         should_update = (current_len % 2) == (limit % 2)

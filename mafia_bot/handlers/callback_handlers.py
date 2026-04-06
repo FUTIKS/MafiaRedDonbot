@@ -19,7 +19,7 @@ from mafia_bot.utils import stones_taken,gsend_taken,giveaways,games_state,USER_
 from mafia_bot.models import Game, MoneySendHistory, User,PremiumGroup,MostActiveUser,CasesOpened,GameSettings,GroupTrials,PriceStones, UserRole,BotCredentials, default_end_date
 from mafia_bot.state import AddGroupState, BeginInstanceState,SendMoneyState,ChangeStoneCostState,ChangeMoneyCostState,ExtendGroupState,QuestionState,Register,CredentialsState,UserBlock
 from mafia_bot.handlers.main_functions import (add_visit, get_mafia_members,get_first_name_from_players, kill, remove_prefix,send_safe_message,get_description_lang,get_hero_level,
-                                               mark_confirm_done, mark_hang_done,mark_night_action_done,get_week_range,get_month_range,role_label,get_lang_text,get_role_labels_lang,get_actions_lang)
+                                               mark_confirm_done, mark_hang_done,mark_night_action_done,get_week_range,get_month_range,role_label,get_lang_text,get_role_labels_lang,get_actions_lang, strip_tags)
 from mafia_bot.buttons.inline import (action_inline_btn,
     admin_inline_btn, answer_admin, back_btn, cart_inline_btn, change_money_cost, change_stones_cost, com_inline_btn, end_talk_keyboard, geroy_inline_btn,  giveaway_join_btn, group_profile_inline_btn,
     groupes_keyboard, groups_buy_stars, history_groupes_keyboard, language_keyboard, language_keyboard, money_case, pay_for_money_inline_btn, pay_using_stars_inline_btn, role_shop_inline_keyboard,
@@ -49,7 +49,7 @@ async def profile_callback(callback: CallbackQuery):
     text =""
     for user_r in user_role:
         role_name = dict(get_role_labels_lang(tg_id)).get(user_r.role_key, "Noma'lum rol")
-        text += f"🎭 {role_name} -  {user_r.quantity}\n"
+        text += f"<tg-emoji emoji-id='5359441070201513074'>🎭</tg-emoji> {role_name} -  {user_r.quantity}\n"
     result = MostActiveUser.objects.filter(user_id=user.id).aggregate(
     total_played=Sum('games_played'),
     total_wins=Sum('games_win')
@@ -57,9 +57,8 @@ async def profile_callback(callback: CallbackQuery):
 
     total_played = result['total_played'] or 0
     total_wins = result['total_wins'] or 0
-
-    await callback.message.edit_text(
-        text=t['user_profile'].format(
+    if user.is_premium:
+        main_text =t['user_profile'].format(
             first_name=callback.from_user.first_name,
             user_id=callback.from_user.id,
             coin=user.coin,
@@ -71,8 +70,25 @@ async def profile_callback(callback: CallbackQuery):
             wins=total_wins,
             all_played=total_played,
             text=text
-        ),
-        parse_mode="HTML",reply_markup=cart_inline_btn(tg_id)
+        )
+    else:
+        main_text = strip_tags(t['user_profile'].format(
+            first_name=callback.from_user.first_name,
+            user_id=callback.from_user.id,
+            coin=user.coin,
+            stones=user.stones,
+            protection=user.protection,
+            hang_protect=user.hang_protect,
+            docs=user.docs,
+            geroy_protect=user.geroy_protection,
+            wins=total_wins,
+            all_played=total_played,
+            text=text
+        ),)
+    await callback.message.edit_text(
+        text=main_text,
+        parse_mode="HTML",
+        reply_markup=cart_inline_btn(tg_id)
     )
 
 @dp.callback_query(F.data == "cart")
@@ -116,8 +132,13 @@ async def back_callback(callback: CallbackQuery, state: FSMContext):
             reply_markup=admin_inline_btn()
         )
     elif place == "case":
+        user = User.objects.filter(telegram_id=callback.from_user.id).first()
+        if user.is_premium:
+            text = t['case_menu']
+        else:
+            text = strip_tags(t['case_menu'])
         await callback.message.edit_text(
-        text= t['case_menu'],
+        text= text,
         parse_mode="HTML",
         reply_markup=case_inline_btn(callback.from_user.id)
     )
@@ -152,7 +173,7 @@ async def back_callback(callback: CallbackQuery, state: FSMContext):
         is_active = group_trial.end_date > timezone.now()
         has_stone = group_trial.stones >= 20
         coins = group_trial.coins if group_trial else 0
-        active_text = "✅ Aktiv" if is_active else "❌ Aktiv emas"
+        active_text = "<tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> Aktiv" if is_active else "<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> Aktiv emas"
         next_activation = group_trial.end_date.strftime('%Y-%m-%d %H:%M:%S') if group_trial.end_date else "Noma'lum"
         stones = group_trial.stones if group_trial else 0
         premium_stones = group_trial.premium_stones if group_trial else 0
@@ -219,49 +240,18 @@ async def buy_callback(callback: CallbackQuery):
             user.coin -= 250
             user.protection += 1
             user.save()
-            await callback.message.edit_text(
-                 text=t['user_profile'].format(
-                first_name=callback.from_user.first_name,
-            user_id=callback.from_user.id,
-                coin=user.coin,
-                stones=user.stones,
-                protection=user.protection,
-                hang_protect=user.hang_protect,
-                docs=user.docs,
-                geroy_protect=user.geroy_protection,
-                wins=total_wins,
-                all_played=total_played,
-                text=""
-            ),
-                parse_mode="HTML",
-                reply_markup=cart_inline_btn(tg_id)
-            )
         else:
             await callback.answer(text=t['not_enough_money'], show_alert=True)
+            return
     elif thing_to_buy == "docs":
         if user.coin >= 250:
             user.coin -= 250
             user.docs += 1
             user.save()
-            await callback.message.edit_text(
-                text=t['user_profile'].format(
-                    first_name=callback.from_user.first_name,
-            user_id=callback.from_user.id,
-                    coin=user.coin,
-                    stones=user.stones,
-                    protection=user.protection,
-                    hang_protect=user.hang_protect,
-                    wins=total_wins,
-                    all_played=total_played,
-                    docs=user.docs,
-                    geroy_protect=user.geroy_protection,
-                    text=""
-                ),
-                parse_mode="HTML",
-                reply_markup=cart_inline_btn(tg_id)
-            )
+            
         else:
             await callback.answer(text=t['not_enough_money'], show_alert=True)
+            return
     elif thing_to_buy == "hangprotect":
         if price == "1" and user.coin >= 20000:
             user.coin -= 20000
@@ -274,52 +264,58 @@ async def buy_callback(callback: CallbackQuery):
         else:
             await callback.answer(text=t['not_enough_money'], show_alert=True)
             return
-        await callback.message.edit_text(
-                text=t['user_profile'].format(
-                    first_name=callback.from_user.first_name,
-            user_id=callback.from_user.id,
-                    coin=user.coin,
-                    stones=user.stones,
-                    protection=user.protection,
-                    hang_protect=user.hang_protect,
-                    docs=user.docs,
-                    geroy_protect=user.geroy_protection,
-                    wins=total_wins,
-                    all_played=total_played,
-                    text=""
-                ),
-                parse_mode="HTML",
-                reply_markup=cart_inline_btn(tg_id)
-            )
     elif thing_to_buy == "activerole":
+        if user.is_premium:
+            text = t['buy_role']
+        else:
+            text = strip_tags(t['buy_role'])
         await callback.message.edit_text(
-            text=t['buy_role'],
+            text=text,
             reply_markup=role_shop_inline_keyboard(tg_id)
         )
+        return
     elif thing_to_buy == "geroyprotect":
         if user.coin >= 10000:
             user.coin -= 10000
             user.geroy_protection += 1
             user.save()
-            await callback.message.edit_text(
-                text=t['user_profile'].format(
-                    first_name=callback.from_user.first_name,
-            user_id=callback.from_user.id,
-                    coin=user.coin,
-                    stones=user.stones,
-                    protection=user.protection,
-                    hang_protect=user.hang_protect,
-                    docs=user.docs,
-                    geroy_protect=user.geroy_protection,
-                    wins=total_wins,
-                    all_played=total_played,
-                    text=""
-                ),
-                parse_mode="HTML",
-                reply_markup=cart_inline_btn(tg_id)
-            )
+            
         else:
             await callback.answer(text=t['not_enough_money'], show_alert=True)
+            return
+    if user.is_premium:
+        main_text =t['user_profile'].format(
+        first_name=callback.from_user.first_name,
+        user_id=callback.from_user.id,
+        coin=user.coin,
+        stones=user.stones,
+        protection=user.protection,
+        hang_protect=user.hang_protect,
+        docs=user.docs,
+        geroy_protect=user.geroy_protection,
+        wins=total_wins,
+        all_played=total_played,
+        text=""
+    )
+    else:
+        main_text = strip_tags(t['user_profile'].format(
+        first_name=callback.from_user.first_name,
+        user_id=callback.from_user.id,
+        coin=user.coin,
+        stones=user.stones,
+        protection=user.protection,
+        hang_protect=user.hang_protect,
+        docs=user.docs,
+        geroy_protect=user.geroy_protection,
+        wins=total_wins,
+        all_played=total_played,
+        text=""
+    ))
+    await callback.message.edit_text(
+            text=main_text,
+        parse_mode="HTML",
+        reply_markup=cart_inline_btn(tg_id)
+    )
 
 @dp.callback_query(F.data.startswith("active_"))
 async def buy_role_callback(call: CallbackQuery, state: FSMContext):
@@ -403,13 +399,15 @@ async def p2p_callback(callback: CallbackQuery):
         text = t['money_in_money'].format(money=money)
         await callback.message.edit_text(
         text=text,
-        reply_markup=back_btn(tg_id, "money")
+        reply_markup=back_btn(tg_id, "money"),
+        parse_mode="HTML"
     )
     else:
         stone = cost.stone_in_money
         await callback.message.edit_text(
         text=t['stone_in_money'].format(stone=stone),
-        reply_markup=back_btn(tg_id, "stone")
+        reply_markup=back_btn(tg_id, "stone"),
+        parse_mode="HTML"
     )
         
 @dp.callback_query(F.data.startswith("star_"))
@@ -494,7 +492,7 @@ async def doc_heal_callback(callback: CallbackQuery):
             return
         used_self.add(doctor_id)
 
-    # ✅ night action saqlash
+    # <tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> night action saqlash
     game["night_actions"]["doc_target"] = target_id
     add_visit(game=game, visitor_id=doctor_id, house_id=target_id, invisible=False)
 
@@ -559,7 +557,7 @@ async def daydi_callback(callback: CallbackQuery):
         return
     house_id = int(house_id)
 
-    # ✅ Daydi qayerga bordi
+    # <tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> Daydi qayerga bordi
     game["night_actions"]["daydi_house"] = house_id
     
 
@@ -696,7 +694,7 @@ async def com_protect_callback(callback: CallbackQuery):
         return
    
 
-    # ✅ Action saqlaymiz
+    # <tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> Action saqlaymiz
     game["night_actions"]["com_check_target"] = target_id
     add_visit(game, com_id, target_id, False)
 
@@ -747,7 +745,7 @@ async def lover_callback(callback: CallbackQuery):
             pass
         return
     target_id = int(target_id)
-    # ✅ lover action saqlash
+    # <tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> lover action saqlash
     game["night_actions"]["lover_block_target"] = target_id
     add_visit(game=game, visitor_id=lover_id, house_id=target_id, invisible=False)
 
@@ -798,7 +796,7 @@ async def killer_callback(callback: CallbackQuery):
         )
         return
     target_id = int(target_id)
-    # ✅ killer action saqlash
+    # <tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> killer action saqlash
     game["night_actions"]["killer_target"].append(target_id)
 
     target_name = get_first_name_from_players(game,target_id)
@@ -849,7 +847,7 @@ async def santa_callback(callback: CallbackQuery):
         )
         return
     target_id = int(target_id)
-    # ✅ killer action saqlash
+    # <tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> killer action saqlash
     user = User.objects.filter(telegram_id=target_id).first()
     if not user:
         user = User.objects.create(
@@ -913,7 +911,7 @@ async def kaldun_callback(callback: CallbackQuery):
 
     target_id = int(target_id)
 
-    # ✅ kaldun action saqlash
+    # <tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> kaldun action saqlash
     game["night_actions"]["kaldun_target"] = target_id
     
     add_visit(game=game, visitor_id=kaldun_id, house_id=target_id, invisible=False)
@@ -1022,7 +1020,7 @@ async def don_callback(callback: CallbackQuery):
         
         return
     
-    # ✅ night action saqlash
+    # <tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> night action saqlash
     game["night_actions"]["don_kill_target"] = int(target_id)
     add_visit(game=game, visitor_id=don_id, house_id=target_id, invisible=False)
     
@@ -1080,7 +1078,7 @@ async def mafia_callback(callback: CallbackQuery):
             parse_mode="HTML"
         )
         return
-    # ✅ night action saqlash
+    # <tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> night action saqlash
     game["night_actions"]["mafia_vote"].append(int(target_id))
     
     
@@ -1090,7 +1088,7 @@ async def mafia_callback(callback: CallbackQuery):
     
 
     text_for_mafia = (
-        f"🤵🏼 Mafiya a'zosi <a href='tg://user?id={mafia_id}'>{mafia_name}</a> - <a href='tg://user?id={target_id}'>{target_name}</a> uchun ovoz berdi"
+        f"<tg-emoji emoji-id='5897622767565543503'>🤵🏼</tg-emoji> Mafiya a'zosi <a href='tg://user?id={mafia_id}'>{mafia_name}</a> - <a href='tg://user?id={target_id}'>{target_name}</a> uchun ovoz berdi"
     )
 
     for member_id in mafia_members:
@@ -1143,7 +1141,7 @@ async def adv_callback(callback: CallbackQuery):
             text=tg['adv_no_go']
         )
         return
-    # ✅ night action saqlash
+    # <tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> night action saqlash
     game["night_actions"]["advokat_target"] = int(target_id)
     add_visit(game=game, visitor_id=adv_id, house_id=target_id, invisible=False)
     
@@ -1213,7 +1211,7 @@ async def spy_callback(callback: CallbackQuery):
         )
         return
     
-    # ✅ night action saqlash
+    # <tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> night action saqlash
     game["night_actions"]["spy_target"] = int(target_id)
     add_visit(game=game, visitor_id=spy_id, house_id=target_id, invisible=False)
     
@@ -1226,7 +1224,7 @@ async def spy_callback(callback: CallbackQuery):
     spy_name = get_first_name_from_players(game,spy_id)
     mafia_members = get_mafia_members(int(game_id))
     text_for_mafia = (
-        f"🦇 Ayg'oqchi {spy_name} tanlovi: <a href='tg://user?id={target_id}'>{target_name}</a>"
+        f"<tg-emoji emoji-id='5442769745050871204'>🦇</tg-emoji> Ayg'oqchi {spy_name} tanlovi: <a href='tg://user?id={target_id}'>{target_name}</a>"
     )
     for member_id in mafia_members:
         if member_id == spy_id:
@@ -1281,7 +1279,7 @@ async def lab_callback(callback: CallbackQuery):
         )
         return
     
-    # ✅ night action saqlash
+    # <tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> night action saqlash
     game["night_actions"]["lab_target"] = int(target_id)
     add_visit(game=game, visitor_id=lab_id, house_id=target_id, invisible=False)
     
@@ -1331,7 +1329,7 @@ async def arrow_callback(callback: CallbackQuery):
             text=tg['arrow_no_go']
         )   
         return
-    # ✅ night action saqlash
+    # <tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> night action saqlash
     game["night_actions"]["arrow_target"] = int(target_id)
     add_visit(game=game, visitor_id=arrow_id, house_id=target_id, invisible=True)
     
@@ -1381,7 +1379,7 @@ async def trap_callback(callback: CallbackQuery):
         )
         return
     
-    # ✅ night action saqlash
+    # <tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> night action saqlash
     game["night_actions"]["trap_house"] = int(target_id)
     
     await send_safe_message(
@@ -1431,7 +1429,7 @@ async def snyper_callback(callback: CallbackQuery):
         )   
         return
     
-    # ✅ night action saqlash
+    # <tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> night action saqlash
     game["night_actions"]["snyper_target"] = int(target_id)
     add_visit(game=game, visitor_id=snyper_id, house_id=target_id, invisible=True)
     
@@ -1481,7 +1479,7 @@ async def spy_callback(callback: CallbackQuery):
         )
         return
     
-    # ✅ night action saqlash
+    # <tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> night action saqlash
     game["night_actions"]["traitor_target"] = int(target_id)
     add_visit(game=game, visitor_id=traitor_id, house_id=target_id, invisible=False)
     await send_safe_message(
@@ -1528,7 +1526,7 @@ async def snowball_callback(callback: CallbackQuery):
         )
         return
     
-    # ✅ night action saqlash
+    # <tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> night action saqlash
     game["night_actions"]["snowball_target"] = int(target_id)
     add_visit(game=game, visitor_id=snowball_id, house_id=target_id, invisible=False)
     await send_safe_message(
@@ -1574,7 +1572,7 @@ async def pirate_callback(callback: CallbackQuery):
         )
         return
     
-    # ✅ night action saqlash
+    # <tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> night action saqlash
     game["night_actions"]["pirate"]['target_id'] = int(target_id)
     game["night_actions"]["pirate"]['pirate_id'] = int(pirate_id)
     game["night_actions"]["pirate"]['result'] = "no"
@@ -1617,7 +1615,7 @@ async def pirpay_callback(callback: CallbackQuery):
         return
     target_name = get_first_name_from_players(game,int(target_id))
     if confirmation == "no":
-        await callback.message.edit_text(text=f"👺 {t['pirate_pay_no']}")
+        await callback.message.edit_text(text=f"<tg-emoji emoji-id='5372931824471251423'>👺</tg-emoji> {t['pirate_pay_no']}")
         await send_safe_message(
             chat_id=pirate_id,
             text=t['pirate_answer'].format(target_name=target_name,target_id=target_id)
@@ -1685,7 +1683,7 @@ async def professor_callback(callback: CallbackQuery):
         )
         return
     
-    # ✅ night action saqlash
+    # <tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> night action saqlash
     game["night_actions"]["professor"]['target_id'] = int(target_id)
     game["night_actions"]["professor"]['chosen'] = "die"
     add_visit(game=game, visitor_id=professor_id, house_id=target_id, invisible=False)
@@ -1722,7 +1720,7 @@ async def prof_callback(callback: CallbackQuery):
     game_day = game['meta']['day']
     t = get_lang_text(callback.from_user.id)
     if not day == str(game_day):
-        await callback.message.edit_text(text=f"🎩 {t['late']}", parse_mode="HTML")
+        await callback.message.edit_text(text=f"<tg-emoji emoji-id='5895605369887004463'>🎩</tg-emoji> {t['late']}", parse_mode="HTML")
         return
     if not prof_id in game["alive"]:
         return
@@ -1771,6 +1769,8 @@ async def hang_callback(callback: CallbackQuery):
     game = games_state.get(int(game_id))
     if not game:
         return
+    if not shooter_id in game["alive"]:
+        return
     game_day = game['meta']['day']
     t = get_lang_text(callback.from_user.id)
     tg= get_lang_text(chat_id)
@@ -1781,7 +1781,7 @@ async def hang_callback(callback: CallbackQuery):
         await callback.message.edit_text(text=f"{t['hang_action']}\n\n{t['action_no_choose']}", parse_mode="HTML")
         await send_safe_message(
             chat_id=chat_id,
-            text=f"🚷 <a href='tg://user?id={shooter_id}'>{shooter_name}</a> {tg['no_hang_choose']}"
+            text=f"<tg-emoji emoji-id='5240241223632954241'>🚷</tg-emoji> <a href='tg://user?id={shooter_id}'>{shooter_name}</a> {tg['no_hang_choose']}"
         )
         game["day_actions"]['votes'].append("no_lynch")
         return
@@ -1891,7 +1891,7 @@ async def pul_star_callback(callback: CallbackQuery):
     user_id = callback.from_user.id
 
     prices = [
-        LabeledPrice(label=f"💶 {money_amount} sotib olish", amount=star_amount)
+        LabeledPrice(label=f"<tg-emoji emoji-id='5472030678633684592'>💶</tg-emoji> {money_amount} sotib olish", amount=star_amount)
     ]
     t = get_lang_text(callback.from_user.id)
 
@@ -1914,7 +1914,7 @@ async def olmos_star_callback(callback: CallbackQuery):
     user_id = callback.from_user.id
 
     prices = [
-        LabeledPrice(label=f"💎 {olmos_amount} sotib olish", amount=star_amount)
+        LabeledPrice(label=f"<tg-emoji emoji-id='5471952986970267163'>💎</tg-emoji>{olmos_amount} sotib olish", amount=star_amount)
     ]
     t = get_lang_text(callback.from_user.id)
     await bot.send_invoice(
@@ -1941,7 +1941,7 @@ async def successful_payment_handler(message: Message):
     try:
         parts = payload.split("_")
         if len(parts) != 4:
-            await message.answer("❌ Noto‘g‘ri invoice payload.")
+            await message.answer("<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> Noto‘g‘ri invoice payload.")
             return
 
         prefix = parts[0]  # pul yoki olmos
@@ -1949,7 +1949,7 @@ async def successful_payment_handler(message: Message):
         star_amount = int(parts[2])
         user_id = int(parts[3])
     except:
-        await message.answer("❌ Payload parse error.")
+        await message.answer("<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> Payload parse error.")
         return
     
     if int(user_id)<0:
@@ -1958,33 +1958,33 @@ async def successful_payment_handler(message: Message):
             group_trials.stones += item_amount
             group_trials.save()
         await message.answer(
-            f"✅ Olmos xarid qilindi!\n\n"
-            f"💎 Olmos: {item_amount}\n"
+            f"<tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> Olmos xarid qilindi!\n\n"
+            f"<tg-emoji emoji-id='5471952986970267163'>💎</tg-emoji>Olmos: {item_amount}\n"
         )
         return
 
-    # ✅ xavfsizlik
+    # <tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> xavfsizlik
     if message.from_user.id != user_id:
-        await message.answer("❌ To‘lov user mos kelmadi.")
+        await message.answer("<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> To‘lov user mos kelmadi.")
         return
 
-    # ✅ real to'lov va kutilgan star amount mos kelishi kerak
+    # <tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> real to'lov va kutilgan star amount mos kelishi kerak
     if total_amount != star_amount:
-        await message.answer("❌ To‘lov summasi mos kelmadi.")
+        await message.answer("<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> To‘lov summasi mos kelmadi.")
         return
     
     
 
     user = User.objects.filter(telegram_id=user_id).first()
     if not user:
-        await message.answer("❌ Foydalanuvchi topilmadi.")
+        await message.answer("<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> Foydalanuvchi topilmadi.")
         return
     if prefix == "pul":
         
         await message.answer(
-            f"✅ Pul xarid qilindi!\n\n"
-            f"💶 Pul: {item_amount}\n"
-            f"⭐ Stars: {total_amount} {currency}"
+            f"<tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> Pul xarid qilindi!\n\n"
+            f"<tg-emoji emoji-id='5472030678633684592'>💶</tg-emoji> Pul: {item_amount}\n"
+            f"<tg-emoji emoji-id='5229227046290343318'>⭐</tg-emoji> Stars: {total_amount} {currency}"
         )
         user.coin += item_amount
         user.save()
@@ -1992,15 +1992,15 @@ async def successful_payment_handler(message: Message):
     elif prefix == "olmos":
         # add_olmos_user(user_id, item_amount)
         await message.answer(
-            f"✅ Olmos xarid qilindi!\n\n"
-            f"💎 Olmos: {item_amount}\n"
-            f"⭐ Stars: {total_amount} {currency}"
+            f"<tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> Olmos xarid qilindi!\n\n"
+            f"<tg-emoji emoji-id='5471952986970267163'>💎</tg-emoji>Olmos: {item_amount}\n"
+            f"<tg-emoji emoji-id='5229227046290343318'>⭐</tg-emoji> Stars: {total_amount} {currency}"
         )
         user.stones += item_amount
         user.save()
 
     else:
-        await message.answer("❌ Noma’lum invoice turi.")
+        await message.answer("<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> Noma’lum invoice turi.")
         return
     
     
@@ -2008,8 +2008,13 @@ async def successful_payment_handler(message: Message):
 async def groups_callback(callback: CallbackQuery):
     await callback.answer()
     t = get_lang_text(callback.from_user.id)
+    user = User.objects.filter(telegram_id=callback.from_user.id).first()
+    if user and user.is_premium:
+        text = t['groups_section']
+    else:
+        text = t['groups_section']
     await callback.message.edit_text(
-        text=t['groups_section'],
+        text=text,
         parse_mode="HTML",
         reply_markup=groups_inline_btn()
     )
@@ -2065,7 +2070,7 @@ async def quiz_select(callback):
     group = PremiumGroup.objects.get(id=group_id)
 
     await callback.message.edit_text(
-        text=f"🌟 Premium guruhni boshqarish\n\n"
+        text=f"<tg-emoji emoji-id='5229227046290343318'><tg-emoji emoji-id='5229227046290343318'>⭐</tg-emoji>️</tg-emoji> Premium guruhni boshqarish\n\n"
              f"Nomi: {group.name}\n"
              f"Link: {group.link}",
         reply_markup=group_manage_btn(group.id)
@@ -2075,7 +2080,7 @@ async def quiz_select(callback):
 async def add_group(callback: CallbackQuery,state: FSMContext) -> None:
     await callback.answer()
     await callback.message.edit_text(
-        text="⭐ Premium guruh nomini kiriting:",
+        text="<tg-emoji emoji-id='5229227046290343318'>⭐</tg-emoji> Premium guruh nomini kiriting:",
         reply_markup=back_admin_btn()
     )
     await state.set_state(AddGroupState.waiting_for_group_name)
@@ -2097,7 +2102,7 @@ async def process_group_link(message: Message, state: FSMContext) -> None:
     group_link = message.text.strip()
     if not group_link.startswith("https://t.me/") and not group_link.startswith("http://t.me/"):
         await message.answer(
-            text="❌ Iltimos, to'g'ri guruh linkini kiriting (https://t.me/...)",
+            text="<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> Iltimos, to'g'ri guruh linkini kiriting (https://t.me/...)",
             reply_markup=back_admin_btn()
         )
         return
@@ -2105,7 +2110,7 @@ async def process_group_link(message: Message, state: FSMContext) -> None:
     await state.update_data(group_link=group_link)
     
     await message.answer(
-        text="💎 Nechta olmos evaziga",
+        text="<tg-emoji emoji-id='5471952986970267163'>💎</tg-emoji>Nechta olmos evaziga",
         reply_markup=back_admin_btn()
     )
     await state.set_state(AddGroupState.waiting_for_olmos_amount)
@@ -2116,7 +2121,7 @@ async def process_olmos_amount(message: Message, state: FSMContext) -> None:
     olmos_amount_text = message.text.strip()
     if not olmos_amount_text.isdigit():
         await message.answer(
-            text="❌ Iltimos, to'g'ri olmos miqdorini kiriting (faqat raqamlar)",
+            text="<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> Iltimos, to'g'ri olmos miqdorini kiriting (faqat raqamlar)",
             reply_markup=back_admin_btn()
         )
         return
@@ -2135,7 +2140,7 @@ async def process_olmos_amount(message: Message, state: FSMContext) -> None:
             group.ends_date = default_end_date()
             group.save()
             await message.answer(
-                text=f"✅ Premium guruh muvaffaqiyatli yangilandi!\n\n"
+                text=f"<tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> Premium guruh muvaffaqiyatli yangilandi!\n\n"
                      f"Nomi: {group_name}\n"
                      f"Link: {group_link}",
                 reply_markup=admin_inline_btn()
@@ -2151,7 +2156,7 @@ async def process_olmos_amount(message: Message, state: FSMContext) -> None:
     )
 
     await message.answer(
-        text=f"✅ Premium guruh muvaffaqiyatli qo'shildi!\n\n"
+        text=f"<tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> Premium guruh muvaffaqiyatli qo'shildi!\n\n"
              f"Nomi: {group_name}\n"
              f"Link: {group_link}\n"
              f"Olmos evaziga: {olmos_amount}",
@@ -2170,7 +2175,7 @@ async def manage_group(callback: CallbackQuery,state : FSMContext) -> None:
     if action == "edit":
         await state.update_data(group_id=group_id)
         await callback.message.edit_text(
-            text="⭐ Yangi premium guruh nomini kiriting:",
+            text="<tg-emoji emoji-id='5229227046290343318'>⭐</tg-emoji> Yangi premium guruh nomini kiriting:",
             reply_markup=back_admin_btn()
         )
         await state.set_state(AddGroupState.waiting_for_group_name)
@@ -2180,12 +2185,12 @@ async def manage_group(callback: CallbackQuery,state : FSMContext) -> None:
         if group:
             group.delete()
             await callback.message.edit_text(
-                text="✅ Premium guruh muvaffaqiyatli o'chirildi.",
+                text="<tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> Premium guruh muvaffaqiyatli o'chirildi.",
                 reply_markup=admin_inline_btn()
             )
         else:
             await callback.message.edit_text(
-                text="❌ Premium guruh topilmadi.",
+                text="<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> Premium guruh topilmadi.",
                 reply_markup=admin_inline_btn()
             )
     
@@ -2196,13 +2201,13 @@ async def remove_callback(callback: CallbackQuery,state: FSMContext) -> None:
     action = callback.data.split("_")[1]
     if action == "pul":
         await callback.message.edit_text(
-            text="💶 Foydalanuvchidan pul yechib olish uchun telegram id va pulni yonma-yon kiriting:",
+            text="<tg-emoji emoji-id='5472030678633684592'>💶</tg-emoji> Foydalanuvchidan pul yechib olish uchun telegram id va pulni yonma-yon kiriting:",
             reply_markup=back_admin_btn()
         )
         await state.set_state(SendMoneyState.waiting_money_to_remove)
     elif action == "olmos":
         await callback.message.edit_text(
-            text="💎 Foydalanuvchidan olmos yechib olish uchun telegram id va olmosni yonma-yon kiriting:",
+            text="<tg-emoji emoji-id='5471952986970267163'>💎</tg-emoji>Foydalanuvchidan olmos yechib olish uchun telegram id va olmosni yonma-yon kiriting:",
             reply_markup=back_admin_btn()
         )
         await state.set_state(SendMoneyState.waiting_olmos_to_remove)
@@ -2214,7 +2219,7 @@ async def process_send_money(message: Message, state: FSMContext) -> None:
         amount = int(amount_str)
     except ValueError:
         await message.answer(
-            text="❌ Iltimos, to'g'ri formatda kiriting: telegram_id pul_miqdori",
+            text="<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> Iltimos, to'g'ri formatda kiriting: telegram_id pul_miqdori",
             reply_markup=back_admin_btn()
         )
         return
@@ -2224,7 +2229,7 @@ async def process_send_money(message: Message, state: FSMContext) -> None:
     user = User.objects.filter(telegram_id=int(telegram_id)).first()
     if not user:
         await message.answer(
-            text="❌ Foydalanuvchi topilmadi.",
+            text="<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> Foydalanuvchi topilmadi.",
             reply_markup=back_admin_btn()
         )
         return
@@ -2242,18 +2247,18 @@ async def process_send_money(message: Message, state: FSMContext) -> None:
     MoneySendHistory.objects.create(
         sender_id = sender.id,
         receiver_id = user.id,
-        amount = f"- {amount} 💶"
+        amount = f"- {amount} <tg-emoji emoji-id='5472030678633684592'>💶</tg-emoji>"
     )
         
 
     await message.answer(
-        text=f"✅ <a href='tg://user?id={user.telegram_id}'>{user.first_name}</a> foydalanuvchisidan {amount}💶 muvaffaqiyatli yechib olindi.",
+        text=f"<tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> <a href='tg://user?id={user.telegram_id}'>{user.first_name}</a> foydalanuvchisidan {amount}<tg-emoji emoji-id='5472030678633684592'>💶</tg-emoji> muvaffaqiyatli yechib olindi.",
         reply_markup=admin_inline_btn(),
         parse_mode="HTML"
     )
     await send_safe_message(
         chat_id=user.telegram_id,
-        text=f"Sizdan admin  💶 {amount} pullar yechib oldi."
+        text=f"Sizdan admin  <tg-emoji emoji-id='5472030678633684592'>💶</tg-emoji> {amount} pullar yechib oldi."
     )   
     await state.clear()
     
@@ -2265,7 +2270,7 @@ async def process_send_olmos(message: Message, state: FSMContext) -> None:
         amount = int(amount_str)
     except ValueError:
         await message.answer(
-            text="❌ Iltimos, to'g'ri formatda kiriting: telegram_id pul_miqdori",
+            text="<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> Iltimos, to'g'ri formatda kiriting: telegram_id pul_miqdori",
             reply_markup=back_admin_btn()
         )
         return
@@ -2274,7 +2279,7 @@ async def process_send_olmos(message: Message, state: FSMContext) -> None:
     user = User.objects.filter(telegram_id=int(telegram_id)).first()
     if not user:
         await message.answer(
-            text="❌ Foydalanuvchi topilmadi.",
+            text="<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> Foydalanuvchi topilmadi.",
             reply_markup=back_admin_btn()
         )
         return
@@ -2296,13 +2301,13 @@ async def process_send_olmos(message: Message, state: FSMContext) -> None:
     )
 
     await message.answer(
-        text=f"✅ <a href='tg://user?id={user.telegram_id}'>{user.first_name}</a> foydalanuvchisidan {amount}💎 muvaffaqiyatli yechib olindi.",
+        text=f"<tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> <a href='tg://user?id={user.telegram_id}'>{user.first_name}</a> foydalanuvchisidan {amount}<tg-emoji emoji-id='5471952986970267163'>💎</tg-emoji>muvaffaqiyatli yechib olindi.",
         reply_markup=admin_inline_btn(),
         parse_mode="HTML"
     )
     await send_safe_message(
         chat_id=user.telegram_id,
-        text= f"Sizdan admin tomonidan 💎 {amount} olmoslar yechib olindi."
+        text= f"Sizdan admin tomonidan <tg-emoji emoji-id='5471952986970267163'>💎</tg-emoji>{amount} olmoslar yechib olindi."
     )
     await state.clear()
     
@@ -2314,7 +2319,7 @@ async def send_callback(callback: CallbackQuery,state: FSMContext) -> None:
     action = callback.data.split("_")[1]
     if action == "pul":
         await callback.message.edit_text(
-            text="💶 Foydalanuvchiga pul yuborish uchun telegram id va pulni yonma-yon kiriting:",
+            text="<tg-emoji emoji-id='5472030678633684592'>💶</tg-emoji> Foydalanuvchiga pul yuborish uchun telegram id va pulni yonma-yon kiriting:",
             reply_markup=back_admin_btn()
         )
         await state.set_state(SendMoneyState.waiting_for_money)
@@ -2323,14 +2328,14 @@ async def send_callback(callback: CallbackQuery,state: FSMContext) -> None:
         
     elif action == "olmos":
         await callback.message.edit_text(
-            text="💎 Foydalanuvchiga olmos yuborish uchun telegram id va olmosni yonma-yon kiriting:",
+            text="<tg-emoji emoji-id='5471952986970267163'>💎</tg-emoji>Foydalanuvchiga olmos yuborish uchun telegram id va olmosni yonma-yon kiriting:",
             reply_markup=back_admin_btn()
         )
         await state.set_state(SendMoneyState.waiting_for_olmos)
         return
     elif action == "channel":
         await callback.message.edit_text(
-            text="💎 Kanalga jo'natmoqchi bo'lgan kanal usernamesini va olmos miqdorini yonma-yon kiriting:\n(@my_chanel 10)",
+            text="<tg-emoji emoji-id='5471952986970267163'>💎</tg-emoji>Kanalga jo'natmoqchi bo'lgan kanal usernamesini va olmos miqdorini yonma-yon kiriting:\n(@my_chanel 10)",
             reply_markup=back_admin_btn()
         )
         await state.set_state(SendMoneyState.waiting_for_channel_olmos)
@@ -2340,17 +2345,17 @@ async def send_callback(callback: CallbackQuery,state: FSMContext) -> None:
         try:
             sent = await bot.send_message(
             chat_id=username,
-            text=f"Kanalimiz obunachilari uchun 💎 {amount_str} ta olmos hadya qilinmoqda:",
+            text=f"Kanalimiz obunachilari uchun <tg-emoji emoji-id='5471952986970267163'>💎</tg-emoji>{amount_str} ta olmos hadya qilinmoqda:",
             reply_markup=claim_chanel_olmos_inline_btn(username=remove_prefix(username))        
         )
         except Exception as e:
             await callback.message.edit_text(
-                    text="❌ Kanal username'ida xatolik bor yoki kanal topilmadi. Iltimos, tekshirib qaytadan urinib ko'ring.",
+                    text="<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> Kanal username'ida xatolik bor yoki kanal topilmadi. Iltimos, tekshirib qaytadan urinib ko'ring.",
                     reply_markup=admin_inline_btn()
                 )
             return
         await callback.message.edit_text(
-            text="💎 Kanalga olmos jo'natildi",
+            text="<tg-emoji emoji-id='5471952986970267163'>💎</tg-emoji>Kanalga olmos jo'natildi",
             reply_markup=admin_inline_btn()
         )
         stones_taken[username] = {
@@ -2364,7 +2369,7 @@ async def send_callback(callback: CallbackQuery,state: FSMContext) -> None:
     elif action == "no":
         await bot.send_message(
             chat_id=username,
-            text=f"Kanalga jo'natilishi kerak bo'lgan 💎 olmoslar bekor qilindi.",
+            text=f"Kanalga jo'natilishi kerak bo'lgan <tg-emoji emoji-id='5471952986970267163'>💎</tg-emoji>olmoslar bekor qilindi.",
             reply_markup=admin_inline_btn()
         )
         return
@@ -2375,26 +2380,26 @@ async def process_send_channel_olmos(message: Message, state: FSMContext) -> Non
         amount = int(amount_str)
     except ValueError:
         await message.answer(
-            text="❌ Iltimos, to'g'ri formatda kiriting: @channel_username olmos_miqdori",
+            text="<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> Iltimos, to'g'ri formatda kiriting: @channel_username olmos_miqdori",
             reply_markup=back_admin_btn()
         )
         return
     
     if not channel_username.startswith("@"):
         await message.answer(
-            text="❌ Iltimos, kanal username'ini @ bilan boshlang.",
+            text="<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> Iltimos, kanal username'ini @ bilan boshlang.",
             reply_markup=back_admin_btn()
         )
         return
     if stones_taken.get(channel_username):
             await message.answer(
-                text="❌ Bu kanalda tugamagan olmoslar allaqachon mavjud.",
+                text="<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> Bu kanalda tugamagan olmoslar allaqachon mavjud.",
                 reply_markup=admin_inline_btn()
             )
             await state.clear()
             return
     await message.answer(
-        text=f"✅ {channel_username} kanaliga {amount} olmos yuborililsinmi?",
+        text=f"<tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> {channel_username} kanaliga {amount} olmos yuborililsinmi?",
         reply_markup=confirm_channel_olmos_inline_btn(channel_username=channel_username, amount=amount)
     )
     await state.clear()
@@ -2407,7 +2412,7 @@ async def process_send_money(message: Message, state: FSMContext) -> None:
         amount = int(amount_str)
     except ValueError:
         await message.answer(
-            text="❌ Iltimos, to'g'ri formatda kiriting: telegram_id pul_miqdori",
+            text="<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> Iltimos, to'g'ri formatda kiriting: telegram_id pul_miqdori",
             reply_markup=back_admin_btn()
         )
         return
@@ -2417,7 +2422,7 @@ async def process_send_money(message: Message, state: FSMContext) -> None:
     user = User.objects.filter(telegram_id=int(telegram_id)).first()
     if not user:
         await message.answer(
-            text="❌ Foydalanuvchi topilmadi.",
+            text="<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> Foydalanuvchi topilmadi.",
             reply_markup=back_admin_btn()
         )
         return
@@ -2435,18 +2440,18 @@ async def process_send_money(message: Message, state: FSMContext) -> None:
     MoneySendHistory.objects.create(
         sender_id = sender.id,
         receiver_id = user.id,
-        amount = f"{amount} 💶"
+        amount = f"{amount} <tg-emoji emoji-id='5472030678633684592'>💶</tg-emoji>"
     )
         
 
     await message.answer(
-        text=f"✅ <a href='tg://user?id={user.telegram_id}'>{user.first_name}</a> foydalanuvchisiga {amount}💶 muvaffaqiyatli yuborildi.",
+        text=f"<tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> <a href='tg://user?id={user.telegram_id}'>{user.first_name}</a> foydalanuvchisiga {amount}<tg-emoji emoji-id='5472030678633684592'>💶</tg-emoji> muvaffaqiyatli yuborildi.",
         reply_markup=admin_inline_btn(),
         parse_mode="HTML"
     )
     await send_safe_message(
         chat_id=user.telegram_id,
-        text=f"Sizga admin tomonidan 💶 {amount} pullar yuborildi."
+        text=f"Sizga admin tomonidan <tg-emoji emoji-id='5472030678633684592'>💶</tg-emoji> {amount} pullar yuborildi."
     )   
     await state.clear()
     
@@ -2457,7 +2462,7 @@ async def process_send_olmos(message: Message, state: FSMContext) -> None:
         amount = int(amount_str)
     except ValueError:
         await message.answer(
-            text="❌ Iltimos, to'g'ri formatda kiriting: telegram_id pul_miqdori",
+            text="<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> Iltimos, to'g'ri formatda kiriting: telegram_id pul_miqdori",
             reply_markup=back_admin_btn()
         )
         return
@@ -2466,7 +2471,7 @@ async def process_send_olmos(message: Message, state: FSMContext) -> None:
     user = User.objects.filter(telegram_id=int(telegram_id)).first()
     if not user:
         await message.answer(
-            text="❌ Foydalanuvchi topilmadi.",
+            text="<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> Foydalanuvchi topilmadi.",
             reply_markup=back_admin_btn()
         )
         return
@@ -2481,13 +2486,13 @@ async def process_send_olmos(message: Message, state: FSMContext) -> None:
     )
 
     await message.answer(
-        text=f"✅ <a href='tg://user?id={user.telegram_id}'>{user.first_name}</a> foydalanuvchisiga {amount}💎 muvaffaqiyatli yuborildi.",
+        text=f"<tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> <a href='tg://user?id={user.telegram_id}'>{user.first_name}</a> foydalanuvchisiga {amount}<tg-emoji emoji-id='5471952986970267163'>💎</tg-emoji>muvaffaqiyatli yuborildi.",
         reply_markup=admin_inline_btn(),
         parse_mode="HTML"
     )
     await send_safe_message(
         chat_id=user.telegram_id,
-        text= f"Sizga admin tomonidan 💎 {amount} olmoslar yuborildi."
+        text= f"Sizga admin tomonidan <tg-emoji emoji-id='5471952986970267163'>💎</tg-emoji>{amount} olmoslar yuborildi."
     )
     await state.clear()
     
@@ -2571,7 +2576,7 @@ async def statistics_callback(callback: CallbackQuery):
         u = users_map.get(most_wins_all_time_row["user"])
         if u:
             most_wins_text = (
-                f"🏆 Eng ko'p g'alaba (umumiy): "
+                f"<tg-emoji emoji-id='5409008750893734809'>🏆</tg-emoji> Eng ko'p g'alaba (umumiy): "
                 f"<a href='tg://user?id={u.telegram_id}'>{u.first_name}</a>"
                 f" ({most_wins_all_time_row['total_win']} g'alaba)\n"
             )
@@ -2610,10 +2615,10 @@ async def statistics_callback(callback: CallbackQuery):
         text=(
             f"📊 Bot Statistikasi\n\n"
             f"👥 Foydalanuvchilar soni: {total_users}\n"
-            f"🛡️ Adminlar soni: {total_admins}\n"
-            f"🌟 Premium guruhlar soni: {total_premium_groups}\n"
+            f"<tg-emoji emoji-id='5465154440287757794'>🛡</tg-emoji>️ Adminlar soni: {total_admins}\n"
+            f"<tg-emoji emoji-id='5229227046290343318'><tg-emoji emoji-id='5229227046290343318'>⭐</tg-emoji>️</tg-emoji> Premium guruhlar soni: {total_premium_groups}\n"
             f"🤖 Bot ishlayotgan guruhlar soni: {bot_working_in_groups}\n"
-            f"🎲 O'yinlar soni: {total_games}\n\n"
+            f"<tg-emoji emoji-id='5357400273541148571'>🎲</tg-emoji> O'yinlar soni: {total_games}\n\n"
             f"{most_wins_text}"
             f"{daily_text}"
             f"{weekly_text}"
@@ -2629,13 +2634,13 @@ async def change_money_cost_handler(callback: CallbackQuery,state: FSMContext) -
     action = callback.data.split("_")[1]
     if action == "money":
         await callback.message.edit_text(
-            text="💶 Yangi pul sotib olish narxini kiriting:",
+            text="<tg-emoji emoji-id='5472030678633684592'>💶</tg-emoji> Yangi pul sotib olish narxini kiriting:",
             reply_markup=change_money_cost()
         )
         
     elif action == "stone":
         await callback.message.edit_text(
-            text="💎 Yangi olmos sotib olish narxini kiriting:",
+            text="<tg-emoji emoji-id='5471952986970267163'>💎</tg-emoji>Yangi olmos sotib olish narxini kiriting:",
             reply_markup=change_stones_cost()
         )
         
@@ -2644,9 +2649,9 @@ def format_money_prices(json_text: str) -> str:
     data = json.loads(json_text)
     items = sorted(((int(k), int(v)) for k, v in data.items()), key=lambda x: x[0])
 
-    text = "💶 Pul → ⭐ Stars narxlari\n\n"
+    text = "<tg-emoji emoji-id='5472030678633684592'>💶</tg-emoji> Pul → <tg-emoji emoji-id='5229227046290343318'>⭐</tg-emoji> Stars narxlari\n\n"
     for money, stars in items:
-        text += f"• {money:,} so'm  →  ⭐ {stars}\n"
+        text += f"• {money:,} so'm  →  <tg-emoji emoji-id='5229227046290343318'>⭐</tg-emoji> {stars}\n"
     return text
 
 
@@ -2654,9 +2659,9 @@ def format_stone_prices(json_text: str) -> str:
     data = json.loads(json_text)
     items = sorted(((int(k), int(v)) for k, v in data.items()), key=lambda x: x[0])
 
-    text = "💎 Olmos → ⭐ Stars narxlari\n\n"
+    text = "<tg-emoji emoji-id='5471952986970267163'>💎</tg-emoji>Olmos → <tg-emoji emoji-id='5229227046290343318'>⭐</tg-emoji> Stars narxlari\n\n"
     for stone, stars in items:
-        text += f"• {stone:,} 💎  →  ⭐ {stars}\n"
+        text += f"• {stone:,} <tg-emoji emoji-id='5471952986970267163'>💎</tg-emoji> →  <tg-emoji emoji-id='5229227046290343318'>⭐</tg-emoji> {stars}\n"
     return text
 
 
@@ -2672,7 +2677,7 @@ async def ozgar_callback(callback: CallbackQuery, state: FSMContext) -> None:
     if action == "money":
         await callback.message.edit_text(
             text=(
-                "💶 Yangi pul sotib olish narxini kiriting:\n\n"
+                "<tg-emoji emoji-id='5472030678633684592'>💶</tg-emoji> Yangi pul sotib olish narxini kiriting:\n\n"
                 f"📌 Oldingi narxlar:\n\n{cost.money_in_money}"
             ),
             reply_markup=back_admin_btn()
@@ -2687,7 +2692,7 @@ async def ozgar_callback(callback: CallbackQuery, state: FSMContext) -> None:
 
         await callback.message.edit_text(
             text=(
-                "💶 Yangi pul sotib olish narxini ⭐ starsda kiriting:\n\n"
+                "<tg-emoji emoji-id='5472030678633684592'>💶</tg-emoji> Yangi pul sotib olish narxini <tg-emoji emoji-id='5229227046290343318'>⭐</tg-emoji> starsda kiriting:\n\n"
                 f"📌 Oldingi narxlar:\n{formatted}\n\n"
                 "✍️ Namuna (JSON format):\n"
                 '{"1000":7,"10000":77,"50000":340,"100000":680}'
@@ -2710,7 +2715,7 @@ async def aziz_callback(callback: CallbackQuery, state: FSMContext) -> None:
     if action == "money":
         await callback.message.edit_text(
             text=(
-                "💎 Yangi olmos sotib olish narxini kiriting\n\n"
+                "<tg-emoji emoji-id='5471952986970267163'>💎</tg-emoji>Yangi olmos sotib olish narxini kiriting\n\n"
                 f"📌 Eski narxlar:\n\n{cost.stone_in_money}"
             ),
             reply_markup=back_admin_btn()
@@ -2725,7 +2730,7 @@ async def aziz_callback(callback: CallbackQuery, state: FSMContext) -> None:
 
         await callback.message.edit_text(
             text=(
-                "💎 Yangi olmos sotib olish narxini ⭐ starsda kiriting\n\n"
+                "<tg-emoji emoji-id='5471952986970267163'>💎</tg-emoji>Yangi olmos sotib olish narxini <tg-emoji emoji-id='5229227046290343318'>⭐</tg-emoji> starsda kiriting\n\n"
                 f"📌 Oldingi narxlar:\n{formatted}\n\n"
                 "✍️ Namuna (JSON format):\n"
                 '{"1":7,"10":68,"30":185,"50":237,"70":382,"100":513}'
@@ -2747,7 +2752,7 @@ async def process_change_money_cost(message: Message, state: FSMContext) -> None
 
     await message.answer(
         text=(
-            "✅ Pul sotib olish narxi muvaffaqiyatli o'zgartirildi.\n\n"
+            "<tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> Pul sotib olish narxi muvaffaqiyatli o'zgartirildi.\n\n"
             f"Yangi narxlar:\n\n{cost.money_in_money}"
         ),
         reply_markup=admin_inline_btn()
@@ -2763,7 +2768,7 @@ async def process_change_money_star_cost(message: Message, state: FSMContext) ->
         formatted = format_money_prices(raw)
     except Exception:
         await message.answer(
-            "❌ Format xato!\n\nJSON ko‘rinishda yuboring.\nMasalan:\n"
+            "<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> Format xato!\n\nJSON ko‘rinishda yuboring.\nMasalan:\n"
             '{"1000":7,"10000":77,"50000":340,"100000":680}'
         )
         return
@@ -2776,7 +2781,7 @@ async def process_change_money_star_cost(message: Message, state: FSMContext) ->
     cost.save()
 
     await message.answer(
-        text=f"✅ Pul sotib olish narxi muvaffaqiyatli o'zgartirildi.\n\n{formatted}",
+        text=f"<tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> Pul sotib olish narxi muvaffaqiyatli o'zgartirildi.\n\n{formatted}",
         reply_markup=admin_inline_btn(),
         parse_mode="Markdown"
     )
@@ -2794,7 +2799,7 @@ async def process_change_stone_money_cost(message: Message, state: FSMContext) -
 
     await message.answer(
         text=(
-            "✅ Olmos sotib olish narxi muvaffaqiyatli o'zgartirildi.\n\n"
+            "<tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> Olmos sotib olish narxi muvaffaqiyatli o'zgartirildi.\n\n"
             f"Yangi narxlar:\n\n{cost.stone_in_money}"
         ),
         reply_markup=admin_inline_btn()
@@ -2811,7 +2816,7 @@ async def process_change_stone_star_cost(message: Message, state: FSMContext) ->
 
         if not isinstance(data, dict):
             await message.answer(
-                "❌ Noto'g'ri format!\n\nJSON object yuborishingiz kerak.\nNamuna:\n"
+                "<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> Noto'g'ri format!\n\nJSON object yuborishingiz kerak.\nNamuna:\n"
                 '{"1":7,"10":68,"30":185,"50":237,"70":382,"100":513}'
             )
             return
@@ -2824,7 +2829,7 @@ async def process_change_stone_star_cost(message: Message, state: FSMContext) ->
 
     except Exception:
         await message.answer(
-            "❌ JSON format xato!\n\nNamuna:\n"
+            "<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> JSON format xato!\n\nNamuna:\n"
             '{"1":7,"10":68,"30":185,"50":237,"70":382,"100":513}'
         )
         return
@@ -2838,7 +2843,7 @@ async def process_change_stone_star_cost(message: Message, state: FSMContext) ->
 
     await message.answer(
         text=(
-            "✅ Olmos sotib olish narxi muvaffaqiyatli (⭐ starslarda) o'zgartirildi.\n\n"
+            "<tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> Olmos sotib olish narxi muvaffaqiyatli (<tg-emoji emoji-id='5229227046290343318'>⭐</tg-emoji> starslarda) o'zgartirildi.\n\n"
             f"{formatted}"
         ),
         reply_markup=admin_inline_btn(),
@@ -2851,8 +2856,13 @@ async def process_change_stone_star_cost(message: Message, state: FSMContext) ->
 async def case_callback(callback: CallbackQuery):
     await callback.answer()
     t = get_lang_text(callback.from_user.id)
+    user = User.objects.filter(telegram_id=callback.from_user.id).first()
+    if  user.is_premium:
+        text = t['case_menu']
+    else:
+        text = strip_tags(t['case_menu'])
     await callback.message.edit_text(
-        text=t['case_menu'],
+        text=text,
         parse_mode="HTML",
         reply_markup=case_inline_btn(callback.from_user.id)
     )
@@ -2872,8 +2882,12 @@ async def case_buy_callback(callback: CallbackQuery):
     t = get_lang_text(callback.from_user.id)
     case_opened = CasesOpened.objects.filter(user_id=user.id).first()
     if case_type == "money":
+        if user.is_premium:
+            text = t['money_case_text']
+        else:
+            text = strip_tags(t['money_case_text'])
         await callback.message.edit_text(
-            text=t['money_case_text'],
+            text=text,
             reply_markup=money_case()
         )
     elif case_type == "stone":
@@ -2883,14 +2897,18 @@ async def case_buy_callback(callback: CallbackQuery):
             # timezone muammosiz bo'lishi uchun UTC ishlatamiz
             now = datetime.datetime.utcnow()
 
-            # ✅ month check
+            # <tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> month check
             if last_opened.year == now.year and last_opened.month == now.month:
                 await callback.answer(
                     t['already_opened']
                 )
                 return
+        if user.is_premium:
+            text = t['stone_case_text']
+        else:
+            text = strip_tags(t['stone_case_text'])
         await callback.message.edit_text(
-            text=t['stone_case_text'],
+            text=text,
             reply_markup=stone_case()
         )
     elif case_type == "vip":
@@ -2931,7 +2949,11 @@ async def open_case_callback(callback: CallbackQuery):
         user.stones -= 1
         user.coin += reward
         user.save()
-        await callback.message.edit_text(t['money_reward'].format(reward=reward),reply_markup=back_btn(callback.from_user.id))
+        if user.is_premium:
+            text = t['money_reward'].format(reward=reward)
+        else:
+            text = strip_tags(t['money_reward'].format(reward=reward))
+        await callback.message.edit_text(text,reply_markup=back_btn(callback.from_user.id))
     elif case_type == "stone":
         if user.coin < 10000:
             await callback.answer(t['not_enough_money'])
@@ -2939,7 +2961,11 @@ async def open_case_callback(callback: CallbackQuery):
         user.coin -= 10000
         user.stones += reward
         user.save()
-        await callback.message.edit_text(t['stone_reward'].format(reward=reward),reply_markup=back_btn(callback.from_user.id))
+        if user.is_premium:
+            text = t['stone_reward'].format(reward=reward)
+        else:
+            text = strip_tags(t['stone_reward'].format(reward=reward))
+        await callback.message.edit_text(text,reply_markup=back_btn(callback.from_user.id))
         case_opened = CasesOpened.objects.filter(user_id=user.id).first()
         if not case_opened:
             case_opened = CasesOpened.objects.create(user_id=user.id)
@@ -2978,14 +3004,14 @@ async def begin_new_instance_callback(callback: CallbackQuery,state: FSMContext)
         game_settings = GameSettings.objects.filter(group_id=chat_id).first()
         if game_settings and not game_settings.begin_after_end:
             await callback.message.edit_text(
-                text="✅ O'yin avtomatik ravishda oldingi o'yin tugagandan so'ng boshlanishi yoqildi.",   
+                text="<tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> O'yin avtomatik ravishda oldingi o'yin tugagandan so'ng boshlanishi yoqildi.",   
                 reply_markup=start_inline_btn(callback.from_user.id)
             )
             game_settings.begin_after_end = True
         else:
             game_settings.begin_after_end = False
             await callback.message.edit_text(
-                text="❌ O'yin avtomatik ravishda oldingi o'yin tugagandan so'ng boshlanishi o'chirildi.",   
+                text="<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> O'yin avtomatik ravishda oldingi o'yin tugagandan so'ng boshlanishi o'chirildi.",   
                 reply_markup=start_inline_btn(callback.from_user.id)
             )
             
@@ -3007,7 +3033,7 @@ async def process_begin_instant_count(message: Message, state: FSMContext) -> No
         count = int(message.text.strip())
     except ValueError:
         await message.answer(
-            text="❌ Iltimos, to'g'ri son kiriting:",
+            text="<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> Iltimos, to'g'ri son kiriting:",
             reply_markup=back_btn(message.from_user.id)
         )
         return
@@ -3021,26 +3047,26 @@ async def process_begin_instant_count(message: Message, state: FSMContext) -> No
     if action == "instance":
         if count < 4 or count > 30:
             await message.answer(
-                text="❌ Iltimos, 4 dan 30 gacha bo'lgan son kiriting:",
+                text="<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> Iltimos, 4 dan 30 gacha bo'lgan son kiriting:",
                 reply_markup=back_btn(message.from_user.id)
             )
             return
         game_settings.begin_instance = True
         game_settings.number_of_players = count
-        await message.answer(f"✅ Yangi o'yin ishtirokchilar soni {count} ga o'rnatildi.",reply_markup=start_inline_btn(message.from_user.id))
+        await message.answer(f"<tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> Yangi o'yin ishtirokchilar soni {count} ga o'rnatildi.",reply_markup=start_inline_btn(message.from_user.id))
     elif action == "time":
         game_settings.begin_instance = False
         game_settings.begin_instance_time = count
-        await message.answer(f"✅ Yangi o'yin boshlanish vaqti {count} soniyaga o'rnatildi.",reply_markup=start_inline_btn(message.from_user.id))
+        await message.answer(f"<tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> Yangi o'yin boshlanish vaqti {count} soniyaga o'rnatildi.",reply_markup=start_inline_btn(message.from_user.id))
     elif action == "teamcount":
         if count < 2 or count > 9:
             await message.answer(
-                text="❌ Iltimos, 2 dan 9 gacha bo'lgan son kiriting:",
+                text="<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> Iltimos, 2 dan 9 gacha bo'lgan son kiriting:",
                 reply_markup=back_btn(message.from_user.id)
             )
             return
         game_settings.turnir_teams_count = count
-        await message.answer(f"✅ Yangi o'yin jamoalar soni {count} ga o'rnatildi.",reply_markup=start_inline_btn(message.from_user.id))
+        await message.answer(f"<tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> Yangi o'yin jamoalar soni {count} ga o'rnatildi.",reply_markup=start_inline_btn(message.from_user.id))
     game_settings.save()
     await state.clear()
     
@@ -3124,7 +3150,7 @@ async def quiz_select(callback):
 
     await callback.message.edit_text(
     text=(
-        f"🌟 Obunadagi guruhni boshqarish\n\n"
+        f"<tg-emoji emoji-id='5229227046290343318'><tg-emoji emoji-id='5229227046290343318'>⭐</tg-emoji>️</tg-emoji> Obunadagi guruhni boshqarish\n\n"
         f"Nomi: {group.group_name}\n"
         f"Link: {link_display}\n"
         f"Obuna tugash sanasi: {group.end_date.strftime('%Y-%m-%d')}\n"
@@ -3161,14 +3187,14 @@ async def process_group_money(message: Message, state: FSMContext) -> None:
         amount = int(message.text.strip())
     except ValueError:
         await message.answer(
-            text="❌ Iltimos, to'g'ri son kiriting:",
+            text="<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> Iltimos, to'g'ri son kiriting:",
             reply_markup=back_btn(message.from_user.id,"groups")
         )
         return
     group = GroupTrials.objects.filter(id=group_id).first()
     if not group:
         await message.answer(
-            text="❌ Guruh topilmadi.",
+            text="<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> Guruh topilmadi.",
             reply_markup=admin_inline_btn()
         )
         await state.clear()
@@ -3177,14 +3203,14 @@ async def process_group_money(message: Message, state: FSMContext) -> None:
         group.coins += amount
         group.save()
         await message.answer(
-            text=f"✅ Guruhga hisobiga 💶 {amount} qo'shildi.",
+            text=f"<tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> Guruhga hisobiga <tg-emoji emoji-id='5472030678633684592'>💶</tg-emoji> {amount} qo'shildi.",
             reply_markup=admin_inline_btn()
         )
     elif action == "stone":
         group.stones += amount
         group.save()
         await message.answer(
-            text=f"✅ Guruhga hisobiga 💎 {amount} qo'shildi.",
+            text=f"<tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> Guruhga hisobiga <tg-emoji emoji-id='5471952986970267163'>💎</tg-emoji>{amount} qo'shildi.",
             reply_markup=admin_inline_btn()
         )
     await state.clear()
@@ -3194,7 +3220,7 @@ async def extend_callback(callback: CallbackQuery,state: FSMContext) -> None:
     await callback.answer()
     group_id = callback.data.split(":")[1]
     await callback.message.edit_text(
-        text="⏳ Obuna muddatini uzaytirish uchun obuna tugash sanasini (YYYY-MM-DD) kiriting:",
+        text="<tg-emoji emoji-id='5451732530048802485'>⏳</tg-emoji> Obuna muddatini uzaytirish uchun obuna tugash sanasini (YYYY-MM-DD) kiriting:",
         reply_markup=back_btn(callback.from_user.id,"groups")
     )
     await state.update_data(group_id=group_id)
@@ -3208,7 +3234,7 @@ async def process_extend_info(message: Message, state: FSMContext) -> None:
     text = message.text.strip()
     if not re.match(r'^\d{4}-\d{2}-\d{2}$', text):
         await message.answer(
-            text="❌ Iltimos, sanani to'g'ri formatda kiriting (YYYY-MM-DD):",
+            text="<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> Iltimos, sanani to'g'ri formatda kiriting (YYYY-MM-DD):",
             reply_markup=back_btn(message.from_user.id,"groups")
         )
         return
@@ -3216,7 +3242,7 @@ async def process_extend_info(message: Message, state: FSMContext) -> None:
     group = GroupTrials.objects.filter(id=group_id).first()
     if not group:
         await message.answer(
-            text="❌ Guruh topilmadi.",
+            text="<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> Guruh topilmadi.",
             reply_markup=back_btn(message.from_user.id,"groups")
         )
         await state.clear()
@@ -3224,7 +3250,7 @@ async def process_extend_info(message: Message, state: FSMContext) -> None:
     group.end_date = extend_date
     group.save()
     await message.answer(
-        text=f"✅ Obuna muddati muvaffaqiyatli uzaytirildi. Yangi tugash sanasi: {extend_date}",
+        text=f"<tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> Obuna muddati muvaffaqiyatli uzaytirildi. Yangi tugash sanasi: {extend_date}",
         reply_markup=admin_inline_btn()
     )
     await state.clear()
@@ -3244,8 +3270,8 @@ async def transfer_history_callback(callback: CallbackQuery):
         for transfer in transfers:
             history_text += (
                 f"👮 Jonatuvchi Admin: <a href='tg://user?id={transfer.sender.telegram_id}'>{transfer.sender.first_name}</a>\n"
-                f"👤 Foydalanuvchi: <a href='tg://user?id={transfer.receiver.telegram_id}'>{transfer.receiver.first_name}</a>\n"
-                f"💶 Miqdor: {transfer.amount} \n"
+                f"<tg-emoji emoji-id='5373012449597335010'>👤</tg-emoji> Foydalanuvchi: <a href='tg://user?id={transfer.receiver.telegram_id}'>{transfer.receiver.first_name}</a>\n"
+                f"<tg-emoji emoji-id='5472030678633684592'>💶</tg-emoji> Miqdor: {transfer.amount} \n"
                 f"🕒 Sana: {transfer.created_datetime.strftime('%Y-%m-%d %H:%M:%S')}\n\n"
             )
 
@@ -3254,7 +3280,7 @@ async def transfer_history_callback(callback: CallbackQuery):
             reply_markup=history_groupes_keyboard(page=page, total=total, per_page=limit)
         )
     else:
-        await callback.message.edit_text("❌ Hech qanday o'tkazmalar topilmadi.", reply_markup=admin_inline_btn())
+        await callback.message.edit_text("<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> Hech qanday o'tkazmalar topilmadi.", reply_markup=admin_inline_btn())
         return
     
     
@@ -3273,8 +3299,8 @@ async def quizzes_page_callback(callback_query: CallbackQuery):
         for transfer in transfers:
             history_text += (
                 f"👮 Jonatuvchi Admin: <a href='tg://user?id={transfer.sender.telegram_id}'>{transfer.sender.first_name}</a>\n"
-                f"👤 Foydalanuvchi: <a href='tg://user?id={transfer.receiver.telegram_id}'>{transfer.receiver.first_name}</a>\n"
-                f"💶 Miqdor: {transfer.amount} \n"
+                f"<tg-emoji emoji-id='5373012449597335010'>👤</tg-emoji> Foydalanuvchi: <a href='tg://user?id={transfer.receiver.telegram_id}'>{transfer.receiver.first_name}</a>\n"
+                f"<tg-emoji emoji-id='5472030678633684592'>💶</tg-emoji> Miqdor: {transfer.amount} \n"
                 f"🕒 Sana: {transfer.created_datetime.strftime('%Y-%m-%d %H:%M:%S')}\n\n"
             )
 
@@ -3283,7 +3309,7 @@ async def quizzes_page_callback(callback_query: CallbackQuery):
             reply_markup=history_groupes_keyboard(page=page, total=total, per_page=limit)
         )
     else:
-        await callback_query.message.edit_text("❌ Hech qanday o'tkazmalar topilmadi.", reply_markup=admin_inline_btn())
+        await callback_query.message.edit_text("<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> Hech qanday o'tkazmalar topilmadi.", reply_markup=admin_inline_btn())
         return
     
 
@@ -3348,12 +3374,12 @@ async def take_stone(callback: CallbackQuery):
         takers.append(user_taker)
 
         taken_text = "".join(
-            f"\n{i}. 💎 <a href='tg://user?id={u.telegram_id}'>{u.first_name}</a>"
+            f"\n{i}. <tg-emoji emoji-id='5471952986970267163'>💎</tg-emoji><a href='tg://user?id={u.telegram_id}'>{u.first_name}</a>"
             for i, u in enumerate(takers, 1)
         )
 
         text = (
-            f"💎 <a href='tg://user?id={sender.telegram_id}'>{sender.first_name}</a> "
+            f"<tg-emoji emoji-id='5471952986970267163'>💎</tg-emoji><a href='tg://user?id={sender.telegram_id}'>{sender.first_name}</a> "
             f"{t['group_sender'].format(count=limit)}\n{reason}"
             f"{taken_text}"
         )
@@ -3422,7 +3448,7 @@ async def take_gsend_stone(callback: CallbackQuery):
         players = game.get("players", []) if game else []
 
         if not players:
-            await callback.answer("❌ O‘yin topilmadi.", show_alert=True)
+            await callback.answer("<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> O‘yin topilmadi.", show_alert=True)
             await callback.message.edit_reply_markup(None)
             return
 
@@ -3463,12 +3489,12 @@ async def take_gsend_stone(callback: CallbackQuery):
         takers.append(user_taker)
 
         taken_text = "".join(
-            f"\n {i}. 💎 <a href='tg://user?id={u.telegram_id}'>{u.first_name}</a>"
+            f"\n {i}. <tg-emoji emoji-id='5471952986970267163'>💎</tg-emoji><a href='tg://user?id={u.telegram_id}'>{u.first_name}</a>"
             for i, u in enumerate(takers, 1)
         )
 
         text = (
-            f"💎 <a href='tg://user?id={sender.telegram_id}'>{sender.first_name}</a> "
+            f"<tg-emoji emoji-id='5471952986970267163'>💎</tg-emoji><a href='tg://user?id={sender.telegram_id}'>{sender.first_name}</a> "
             f"{t['group_sender'].format(count=limit)}"
             f"{taken_text}"
         )
@@ -3582,7 +3608,7 @@ async def process_user_talk(message: Message, state: FSMContext) -> None:
             text=f"💬 Admindan xabar:\n\n{message.text}",
             reply_markup=answer_admin(message.from_user.id, msg_id)
         )
-        await message.answer("✅ Xabaringiz foydalanuvchiga yuborildi.\nYana gapingiz bolsa yozing",reply_markup=end_talk_keyboard())
+        await message.answer("<tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> Xabaringiz foydalanuvchiga yuborildi.\nYana gapingiz bolsa yozing",reply_markup=end_talk_keyboard())
     except Exception as e:
         await message.answer(f"❗️ Xatolik yuz berdi: {str(e)}")
 
@@ -3614,7 +3640,7 @@ async def process_answer_to_admin(message: Message, state: FSMContext) -> None:
             text=f"💬 Foydalanuvchidan javob:\n\n{message.text}",
             reply_to_message_id=msg_id
         )
-        await message.answer("✅ Javobingiz adminga yuborildi.")
+        await message.answer("<tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> Javobingiz adminga yuborildi.")
     except Exception as e:
         await message.answer(f"❗️ Xatolik yuz berdi: {str(e)}")
     await state.clear()
@@ -3644,7 +3670,7 @@ async def process_broadcast_message(message: Message, state: FSMContext):
         await message.answer("❗️ Iltimos, xabar matnini kiriting.")
         return
 
-    await message.answer("⏳ Xabar yuborilmoqda...")
+    await message.answer("<tg-emoji emoji-id='5451732530048802485'>⏳</tg-emoji> Xabar yuborilmoqda...")
 
     await state.clear()
     success = 0
@@ -3679,7 +3705,7 @@ async def process_broadcast_message(message: Message, state: FSMContext):
             fail += 1
 
     await message.answer(
-        f"📢 Xabar yuborildi.\n\n✅ Muvaffaqiyatli: {success}\n❌ Muvaffaqiyatsiz: {fail}",
+        f"📢 Xabar yuborildi.\n\n<tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> Muvaffaqiyatli: {success}\n<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> Muvaffaqiyatsiz: {fail}",
         reply_markup=admin_inline_btn()
     )
 
@@ -3699,13 +3725,13 @@ async def premium_manage_callback(callback: CallbackQuery):
     chat_id = int(callback.data.split("_")[2])
     game_trial = GroupTrials.objects.filter(group_id=chat_id).first()
     if not game_trial:
-        await callback.answer("❌ Guruh topilmadi.")
+        await callback.answer("<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> Guruh topilmadi.")
         return
     game_trial.premium_stones = amount
     game_trial.stones -= amount
     game_trial.prem_ends_date = timezone.now() + timedelta(days=14)
     game_trial.save()
-    await callback.answer(text=f"✅ Guruhga {amount} olmosli premium berildi.", show_alert=True)
+    await callback.answer(text=f"<tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> Guruhga {amount} olmosli premium berildi.", show_alert=True)
     PremiumGroup.objects.update_or_create(
         name = game_trial.group_name,
         group_id = chat_id,
@@ -3751,7 +3777,7 @@ async def process_new_password(message: Message, state: FSMContext) -> None:
     new_password = message.text.strip() if message.text else None
     if not new_password:
         await message.answer(
-            text="❌ Iltimos, yangi parolini so'zlarni yuboring:",
+            text="<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> Iltimos, yangi parolini so'zlarni yuboring:",
             reply_markup=back_admin_btn()
         )
         return
@@ -3765,7 +3791,7 @@ async def process_new_password(message: Message, state: FSMContext) -> None:
     cred.save()
 
     await message.answer(
-        text="✅ Bot paroli muvaffaqiyatli o'zgartirildi.",
+        text="<tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> Bot paroli muvaffaqiyatli o'zgartirildi.",
         reply_markup=admin_inline_btn()
     )
     await state.clear()
@@ -3775,7 +3801,7 @@ async def process_new_username(message: Message, state: FSMContext) -> None:
     new_username = message.text.strip() if message.text else None
     if not new_username:
         await message.answer(
-            text="❌ Iltimos, yangi foydalanuvchi nomini yuboring:",
+            text="<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> Iltimos, yangi foydalanuvchi nomini yuboring:",
             reply_markup=back_btn(message.from_user.id)
         )
         return
@@ -3788,7 +3814,7 @@ async def process_new_username(message: Message, state: FSMContext) -> None:
     cred.save()
 
     await message.answer(
-        text="✅ Bot foydalanuvchi nomi muvaffaqiyatli o'zgartirildi.",
+        text="<tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> Bot foydalanuvchi nomi muvaffaqiyatli o'zgartirildi.",
         reply_markup=admin_inline_btn()
     )
     await state.clear()
@@ -3928,7 +3954,11 @@ async def geroy_callback(callback: CallbackQuery):
         )
     t = get_lang_text(user_id)
     if action == "no":
-        await callback.message.edit_text(t['hero_info'],reply_markup=geroy_inline_btn(user_id))
+        if user.is_premium:
+            text = t["hero_info"]
+        else:
+            text = strip_tags(t["hero_info"])
+        await callback.message.edit_text(text,reply_markup=geroy_inline_btn(user_id))
     elif action == "buy":
         if user.stones < 100:
             await callback.answer(t['not_enough_stones'])
@@ -3937,7 +3967,11 @@ async def geroy_callback(callback: CallbackQuery):
         user.is_hero = True
         user.hero_level = 1
         user.save()
-        await callback.message.edit_text(t['hero_bought'],reply_markup=start_inline_btn(callback.from_user.id))
+        if user.is_premium:
+            text = t["hero_bought"]
+        else:
+            text = strip_tags(t["hero_bought"])
+        await callback.message.edit_text(text,reply_markup=geroy_inline_btn(user_id))
     elif action == "upgrade":
         price = user.hero_level * 10 + 100
         if user.stones < price:
@@ -3946,13 +3980,21 @@ async def geroy_callback(callback: CallbackQuery):
         user.hero_level += 1
         user.stones -= price
         user.save()
-        await callback.message.edit_text(t['hero_upgraded'].format(level=user.hero_level),reply_markup=start_inline_btn(callback.from_user.id))
+        if user.is_premium:
+            text = t["hero_upgraded"]
+        else:
+            text = strip_tags(t["hero_upgraded"])
+        await callback.message.edit_text(text.format(level=user.hero_level),reply_markup=geroy_inline_btn(user_id))
     elif action == "sold":
         user.is_hero=False
         user.hero_level=1
         user.save()
-        await callback.message.edit_text(t['hero_remove'],reply_markup=start_inline_btn(callback.from_user.id))
-        
+        if user.is_premium:
+            text = t["hero_remove"]
+        else:
+            text = strip_tags(t["hero_remove"])
+        await callback.message.edit_text(text,reply_markup=geroy_inline_btn(user_id))
+
 import openpyxl
 from aiogram.types import FSInputFile
 
@@ -4044,11 +4086,11 @@ async def set_language_callback(callback: CallbackQuery):
     set_user_lang(callback, lang)
 
     texts = {
-        "uz": "✅ Til o'zbek tiliga o'zgartirildi",
-        "ru": "✅ Язык изменён на русский",
-        "en": "✅ Language changed to English",
-        "tr": "✅ Dil Türkçe olarak değiştirildi",
-        "qz": "✅ Тіл қазақ тіліне өзгертілді"
+        "uz": "<tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> Til o'zbek tiliga o'zgartirildi",
+        "ru": "<tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> Язык изменён на русский",
+        "en": "<tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> Language changed to English",
+        "tr": "<tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> Dil Türkçe olarak değiştirildi",
+        "qz": "<tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> Тіл қазақ тіліне өзгертілді"
     }
     if callback.message.chat.type == "private":
         await callback.message.edit_text(texts.get(lang, texts["uz"]),reply_markup=start_inline_btn(callback.from_user.id))
@@ -4087,12 +4129,14 @@ async def toggle_profile_callback(callback: CallbackQuery):
         user.is_geroy_use = not user.is_geroy_use
     elif setting == "activerole":
         user.is_active_role_use = not user.is_active_role_use
+    elif setting == "premium":
+        user.is_premium = not user.is_premium
     user.save()
     text =""
     user_role = UserRole.objects.filter(user_id=user.id)
     for user_r in user_role:
         role_name = dict(get_role_labels_lang(chat_id)).get(user_r.role_key, "Noma'lum rol")
-        text += f"🎭 {role_name} -  {user_r.quantity}\n"
+        text += f"<tg-emoji emoji-id='5359441070201513074'>🎭</tg-emoji> {role_name} -  {user_r.quantity}\n"
     t = get_lang_text(chat_id)
     result = MostActiveUser.objects.filter(user_id=user.id).aggregate(
     total_played=Sum('games_played'),
@@ -4146,10 +4190,10 @@ async def process_block_user_id(message: Message, state: FSMContext):
     if action == "block":
         user.is_blocked = True
         user.save()
-        await message.answer(f"✅ Foydalanuvchi (ID: {tg_id}) bloklandi.",reply_markup=admin_inline_btn())
+        await message.answer(f"<tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> Foydalanuvchi (ID: {tg_id}) bloklandi.",reply_markup=admin_inline_btn())
     elif action == "unblock":
         user.is_blocked = False
         user.save()
-        await message.answer(f"✅ Foydalanuvchi (ID: {tg_id}) blokdan chiqarildi.",reply_markup=admin_inline_btn())
+        await message.answer(f"<tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> Foydalanuvchi (ID: {tg_id}) blokdan chiqarildi.",reply_markup=admin_inline_btn())
         
     await state.clear()

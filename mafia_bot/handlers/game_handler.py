@@ -71,7 +71,6 @@ async def start_game(game_id):
             games_state[game_id]["meta"]["team_chat_open"] = "yes"
             game_day = games_state[game_id].get("meta", {}).get("day", 0) 
             
-            asyncio.create_task(send_night_actions_to_all( game_id, game, alive_users_qs,game_day))
 
             
             caption = t['night_caption']
@@ -99,6 +98,7 @@ async def start_game(game_id):
                     parse_mode="HTML"
                 )
 
+            asyncio.create_task(send_night_actions_to_all( game_id, game, alive_users_qs,game_day))
 
             await asyncio.sleep(1)
 
@@ -132,7 +132,7 @@ async def start_game(game_id):
             event = games_state[game_id]["runtime"]["night_event"]
 
             try:
-                await asyncio.wait_for(event.wait(), timeout=60)
+                await asyncio.wait_for(event.wait(), timeout=45)
             except asyncio.TimeoutError:
                 pass
             
@@ -425,7 +425,7 @@ async def start_game(game_id):
                     parse_mode="HTML"
                 )
                 continue
-            if voted_user.get('hang_protect',0) >0:
+            if voted_user.get('hang_protect',0) > 0:
                 voted_user['hang_protect'] -=1
                 user = User.objects.filter(telegram_id=voted_user.get('tg_id')).first()
                 if user:

@@ -615,7 +615,7 @@ def prepare_confirm_pending(game_id: int, voted_user_id: int):
 
     alive = set(int(x) for x in game.get("alive", []))
 
-    # ✅ osilayotgan odam confirm bermaydi
+    # <tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> osilayotgan odam confirm bermaydi
     alive.discard(int(voted_user_id))
 
     game.setdefault("runtime", {})
@@ -1069,7 +1069,7 @@ def get_mafia_kill_target(night_actions):
 
     if don_target:
         targets.append(don_target)  # 1x
-        targets.append(don_target)  # 2x ✅
+        targets.append(don_target)  # 2x <tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji>
 
     if not targets:
         return None
@@ -1366,7 +1366,7 @@ async def hero_day_actions(game_id: int):
                 )
             )
 
-        # ✅ belgilab qo‘yamiz
+        # <tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> belgilab qo‘yamiz
         game["hero"]["notified"].add(tg_id)
 
 
@@ -1653,7 +1653,7 @@ async def apply_night_actions(game_id: int):
         target_name = target_user.get("first_name") if target_user else str(com_check_target)
 
         visible_role_key = get_visible_role_for_com(game, int(com_check_target), alive_users_map)
-        visible_role_text = get_role_labels_lang(int(com_check_target)).get(visible_role_key, "👨🏼 Tinch axoli")
+        visible_role_text = get_role_labels_lang(int(com_check_target)).get(visible_role_key, "<tg-emoji emoji-id='5256204109538663733'>👨🏼</tg-emoji> Tinch axoli")
         com= get_lang_text(int(com_check_target))
         try:
             await send_safe_message(
@@ -2156,7 +2156,7 @@ async def build_final_game_text(game_id: int, winner_key: str) -> str:
 
         line = f"    {name} - {role_txt}"
 
-        # ✅ Winner bo'lish sharti: alive + winner team
+        # <tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> Winner bo'lish sharti: alive + winner team
         if tg_id in alive and role_key in winner_team_roles:
             winners.append(line)
             winners_list.append(tg_id)
@@ -2285,6 +2285,10 @@ def get_lang(tg_id: int) -> str:
 
     return "uz"
 
+
+
+def strip_tags(text):
+    return re.sub(r'<.*?>', '', text)
 
 def get_lang_text(tg_id: int) -> dict:
     return LANG_TEXTS.get(get_lang(tg_id), uz_texts)

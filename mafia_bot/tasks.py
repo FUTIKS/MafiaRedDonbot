@@ -1,7 +1,7 @@
 from celery import shared_task
 from django.utils import timezone
 from django.db.models import Sum
-from asgiref.sync import  sync_to_async
+from asgiref.sync import  sync_to_async,async_to_sync
 
 from decouple import config
 from mafia_bot.models import MostActiveUser, User
@@ -9,8 +9,7 @@ from aiogram import Bot
 TOKEN = config("BOT_TOKEN")
 @shared_task
 def my_daily_task():
-    import asyncio
-    asyncio.run(send_top())
+    async_to_sync(send_top)()
 
 
 def get_top():
@@ -52,15 +51,16 @@ async def send_top():
             lines.append(f"{idx}. {mention} — {win * 5} ball")
 
     if not lines:
-        text = "🏆 Bu oy hali natijalar yo‘q"
+        text = "<tg-emoji emoji-id='5409008750893734809'>🏆</tg-emoji> Bu oy hali natijalar yo‘q"
     else:
-        text = "🏆 Oyning top 30 óyinchilari\n\n" + "\n".join(lines)
+        text = "<tg-emoji emoji-id='5409008750893734809'>🏆</tg-emoji> Oyning top 30 óyinchilari\n\n" + "\n".join(lines)
     
     bot = Bot(TOKEN)
-
-    await bot.send_message(
-        chat_id="@MafiaRedDonOfficial",
-        text=text,
-        parse_mode="HTML"
-    )
-    await bot.session.close()
+    try:
+        await bot.send_message(
+            chat_id="@MafiaRedDonOfficial",
+            text=text,
+            parse_mode="HTML"
+        )
+    finally:
+        await bot.session.close()

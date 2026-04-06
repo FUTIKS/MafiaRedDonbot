@@ -154,10 +154,10 @@ class LoginAttemptsAdmin(admin.ModelAdmin):
         if obj.permanent_ban:
             return "🚫 PERMANENT"
         if obj.ban_until and obj.ban_until > timezone.now():
-            return "⏳ TEMP BAN"
-        return "✅ OK"
+            return "<tg-emoji emoji-id='5451732530048802485'>⏳</tg-emoji> TEMP BAN"
+        return "<tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> OK"
 
-    @admin.action(description="✅ Unban qilish")
+    @admin.action(description="<tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> Unban qilish")
     def unban_users(self, request, queryset):
         queryset.update(permanent_ban=False, ban_until=None, attempts=0)
 
@@ -165,7 +165,7 @@ class LoginAttemptsAdmin(admin.ModelAdmin):
     def ban_forever(self, request, queryset):
         queryset.update(permanent_ban=True, ban_until=None)
 
-    @admin.action(description="⏳ 1 kunga ban qilish")
+    @admin.action(description="<tg-emoji emoji-id='5451732530048802485'>⏳</tg-emoji> 1 kunga ban qilish")
     def ban_1_day(self, request, queryset):
         until = timezone.now() + timezone.timedelta(days=1)
         for obj in queryset:
