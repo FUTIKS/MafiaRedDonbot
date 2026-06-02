@@ -1,7 +1,8 @@
 import re
 import json
 import time
-import asyncio 
+import random
+import asyncio
 import datetime
 from aiogram import F
 from core.constants import COLOR_EMOJIS
@@ -133,7 +134,7 @@ async def back_callback(callback: CallbackQuery, state: FSMContext):
         )
     elif place == "case":
         user = User.objects.filter(telegram_id=callback.from_user.id).first()
-        if user.is_premium:
+        if user and user.is_premium:
             text = t['case_menu']
         else:
             text = strip_tags(t['case_menu'])
@@ -219,6 +220,13 @@ async def buy_callback(callback: CallbackQuery):
     price = callback.data.split("_")[2]
     tg_id = callback.from_user.id
     user = User.objects.filter(telegram_id=callback.from_user.id).first()
+    if not user:
+        user = User.objects.create(
+            telegram_id=callback.from_user.id,
+            lang ='uz',
+            first_name=callback.from_user.first_name,
+            username=callback.from_user.username
+        )
     result = MostActiveUser.objects.filter(user_id=user.id).aggregate(
     total_played=Sum('games_played'),
     total_wins=Sum('games_win')
@@ -227,13 +235,6 @@ async def buy_callback(callback: CallbackQuery):
     total_played = result['total_played'] or 0
     total_wins = result['total_wins'] or 0
 
-    if not user:
-        user = User.objects.create(
-            telegram_id=callback.from_user.id,
-            lang ='uz',
-            first_name=callback.from_user.first_name,
-            username=callback.from_user.username
-        )
     t = get_lang_text(tg_id)
     if thing_to_buy == "protection":
         if user.coin >= 250:
@@ -1638,11 +1639,11 @@ async def pirpay_callback(callback: CallbackQuery):
         )
         game['night_actions']['pirate']['result'] = "no_money"
         return
-    target_player.coin -= 10
-    target_player.save()
+    # F() updates avoid the read-modify-write race that could drop/duplicate coins.
+    User.objects.filter(pk=target_player.pk).update(coin=MF("coin") - 10)
     pirate_player = User.objects.filter(telegram_id=int(pirate_id)).first()
-    pirate_player.coin += 10
-    pirate_player.save()
+    if pirate_player:
+        User.objects.filter(pk=pirate_player.pk).update(coin=MF("coin") + 10)
     game['night_actions']['pirate']['result'] = "success"
     await callback.message.edit_text(text=t['pirate_pay_yes'])
     
@@ -1732,10 +1733,10 @@ async def prof_callback(callback: CallbackQuery):
         game["night_actions"]["professor"]['chosen'] = "empty"
         
     else:
-        reward = t['hero']
         user = User.objects.filter(telegram_id=int(prof_id)).first()
         if user and user.is_hero:
-             await send_safe_message(
+            reward = t['hero']
+            await send_safe_message(
                 chat_id=prof_id,
                 text=t['hero_day_action'],
                 reply_markup=use_hero_inline_btn(
@@ -1745,8 +1746,12 @@ async def prof_callback(callback: CallbackQuery):
                     day=day
                 )
             )
-            
-        game["night_actions"]["professor"]['chosen'] = "hero"
+            game["night_actions"]["professor"]['chosen'] = "hero"
+        else:
+            # Picking the "hero" box without actually being a hero is fatal —
+            # otherwise any target could dodge the professor's kill for free.
+            reward = t['die']
+            game["night_actions"]["professor"]['chosen'] = "die"
     
     mark_night_action_done(game, callback.from_user.id)
     
@@ -1791,8 +1796,9 @@ async def hang_callback(callback: CallbackQuery):
     
     user_map = game.get("users_map",{})
     user = user_map.get(int(target_id))
-    
-    await callback.message.edit_text(text=f"{t['hang_action']}\n\n<a href='tg://user?id={target_id}'>{user.get('first_name')}</a> {t['action_choose']}", parse_mode="HTML")
+    target_name = user.get('first_name') if user else str(target_id)
+
+    await callback.message.edit_text(text=f"{t['hang_action']}\n\n<a href='tg://user?id={target_id}'>{target_name}</a> {t['action_choose']}", parse_mode="HTML")
     if game['meta']['game_type'] == "turnir":
         player_team = game.get("players_team", {}).get(int(target_id))
         shooter_team = game.get("players_team", {}).get(int(shooter_id))
@@ -1800,12 +1806,12 @@ async def hang_callback(callback: CallbackQuery):
         shooter_color = COLOR_EMOJIS.get(shooter_team, "")
         await send_safe_message(
             chat_id=chat_id,
-            text=f"<a href='tg://user?id={shooter_id}'>{shooter_color}{shooter_name}</a> -> <a href='tg://user?id={target_id}'>{player_color}{user.get('first_name')}</a> {tg['hang_choose']}"
+            text=f"<a href='tg://user?id={shooter_id}'>{shooter_color}{shooter_name}</a> -> <a href='tg://user?id={target_id}'>{player_color}{target_name}</a> {tg['hang_choose']}"
         )
     else:
         await send_safe_message(
         chat_id=chat_id,
-        text=f"<a href='tg://user?id={shooter_id}'>{shooter_name}</a> -> <a href='tg://user?id={target_id}'>{user.get('first_name')}</a> {tg['hang_choose']}"
+        text=f"<a href='tg://user?id={shooter_id}'>{shooter_name}</a> -> <a href='tg://user?id={target_id}'>{target_name}</a> {tg['hang_choose']}"
     )
 
         
@@ -1951,12 +1957,18 @@ async def successful_payment_handler(message: Message):
     except:
         await message.answer("<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> Payload parse error.")
         return
-    
+
+    # real to'lov va kutilgan star amount mos kelishi kerak — applies to BOTH
+    # group and personal purchases (previously the group branch returned first
+    # and skipped this tamper check).
+    if total_amount != star_amount:
+        await message.answer("<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> To‘lov summasi mos kelmadi.")
+        return
+
     if int(user_id)<0:
         group_trials = GroupTrials.objects.filter(group_id=int(user_id)).first()
         if group_trials:
-            group_trials.stones += item_amount
-            group_trials.save()
+            GroupTrials.objects.filter(pk=group_trials.pk).update(stones=MF("stones") + item_amount)
         await message.answer(
             f"<tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> Olmos xarid qilindi!\n\n"
             f"<tg-emoji emoji-id='5471952986970267163'>💎</tg-emoji>Olmos: {item_amount}\n"
@@ -1967,13 +1979,6 @@ async def successful_payment_handler(message: Message):
     if message.from_user.id != user_id:
         await message.answer("<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> To‘lov user mos kelmadi.")
         return
-
-    # <tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> real to'lov va kutilgan star amount mos kelishi kerak
-    if total_amount != star_amount:
-        await message.answer("<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> To‘lov summasi mos kelmadi.")
-        return
-    
-    
 
     user = User.objects.filter(telegram_id=user_id).first()
     if not user:
@@ -1986,8 +1991,7 @@ async def successful_payment_handler(message: Message):
             f"<tg-emoji emoji-id='5472030678633684592'>💶</tg-emoji> Pul: {item_amount}\n"
             f"<tg-emoji emoji-id='5229227046290343318'>⭐</tg-emoji> Stars: {total_amount} {currency}"
         )
-        user.coin += item_amount
-        user.save()
+        User.objects.filter(pk=user.pk).update(coin=MF("coin") + item_amount)
 
     elif prefix == "olmos":
         # add_olmos_user(user_id, item_amount)
@@ -1996,8 +2000,7 @@ async def successful_payment_handler(message: Message):
             f"<tg-emoji emoji-id='5471952986970267163'>💎</tg-emoji>Olmos: {item_amount}\n"
             f"<tg-emoji emoji-id='5229227046290343318'>⭐</tg-emoji> Stars: {total_amount} {currency}"
         )
-        user.stones += item_amount
-        user.save()
+        User.objects.filter(pk=user.pk).update(stones=MF("stones") + item_amount)
 
     else:
         await message.answer("<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> Noma’lum invoice turi.")
@@ -2367,9 +2370,8 @@ async def send_callback(callback: CallbackQuery,state: FSMContext) -> None:
     }   
         return
     elif action == "no":
-        await bot.send_message(
-            chat_id=username,
-            text=f"Kanalga jo'natilishi kerak bo'lgan <tg-emoji emoji-id='5471952986970267163'>💎</tg-emoji>olmoslar bekor qilindi.",
+        await callback.message.edit_text(
+            text="Kanalga jo'natilishi kerak bo'lgan <tg-emoji emoji-id='5471952986970267163'>💎</tg-emoji>olmoslar bekor qilindi.",
             reply_markup=admin_inline_btn()
         )
         return
@@ -2857,7 +2859,7 @@ async def case_callback(callback: CallbackQuery):
     await callback.answer()
     t = get_lang_text(callback.from_user.id)
     user = User.objects.filter(telegram_id=callback.from_user.id).first()
-    if  user.is_premium:
+    if user and user.is_premium:
         text = t['case_menu']
     else:
         text = strip_tags(t['case_menu'])
@@ -2894,8 +2896,8 @@ async def case_buy_callback(callback: CallbackQuery):
         if case_opened:
             last_opened = case_opened.modified_datetime
 
-            # timezone muammosiz bo'lishi uchun UTC ishlatamiz
-            now = datetime.datetime.utcnow()
+            # timezone-aware "now" (utcnow() is deprecated/removed in 3.13)
+            now = timezone.now()
 
             # <tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> month check
             if last_opened.year == now.year and last_opened.month == now.month:
@@ -2931,7 +2933,16 @@ async def case_buy_callback(callback: CallbackQuery):
 async def open_case_callback(callback: CallbackQuery):
     parts = callback.data.split("_")
     case_type = parts[1]
-    reward = int(parts[2])
+    # The reward must be drawn server-side. The number that money_case() /
+    # stone_case() embed in callback_data is fully attacker-controlled, so
+    # trusting it (`int(parts[2])`) let anyone mint coins/stones by sending a
+    # spoofed `open_money_<huge>` callback.
+    if case_type == "money":
+        reward = random.randint(899, 2000)
+    elif case_type == "stone":
+        reward = random.randint(3, 12)
+    else:
+        return
     user_id = callback.from_user.id
     user = User.objects.filter(telegram_id=user_id).first()
     if not user:
@@ -2970,7 +2981,7 @@ async def open_case_callback(callback: CallbackQuery):
         if not case_opened:
             case_opened = CasesOpened.objects.create(user_id=user.id)
             return
-        case_opened.modified_datetime = datetime.datetime.utcnow()
+        case_opened.modified_datetime = timezone.now()
         case_opened.save()
         
 
@@ -3727,7 +3738,7 @@ async def premium_manage_callback(callback: CallbackQuery):
     if not game_trial:
         await callback.answer("<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> Guruh topilmadi.")
         return
-    game_trial.premium_stones = amount
+    game_trial.premium_stones += amount
     game_trial.stones -= amount
     game_trial.prem_ends_date = timezone.now() + timedelta(days=14)
     game_trial.save()
@@ -4117,6 +4128,8 @@ async def toggle_profile_callback(callback: CallbackQuery):
     setting = callback.data.split("_")[1]
     chat_id = callback.from_user.id
     user = User.objects.filter(telegram_id=chat_id).first()
+    if not user:
+        return
     if setting == "protection":
         user.is_protected = not user.is_protected
     elif setting == "hang":

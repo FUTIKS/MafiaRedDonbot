@@ -2,6 +2,7 @@ import time
 import random
 import asyncio
 import traceback
+from pathlib import Path
 from dispatcher import bot
 from collections import Counter
 from aiogram.types import FSInputFile
@@ -42,8 +43,9 @@ async def start_game(game_id):
         games_state[game_id]['meta']['is_active_game'] = True
         games_state[game_id]['meta']['created_at'] = int(time.time())
         day = 1
-        sunset = FSInputFile("mafia_bot/gifs/sunset.mp4")
-        sunrise = FSInputFile("mafia_bot/gifs/sunrise.mp4")
+        gifs_dir = Path(__file__).resolve().parent.parent / "gifs"
+        sunset = FSInputFile(str(gifs_dir / "sunset.mp4"))
+        sunrise = FSInputFile(str(gifs_dir / "sunrise.mp4"))
         users_map = games_state[game_id].get("users_map", {})
         t= get_lang_text(game.chat_id)
         while True:
@@ -144,7 +146,7 @@ async def start_game(game_id):
                     is_don_alive = True
                     break
             
-            if games_state[game_id]['night_actions']['don_kill_target'] is not None and games_state[game_id]['night_actions']['mafia_vote'] is not [] and is_don_alive:
+            if games_state[game_id]['night_actions']['don_kill_target'] is not None and games_state[game_id]['night_actions']['mafia_vote'] != [] and is_don_alive:
                 await send_safe_message(
                     chat_id=game.chat_id,
                     text=t['don_choose']
@@ -429,8 +431,8 @@ async def start_game(game_id):
                 voted_user['hang_protect'] -=1
                 user = User.objects.filter(telegram_id=voted_user.get('tg_id')).first()
                 if user:
-                    user.hang_protect -=1
-                    user.save(update_fields=["hang_protect"])
+                    from django.db.models import F as _F
+                    User.objects.filter(pk=user.pk).update(hang_protect=_F("hang_protect") - 1)
                 await send_safe_message(
                     chat_id=game.chat_id,
                     text=t['hang_protect'].format(yes=yes, no=no,
@@ -500,10 +502,11 @@ async def start_game(game_id):
     except asyncio.CancelledError:
         print(f"Game {game_id} cancelled.")
         game = Game.objects.filter(id=game_id).first()
-        game.is_active_game = False
-        game.is_ended = True
-        game.is_started = False
-        game.save()
+        if game:
+            game.is_active_game = False
+            game.is_ended = True
+            game.is_started = False
+            game.save()
         return
     except Exception as e:
         traceback.print_exc()

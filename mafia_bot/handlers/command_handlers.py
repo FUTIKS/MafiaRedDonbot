@@ -312,10 +312,10 @@ async def money_command(message: Message) -> None:
             username=message.reply_to_message.from_user.username
         )
 
-    target_user.coin += amount
-    sender_user.coin -= amount+komission
-    sender_user.save(update_fields=["coin"])
-    target_user.save(update_fields=["coin"])
+    # F() updates keep the debit/credit atomic so two near-simultaneous
+    # transfers can't overwrite each other's balance.
+    User.objects.filter(pk=sender_user.pk).update(coin=MF("coin") - (amount + komission))
+    User.objects.filter(pk=target_user.pk).update(coin=MF("coin") + amount)
     t = get_lang_text(message.chat.id)
     send_text = t['send_money'].format(
         amount=amount,
@@ -363,11 +363,10 @@ async def gsend_command(message: Message) -> None:
         return
     t = get_lang_text(message.chat.id)
     
-    sender.stones -= amount
-    sender.save(update_fields=["stones"])
+    User.objects.filter(pk=sender.pk).update(stones=MF("stones") - amount)
     chat_id = message.chat.id
     t = get_lang_text(chat_id)
-    group_sender = t['group_sender'].format(  
+    group_sender = t['group_sender'].format(
         count=amount,
     )
     text = (
@@ -390,7 +389,7 @@ async def gsend_command(message: Message) -> None:
 
 
 @dp.message(Command("send"), F.chat.type.in_({"group", "supergroup"}), StateFilter(None))
-async def money_command(message: Message) -> None:
+async def send_command(message: Message) -> None:
     await message.delete()
     if not message.reply_to_message or not message.reply_to_message.from_user:
         is_admin_grp = await is_group_admin(message.chat.id, message.from_user.id)
@@ -414,11 +413,10 @@ async def money_command(message: Message) -> None:
         if sender.stones < count:
             await message.answer("<tg-emoji emoji-id='5465665476971471368'>❌</tg-emoji> Sizda yetarli olmos yo'q.")
             return
-        sender.stones -= count
-        sender.save(update_fields=["stones"])
+        User.objects.filter(pk=sender.pk).update(stones=MF("stones") - count)
         chat_id = message.chat.id
         t = get_lang_text(chat_id)
-        group_sender = t['group_sender'].format(  
+        group_sender = t['group_sender'].format(
             count=count,
         )
         reason_text = f"\n{reason}" if reason else ""
@@ -468,10 +466,8 @@ async def money_command(message: Message) -> None:
             username=message.reply_to_message.from_user.username
         )
 
-    target_user.stones += amount
-    sender_user.stones -= amount+komission
-    sender_user.save(update_fields=["stones"])
-    target_user.save(update_fields=["stones"])
+    User.objects.filter(pk=sender_user.pk).update(stones=MF("stones") - (amount + komission))
+    User.objects.filter(pk=target_user.pk).update(stones=MF("stones") + amount)
 
     t = get_lang_text(message.chat.id)
     send_text = t['send_stone'].format(
@@ -550,8 +546,10 @@ async def leave(message: Message) -> None:
     if not game:
         return
     if not game_db.is_started:
-        game.get("players",[]).remove(tg_id)
-        game.get("alive",[]).remove(tg_id)
+        if tg_id in game.get("players", []):
+            game["players"].remove(tg_id)
+        if tg_id in game.get("alive", []):
+            game["alive"].remove(tg_id)
         return
     if tg_id not in game.get("alive", []):
         return
@@ -1446,14 +1444,6 @@ async def delete_not_alive_messages(message: Message):
 
 @dp.message(F.chat.type.in_({"private"}),StateFilter(None))
 async def private_router(message: Message,state: FSMContext) -> None:
-    
-    for entity in message.entities or []:
-        if entity.type == "custom_emoji":
-            await message.answer(
-                f'<tg-emoji emoji-id="{entity.custom_emoji_id}"></tg-emoji> {entity.custom_emoji_id}',
-                parse_mode="HTML"
-            )
-    return
     tg_id = int(message.from_user.id)
     if message.text == "admin_parol":
         await message.answer("Iltimos, login va parolni bitta qatorda yuboring:\n\nlogin password",reply_markup=back_btn(message.from_user.id))
@@ -1664,7 +1654,20 @@ async def finish_giveaway(chat_id: int, bot):
         giveaways.pop(chat_id, None)
         return
 
-    winner_id = random.choice(members)
+    # Only draw winners that still have a User row, so a member who deleted
+    # their bot chat between joining and the draw can't crash the payout (which
+    # used to leave giveaways[chat_id] set and lock the chat out forever).
+    valid_members = [m for m in members if User.objects.filter(telegram_id=m).exists()]
+    if not valid_members:
+        text = t['giveaway_ended'].format(amount=amount)
+        try:
+            await bot.edit_message_text(text, chat_id=chat_id, message_id=msg_id, parse_mode="HTML")
+        except:
+            pass
+        giveaways.pop(chat_id, None)
+        return
+
+    winner_id = random.choice(valid_members)
 
     user = User.objects.filter(telegram_id=winner_id).first()
     winner_name = user.first_name if user else "Foydalanuvchi"
@@ -1674,8 +1677,7 @@ async def finish_giveaway(chat_id: int, bot):
         winner_id=winner_id,
         members_count=len(members)
     )
-    user.stones += amount
-    user.save(update_fields=["stones"])
+    User.objects.filter(pk=user.pk).update(stones=MF("stones") + amount)
 
     try:
         await send_safe_message(winner_id, text=t['giveaway_winner'].format(amount=amount), parse_mode="HTML")

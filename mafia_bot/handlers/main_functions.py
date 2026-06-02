@@ -69,7 +69,7 @@ COLORS= {
 MAFIA_ROLES = {"don", "mafia", "adv", "spy"}
 MAFIA_ROLES_LAB = {"don", "mafia", "adv", "spy", "lab"}
 SOLO_ROLES = {"killer", "trap", "snyper", "arrow", "traitor", "pirate", "professor","drunk"}
-PEACE_ROLES = {"peace", "doc", "daydi", "com", "kam", "lover", "serg", "kaldun",  "snowball","santa","nogiron","ghost"}
+PEACE_ROLES = {"peace", "doc", "daydi", "com", "kam", "lover", "serg", "kaldun",  "snowball","santa","nogiron","ghost","suid"}
 NIGHT_ACTION_ROLES = {
     "doc", "daydi", "com", "killer", "kaldun",
     "don", "mafia", "adv", "spy", "lab", "trap",
@@ -669,10 +669,10 @@ def get_most_voted_id(game_id: int):
         return False
 
     return result
-def can_hang(game_id: int) -> bool:
+def can_hang(game_id: int) -> tuple[str, int, int]:
     game = games_state.get(game_id)
     if not game:
-        return False
+        return "no", 0, 0
 
     yes = len(game["day_actions"].get("hang_yes", []))
     no = len(game["day_actions"].get("hang_no", []))
@@ -1184,11 +1184,12 @@ def get_visible_role_for_com(game, target_id: int, users_map=None) -> str:
     if users_map:
         user = users_map.get(int(target_id))
         if user and user.get("docs", 0) > 0 and real_role in (MAFIA_ROLES_LAB | SOLO_ROLES):
-            user_qs = User.objects.filter(telegram_id=int(target_id)).first()
             user["docs"] -= 1
-            user_qs.docs -= 1
-            user_qs.save(update_fields=["docs"])
-            # Assuming there's a mechanism to save the updated user data back to the database or game state
+            user_qs = User.objects.filter(telegram_id=int(target_id)).first()
+            if user_qs:
+                # F() update avoids the read-modify-write race and a crash when
+                # the row was deleted mid-game.
+                User.objects.filter(pk=user_qs.pk).update(docs=DF("docs") - 1)
             return "peace"
 
     return real_role
@@ -1210,7 +1211,7 @@ def promote_new_don_if_needed(game: dict):
     if not mafia_candidates:
         return None
 
-    new_don_id = mafia_candidates[0]  # xohlasangiz random ham qilsa bo'ladi
+    new_don_id = random.choice(mafia_candidates)  # random — kim don bo'lishini oldindan bilib bo'lmasin
     roles[new_don_id] = "don"
     game["roles"] = roles
     return new_don_id
@@ -1557,10 +1558,10 @@ async def apply_night_actions(game_id: int):
             continue
         
         if target_user and target_user.get("protection", 0) > 0:
-            target_user_qs = User.objects.filter(telegram_id=int(target_id)).first()
             target_user["protection"] -= 1
-            target_user_qs.protection -= 1
-            target_user_qs.save(update_fields=["protection"])
+            target_user_qs = User.objects.filter(telegram_id=int(target_id)).first()
+            if target_user_qs:
+                User.objects.filter(pk=target_user_qs.pk).update(protection=DF("protection") - 1)
 
             saved_tonight.append((target_id, "himoya", killer_by))
             continue
@@ -2048,7 +2049,7 @@ async def stop_game_if_needed(game_id: int):
     game_tasks.pop(game_id, None)
 
     game_settings = GameSettings.objects.filter(group_id=chat_id).first()
-    if game_settings and game_settings.begin_after_end:
+    if game and game_settings and game_settings.begin_after_end:
         from mafia_bot.handlers.command_handlers import auto_begin_game
         await auto_begin_game(chat_id,game.game_type,game.team_count,game_settings)
 

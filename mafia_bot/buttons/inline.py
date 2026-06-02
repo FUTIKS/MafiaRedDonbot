@@ -381,6 +381,10 @@ def cart_inline_btn(tg_id):
 
     lang = get_lang(tg_id)
     user = User.objects.filter(telegram_id=tg_id).first()
+    if not user:
+        # The whole keyboard reads user.is_* toggles below, so a missing row
+        # used to crash. Create the row with model defaults instead.
+        user = User.objects.create(telegram_id=tg_id, lang=lang or 'uz')
 
     TEXTS = {
         "uz": {
@@ -1264,23 +1268,32 @@ def hang_inline_btn(players, own_id, game_id, chat_id,day=None):
 
 def groups_inline_btn():
     builder = InlineKeyboardBuilder()
-    premium_groups = PremiumGroup.objects.all().order_by("-stones_for")
+    # Materialise the queryset so we don't delete rows while iterating it.
+    premium_groups = list(PremiumGroup.objects.all().order_by("-stones_for"))
+    now = timezone.now()
+    expired_ids = []
     for group in premium_groups:
         if group.link is None or group.name is None:
             continue
-        if group.ends_date and group.ends_date < timezone.now():
-            group.delete()
+        if group.ends_date and group.ends_date < now:
+            expired_ids.append(group.pk)
             continue
-        if "@"  in group.link:
+        if "@" in group.link:
             url = f"https://t.me/{remove_prefix(group.link)}"
-        elif "http" in group.link or "https" in group.link:
+        elif group.link.startswith("http"):
             url = group.link
+        else:
+            # Bare links like "telegram.me/x" need a scheme, otherwise Telegram
+            # rejects the button (and `url` used to be unbound here -> crash).
+            url = f"https://{group.link}"
         button = InlineKeyboardButton(
             text=f"{group.name} - {group.stones_for} 💎",
             url=url,
             icon_custom_emoji_id="5229227046290343318"
         )
         builder.add(button)
+    if expired_ids:
+        PremiumGroup.objects.filter(pk__in=expired_ids).delete()
     builder.add(
         InlineKeyboardButton(
             text="Orqaga",
@@ -1706,7 +1719,7 @@ def geroy_inline_btn(tg_id):
     lang = get_lang(tg_id)
     user = User.objects.filter(telegram_id=tg_id).first()
     is_geroy = user and user.is_hero
-    price = 100+ user.hero_level * 10 if user else 110
+    price = (100 + user.hero_level * 10) if user else 110
     is_hero_max = user.hero_level >= 17 if user else False
 
     TEXTS = {

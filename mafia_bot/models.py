@@ -124,7 +124,7 @@ class CasesOpened(SafeBaseModel):
     
     
     def __str__(self):
-        return f"CasesOpened {self.user.username} - Type {self.case_type} - Amount {self.amount_won}"
+        return f"CasesOpened {self.user.username} - money_case={self.money_case} - stone_case={self.stone_case}"
     
 def default_end_date():
     return timezone.now() + timedelta(days=30)
@@ -216,7 +216,7 @@ class BotCredentials(SafeBaseModel):
     password = models.CharField(max_length=255,default="1234")
     
     def __str__(self):
-        return f"BotCredentials Admin {self.admin.username}"
+        return f"BotCredentials {self.login}"
     
     
 class LoginAttempts(SafeBaseModel):
