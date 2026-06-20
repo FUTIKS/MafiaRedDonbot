@@ -247,6 +247,10 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 CELERY_BROKER_URL = "redis://redis:6379/0"
 CELERY_RESULT_BACKEND = "redis://redis:6379/0"
 
+# Bot in-memory state durable mirror. Separate DB index (1) from Celery (0)
+# so bot keys never collide with broker keys.
+REDIS_URL = config("REDIS_URL", default="redis://redis:6379/1")
+
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
@@ -254,8 +258,10 @@ CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = "Asia/Tashkent"
 
 CELERY_BEAT_SCHEDULE = {
-    "run-daily-task": {
+    # send_top() aggregates the "top of the month", so it must fire once a
+    # month (1st day at 20:00), not every single day.
+    "run-monthly-top": {
         "task": "mafia_bot.tasks.my_daily_task",
-        "schedule": crontab(hour=20, minute=0),
+        "schedule": crontab(day_of_month=1, hour=20, minute=0),
     },
 }

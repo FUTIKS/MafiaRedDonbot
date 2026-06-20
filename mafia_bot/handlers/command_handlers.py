@@ -18,7 +18,7 @@ from mafia_bot.handlers.game_handler import run_game_in_background
 from mafia_bot.handlers.callback_handlers import begin_instance_callback
 from mafia_bot.models import Game, GroupTrials, MostActiveUser,User,BotMessages,GameSettings, UserRole,default_end_date,BotCredentials,LoginAttempts
 from mafia_bot.utils import last_wishes,team_chat_sessions,game_tasks,group_users,stones_taken,gsend_taken,games_state,giveaways,notify_users,active_role_used,writing_allowed_groups,chat_id_game_id
-from mafia_bot.handlers.main_functions import (MAFIA_ROLES, find_game,create_main_messages, get_lang_text,
+from mafia_bot.handlers.main_functions import (MAFIA_ROLES, find_game,create_main_messages, get_lang_text, get_user_stats,
                                                kill, notify_new_don, promote_new_com_if_needed,get_game_lock,
                                                promote_new_don_if_needed,  shuffle_roles ,check_bot_rights,
                                                role_label,is_group_admin,mute_user,has_link,parse_amount,
@@ -223,13 +223,7 @@ async def profile_command(message: Message):
         ROLES_CHOICES = get_role_labels_lang(message.from_user.id)
         role_name = dict(ROLES_CHOICES).get(user_r.role_key, "Noma'lum rol")
         text += f"<tg-emoji emoji-id='5359441070201513074'>🎭</tg-emoji> {role_name} - {user_r.quantity}\n"
-    result = MostActiveUser.objects.filter(user_id=user.id).aggregate(
-    total_played=Sum('games_played'),
-    total_wins=Sum('games_win')
-)
-
-    total_played = result['total_played'] or 0
-    total_wins = result['total_wins'] or 0
+    total_wins, total_played = get_user_stats(user.id)
     if user.is_premium:
         main_text = t['user_profile'].format(
             first_name=message.from_user.first_name,
@@ -1279,7 +1273,7 @@ async def get_top3_groups_message():
     return text
     
 @dp.message(Command("topgroup"), StateFilter(None))
-async def top30_command(message: Message):
+async def topgroup_command(message: Message):
     if message.chat.type in ("group", "supergroup"):
         return
     message_text= await get_top3_groups_message()

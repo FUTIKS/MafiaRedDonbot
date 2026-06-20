@@ -9,7 +9,7 @@ from threading import Lock
 from datetime import timedelta
 from django.db import transaction
 from aiogram.types import Message
-from django.db.models import F as DF
+from django.db.models import F as DF, Sum
 from aiogram.enums import ChatMemberStatus
 from aiogram.types import ChatPermissions,ChatMemberAdministrator, ChatMemberOwner
 from mafia_bot.models import Game, GameSettings,User,MostActiveUser, UserRole, GroupTrials
@@ -123,174 +123,61 @@ ROLE_TEAM = {
 
 
 
-async def send_night_action( tg_id, role, game_id, game, users_after_night, day):
+# role -> (actions-lang text key, action name) handled by the generic action_inline_btn
+_GENERIC_NIGHT_ACTIONS = {
+    "daydi":     ("daydi_watch",      "daydi"),
+    "santa":     ("santa",            "santa"),
+    "killer":    ("killer_kill",      "killer"),
+    "lover":     ("lover_block",      "lover"),
+    "kaldun":    ("kaldun_spell",     "kaldun"),
+    "trap":      ("trap_place",       "trap"),
+    "snyper":    ("snyper_kill",      "snyper"),
+    "arrow":     ("arrow_kill",       "arrow"),
+    "traitor":   ("traitor_choose",   "traitor"),
+    "pirate":    ("pirate_rob",       "pirate"),
+    "professor": ("professor_choose", "professor"),
+    "snowball":  ("snowball_kill",    "snowball"),
+    "drunk":     ("drunk_action",     "drunk"),
+}
+
+# role -> (text key, reply_markup builder) for roles with bespoke keyboards
+_SPECIAL_NIGHT_ACTIONS = {
+    "doc":   ("doc_heal",         lambda tg_id, players, game, day: doc_btn(players=players, doctor_id=tg_id, game_id=game.id, chat_id=game.chat_id, day=day)),
+    "com":   ("com_deside",       lambda tg_id, players, game, day: com_inline_btn(game.id, game.chat_id, day=day)),
+    "don":   ("don_kill",         lambda tg_id, players, game, day: don_inline_btn(players=players, game_id=game.id, chat_id=game.chat_id, don_id=tg_id, day=day)),
+    "mafia": ("mafia_vote",       lambda tg_id, players, game, day: mafia_inline_btn(players=players, game_id=game.id, day=day)),
+    "adv":   ("adv_mask",         lambda tg_id, players, game, day: adv_inline_btn(players=players, game_id=game.id, chat_id=game.chat_id, day=day)),
+    "spy":   ("spy_check",        lambda tg_id, players, game, day: spy_inline_btn(players=players, game_id=game.id, chat_id=game.chat_id, day=day, spy_id=tg_id)),
+    "lab":   ("lab_action",       lambda tg_id, players, game, day: lab_inline_btn(players=players, game_id=game.id, chat_id=game.chat_id, day=day, lab_id=tg_id)),
+}
+
+
+async def send_night_action(tg_id, role, game_id, game, users_after_night, day):
     game_data = games_state.get(game_id, {})
     night_action = game_data.get("night_actions", {})
-    lover_block_target = night_action.get("lover_block_target")
-    if lover_block_target == tg_id:
+    if night_action.get("lover_block_target") == tg_id:
         return
-    if role in ("peace","serg", "kam","nogiron","suid","ghost"):
-        return
-    elif role == "doc":
-        await send_safe_message(
-            chat_id=tg_id,
-            text=get_actions_lang(tg_id).get("doc_heal"),
-            reply_markup=doc_btn(players=users_after_night, doctor_id=tg_id, game_id=game.id, chat_id=game.chat_id,day=day)
-        )
-        return
-    elif role == "daydi":
-        await send_safe_message(
-            chat_id=tg_id,
-            text=get_actions_lang(tg_id).get("daydi_watch"),
-            reply_markup=action_inline_btn(action="daydi", own_id=tg_id, players=users_after_night, game_id=game.id, chat_id=game.chat_id,day=day)
-        )
+    if role in ("peace", "serg", "kam", "nogiron", "suid", "ghost"):
         return
 
-    elif role == "com":
-        await send_safe_message(
-        
-            chat_id=tg_id,
-            text=get_actions_lang(tg_id).get("com_deside"),
-            reply_markup=com_inline_btn(game.id, game.chat_id,day=day)
+    if role in _GENERIC_NIGHT_ACTIONS:
+        text_key, action = _GENERIC_NIGHT_ACTIONS[role]
+        reply_markup = action_inline_btn(
+            action=action, own_id=tg_id, players=users_after_night,
+            game_id=game.id, chat_id=game.chat_id, day=day,
         )
-        return
-    elif role == "santa":
-        await send_safe_message(
-        
-            chat_id=tg_id,
-            text=get_actions_lang(tg_id).get("santa"),
-            reply_markup=action_inline_btn(action="santa", own_id=tg_id, players=users_after_night, game_id=game.id, chat_id=game.chat_id,day=day)
-        )
-        return
-    elif role == "killer":
-        await send_safe_message(
-        
-            chat_id=tg_id,
-            text=get_actions_lang(tg_id).get("killer_kill"),
-            reply_markup=action_inline_btn(action="killer", own_id=tg_id, players=users_after_night, game_id=game.id, chat_id=game.chat_id,day=day)
-        )
-        return
-    elif role == "lover":
-        await send_safe_message(
-            chat_id=tg_id,
-            text=get_actions_lang(tg_id).get("lover_block"),
-            reply_markup=action_inline_btn(action="lover", own_id=tg_id, players=users_after_night, game_id=game.id, chat_id=game.chat_id,day=day)
-        )
-        return
-    elif role == "kaldun":
-        await send_safe_message(
-        
-            chat_id=tg_id,
-            text=get_actions_lang(tg_id).get("kaldun_spell"),
-            reply_markup=action_inline_btn(action="kaldun", own_id=tg_id, players=users_after_night, game_id=game.id, chat_id=game.chat_id,day=day)
-        )
+    elif role in _SPECIAL_NIGHT_ACTIONS:
+        text_key, builder = _SPECIAL_NIGHT_ACTIONS[role]
+        reply_markup = builder(tg_id, users_after_night, game, day)
+    else:
         return
 
-    elif role == "don":
-        await send_safe_message(
-        
-            chat_id=tg_id,
-            text=get_actions_lang(tg_id).get("don_kill"),
-            reply_markup=don_inline_btn(players=users_after_night, game_id=game.id, chat_id=game.chat_id, don_id=tg_id, day=day)
-        )
-        return
+    await send_safe_message(
+        chat_id=tg_id,
+        text=get_actions_lang(tg_id).get(text_key),
+        reply_markup=reply_markup,
+    )
 
-    elif role == "mafia":
-        await send_safe_message(
-        
-            chat_id=tg_id,
-            text=get_actions_lang(tg_id).get("mafia_vote"),
-            reply_markup=mafia_inline_btn(players=users_after_night, game_id=game.id,day=day)
-        )
-        return
-    elif role == "adv":
-        await send_safe_message(
-        
-            chat_id=tg_id,
-            text=get_actions_lang(tg_id).get("adv_mask"),
-            reply_markup=adv_inline_btn(players=users_after_night, game_id=game.id, chat_id=game.chat_id,day=day)
-        )
-        return
-    elif role == "spy":
-        await send_safe_message(
-        
-            chat_id=tg_id,
-            text=get_actions_lang(tg_id).get("spy_check"),
-            reply_markup=spy_inline_btn(players=users_after_night, game_id=game.id, chat_id=game.chat_id,day=day,spy_id=tg_id)
-        )
-        return
-    elif role == "lab":
-        await send_safe_message(
-        
-            chat_id=tg_id,
-            text=get_actions_lang(tg_id).get("lab_action"),
-            reply_markup=lab_inline_btn(players=users_after_night, game_id=game.id, chat_id=game.chat_id,day=day,lab_id=tg_id)
-        )
-        return
-    elif role == "trap":
-        await send_safe_message(
-        
-            chat_id=tg_id,
-            text=get_actions_lang(tg_id).get("trap_place"),
-            reply_markup=action_inline_btn(action="trap", own_id=tg_id, players=users_after_night, game_id=game.id, chat_id=game.chat_id,day=day)
-        )
-        return
-    elif role == "snyper":
-        await send_safe_message(
-        
-            chat_id=tg_id,
-            text=get_actions_lang(tg_id).get("snyper_kill"),
-            reply_markup=action_inline_btn(action="snyper", own_id=tg_id, players=users_after_night, game_id=game.id, chat_id=game.chat_id,day=day)
-        )
-        return
-    elif role == "arrow":
-        await send_safe_message(
-        
-            chat_id=tg_id,
-            text=get_actions_lang(tg_id).get("arrow_kill"),
-            reply_markup=action_inline_btn(action="arrow", own_id=tg_id, players=users_after_night, game_id=game.id, chat_id=game.chat_id, day=day)
-        )
-        return
-    elif role == "traitor":
-        await send_safe_message(
-        
-            chat_id=tg_id,
-            text=get_actions_lang(tg_id).get("traitor_choose"),
-            reply_markup=action_inline_btn(action="traitor", own_id=tg_id, players=users_after_night, game_id=game.id, chat_id=game.chat_id, day=day)
-        )
-        return
-    elif role == "pirate":
-        await send_safe_message(
-        
-            chat_id=tg_id,
-            text=get_actions_lang(tg_id).get("pirate_rob"),
-            reply_markup=action_inline_btn(action="pirate", own_id=tg_id, players=users_after_night, game_id=game.id, chat_id=game.chat_id, day=day)
-        )
-        return
-    elif role == "professor":
-        await send_safe_message(
-        
-            chat_id=tg_id,
-            text=get_actions_lang(tg_id).get("professor_choose"),
-            reply_markup=action_inline_btn(action="professor", own_id=tg_id, players=users_after_night, game_id=game.id, chat_id=game.chat_id, day=day)
-        )
-        return
-   
-    elif role == "snowball":
-        await send_safe_message(
-        
-            chat_id=tg_id,
-            text=get_actions_lang(tg_id).get("snowball_kill"),
-            reply_markup=action_inline_btn(action="snowball", own_id=tg_id, players=users_after_night, game_id=game.id, chat_id=game.chat_id, day=day)
-        )
-        return
-    elif role == "drunk":
-        await send_safe_message(
-            chat_id=tg_id,
-            text=get_actions_lang(tg_id).get("drunk_action"),
-            reply_markup=action_inline_btn(action="drunk",own_id=tg_id,players=users_after_night,game_id=game.id,chat_id=game.chat_id,day=day)
-        )
-        return
     
 async def send_night_actions_to_all( game_id, game,players,day):
     game_data = games_state.get(game_id, {})
@@ -306,6 +193,13 @@ async def send_night_actions_to_all( game_id, game,players,day):
         ))
 
     await asyncio.gather(*tasks, return_exceptions=True)
+
+
+def get_user_stats(user_id):
+    """Return (total_wins, total_played) aggregated from MostActiveUser."""
+    result = MostActiveUser.objects.filter(user_id=user_id).aggregate(
+        total_played=Sum("games_played"), total_wins=Sum("games_win"))
+    return result["total_wins"] or 0, result["total_played"] or 0
 
 
 def init_game(game_id: int, chat_id: int | None = None):
@@ -1410,7 +1304,15 @@ async def apply_night_actions(game_id: int):
         if doc_target and is_alive(game, doc_target):
             protected[int(doc_target)] = "doc"
 
-  
+    # Advokat: tanlangan o'yinchini komissarga tinch ko'rsatadi.
+    # (advokat_target faqat saqlanardi, lekin hech qachon advokat_masked
+    #  effektiga aylantirilmasdi — shu sabab advokat roli ishlamayotgan edi.)
+    adv_id = get_alive_role_id(game, "adv")
+    if adv_id:
+        adv_target = night_actions.get("advokat_target")
+        if adv_target and is_alive(game, adv_target):
+            effects.setdefault("advokat_masked", {})[int(adv_target)] = "adv"
+
     kill_intents = {}
 
     def add_intent(target_id, by_role, priority=1):

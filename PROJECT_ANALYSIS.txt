@@ -1,0 +1,775 @@
+================================================================================
+MAFIA BOT — FULL PROJECT BUG / MIS-LOGIC / MIS-CODING ANALYSIS
+================================================================================
+Scanned by: Claude (Opus 4.7) | Date: 2026-05-12
+Project root : D:\Some codes\Mafia Bot
+Stack        : Django 5.2 + aiogram 3.x + Celery + SQLite + Redis + Cloudinary
+
+LEGEND
+  [CRIT]  = will crash, lose money, or completely break a feature
+  [HIGH]  = wrong behavior in normal flow / data loss / race condition
+  [MED]   = wrong behavior in edge case / inconsistency / smell
+  [LOW]   = style / dead code / unsafe-looking-but-works
+
+================================================================================
+1.  CONFIG / SETTINGS  (config/settings.py)
+================================================================================
+
+[CRIT] settings.py:26  Hard-coded `SECRET_KEY` and committed to git
+    'django-insecure-3x9tm9gyn2zsjujw8(bob%e+d86h6y9ud3-3rx9opf)nx8sg1&'
+    -> Anyone with repo access can forge sessions, password-reset tokens, etc.
+    Fix: load from env via `config('SECRET_KEY')`.
+
+[HIGH] settings.py:32  `DEBUG = True` in code, no env switch
+    -> Production stack-traces and SQL queries leak to the public.
+
+[HIGH] settings.py:34  `ALLOWED_HOSTS = ['*']`  + DEBUG=True
+    -> Host-header attacks / cache poisoning possible.
+
+[HIGH] settings.py:218 + 227  `CORS_ALLOW_ALL_ORIGINS = True` together with
+    `CORS_ALLOW_CREDENTIALS = True`.  This is forbidden by the CORS spec and
+    most browsers will silently drop the credential; worse, any site that
+    *does* honour it inherits CSRF-equivalent attack surface.
+
+[MED]  settings.py:153 SQLite as `default` DB.  The Postgres block right below
+    is commented out.  SQLite + async aiogram + Celery workers WILL hit
+    "database is locked" under load.
+
+[MED]  settings.py:259 Celery beat schedule:
+        crontab(hour=20, minute=0)   # every day at 20:00
+    but the task `my_daily_task -> send_top` (mafia_bot/tasks.py:15) filters
+    MostActiveUser by `created_datetime__gte = first-of-current-month`.
+    -> "Monthly top" is broadcast EVERY DAY, not once a month.  Either the
+    schedule should be `crontab(day_of_month=1, hour=20, minute=0)` or the
+    range should be "today".
+
+[LOW]  settings.py:232 `DEFAULT_FILE_STORAGE` uses Cloudinary but no Cloudinary
+    keys are loaded anywhere in this settings file; any model with a
+    FileField/ImageField will throw on upload.
+
+
+================================================================================
+2.  MODELS / ORM  (mafia_bot/models.py, core/models/basemodel.py)
+================================================================================
+
+[CRIT] core/models/basemodel.py:15-46  "SafeBaseModel" pretends to soft-delete
+    but is hard-deleting:
+        - SafeQuerySet.delete()        -> super().delete()          (hard)
+        - SafeManager.get_queryset()   -> super().get_queryset()    (no filter)
+        - SafeBaseModel.delete()       -> super().delete()          (hard)
+    The class comments promise "Only fetch active records by default" and a
+    separate `all_objects` manager, but neither is implemented.  Any caller
+    relying on soft-delete semantics is silently wrong.
+
+[CRIT] mafia_bot/models.py:219  BotCredentials.__str__ references
+    `self.admin.username`, but migration 0003 removed the `admin` field.
+    -> calling str(obj) (admin list page, repr, logging) crashes with
+    AttributeError.
+
+[CRIT] mafia_bot/models.py:127  CasesOpened.__str__ references self.case_type
+    and self.amount_won, neither of which exist on the model (real fields
+    are `money_case` / `stone_case`).  Same AttributeError on str(obj).
+
+[HIGH] mafia_bot/models.py:40-50  Multiple defaults are surprising:
+        is_protected, is_hang_protected, is_doc, is_geroy_protected,
+        is_active_role_use, is_geroy_use  all default to True.
+    These are toggles whose semantic in `cart_inline_btn` is "use my paid
+    item this game?"  Defaulting to True silently consumes paid items the
+    user might not have intended to use.
+
+[MED]  mafia_bot/models.py:42-48  UserRole has no `unique_together(user,
+    role_key)`.  shuffle_roles / get_or_create can race and create duplicate
+    rows; admin shows duplicate rows.
+
+[MED]  mafia_bot/models.py:188-195  MoneySendHistory.amount is a TextField
+    holding strings like "20 💎" or "- 1000 💶".  Cannot be aggregated /
+    audited / filtered numerically.  Should be IntegerField + currency enum.
+
+[LOW]  mafia_bot/models.py:67    PrizeHistory does NOT inherit SafeBaseModel
+    (it inherits plain models.Model) — inconsistent with the rest of the
+    domain and breaks the convention.
+
+[LOW]  mafia_bot/admin.py:24  Tries to add "premium_stones" to a fieldset:
+        "fields": ("coin","stones","premium_stones") if hasattr(User,...)
+    User has no such field anywhere — pure dead code.
+
+[CRIT] mafia_bot/admin.py:170  `timezone.timedelta(days=1)` —
+    django.utils.timezone has NO `timedelta` attribute.  `ban_1_day` admin
+    action throws AttributeError every time it is invoked.
+
+[LOW]  admin.py:153,158,160,164,168  HTML <tg-emoji ...> strings are returned
+    from admin display methods.  Django admin renders these escaped, so the
+    user sees raw HTML in the changelist.
+
+
+================================================================================
+3.  TELEGRAM / aiogram  (dispatcher.py, middleware.py)
+================================================================================
+
+[HIGH] dispatcher.py:12  `print(TOKEN)` — bot token printed to stdout on
+    every startup.  Anyone with log access can steal the bot.
+
+[MED]  dispatcher.py uses one global `bot` and `dp`.  The Bot session is
+    never explicitly closed on shutdown -> sockets leak between reloads.
+
+[MED]  mafia_bot/middleware.py:7-10  `DjangoDBMiddleware` closes ALL Django
+    DB connections after every Telegram update:
+        for conn in connections.all():
+            conn.close()
+    This defeats Django's CONN_MAX_AGE / connection pooling and adds round-
+    trip cost on every callback.  Should call `close_old_connections()` only.
+
+[HIGH] Throughout handlers: Django ORM is called synchronously from async
+    aiogram handlers without sync_to_async wrappers (e.g. callback_handlers.py
+    lines 39, 48, 53, 221, 392, 396, 851, 1625, 1643, …, command_handlers.py
+    lines 36, 112, 211, 220, 292, 306, 400, 545, 559, 591, 613, 669, 1173,
+    1226, 1262-1272, …).  Django 5 will RuntimeError ("SynchronousOnlyOperation")
+    when async-unsafe is detected, and in any case blocks the event loop.
+    Only a few hot paths use sync_to_async (`take_stone`, `take_gsend_stone`,
+    `claim_channel_olmos`) — the rest is broken/slow.
+
+
+================================================================================
+4.  GAME ENGINE  (mafia_bot/handlers/game_handler.py)
+================================================================================
+
+[CRIT] game_handler.py:147   `is not []` is the wrong operator:
+        if games_state[...]['night_actions']['mafia_vote'] is not []
+    `is` checks identity; `[] is not []` is ALWAYS True (two different
+    objects).  The intended check is `!= []` / `len(...) > 0`.  Result: the
+    "don has chosen / not chosen" branch is decided WRONG — the "don_choose"
+    message is sent even when no mafia voted, and "don_not_choose" is never
+    seen (because the truthiness check is bypassed).
+
+[HIGH] game_handler.py:70, 193, 334  `games_state[game_id]['meta']['day']` is
+    incremented THREE times per single game-loop iteration (once for night,
+    once for morning, once after hang).  Plus `day_reset` (main_functions.py:
+    928) increments it again.  The "day" counter is therefore drifting at
+    ~3-4× the real day count, and the callback validation
+        if not day == str(game_day): "you are late"
+    eats every legitimate action after the first night.
+
+[HIGH] game_handler.py:31, 502, 1951 (main_functions)  `Game.objects.filter
+    (...).first()` is called inside an `async def`.  No sync_to_async wrapper.
+    On Django 5 + ASGI this raises SynchronousOnlyOperation.
+
+[HIGH] game_handler.py:482  `notify_new_com(new_com_id)` takes ONE arg, but
+    `notify_new_don(game, new_don_id)` takes TWO.  Inconsistent API; both
+    routes pass the new_id but only one receives the game dict.  notify_new
+    _com therefore cannot DM the rest of the mafia / show role swap.
+
+[HIGH] game_handler.py:430-433  Inside the night loop, raw read-modify-write
+    of `user.hang_protect -= 1` then `user.save(update_fields=[...])`.  Race
+    with shuffle_roles / shop purchases on the same User row.
+
+[MED]  game_handler.py:502-507  If the game gets cancelled (asyncio
+    .CancelledError) but `Game.objects.filter(id=game_id).first()` returns
+    None (already deleted), `game.is_active_game = False` raises
+    AttributeError inside the cancellation handler — a silent log entry only.
+
+[MED]  game_handler.py:79-99  bot.send_video try/except has identical TextSend
+    fallback in two branches; they could be merged.  Lower urgency.
+
+[MED]  game_handler.py:471-489  `roles_map.get(voted_user.get('tg_id')) ==
+    "com"` schedules a `stop_game_if_needed` only inside the com-branch but
+    not after the don-branch.  Inconsistent — if the don is hanged and that
+    causes endgame, the engine continues one more iteration.
+
+[LOW]  game_handler.py:46-47  `FSInputFile("mafia_bot/gifs/sunset.mp4")`
+    uses a relative path, will fail unless CWD == project root.
+
+
+================================================================================
+5.  CORE GAME LOGIC  (mafia_bot/handlers/main_functions.py)
+================================================================================
+
+[CRIT] main_functions.py:1186-1192  `get_visible_role_for_com` is named "get"
+    but it MUTATES state and HITS the DB.  Worse:
+        user_qs = User.objects.filter(...).first()   # may be None
+        user["docs"] -= 1
+        user_qs.docs -= 1
+        user_qs.save(...)
+    No None-check on user_qs -> AttributeError when the User row has been
+    deleted but is still in users_map.  Side-effects inside a "is-this-
+    visible" query is also conceptually wrong — same call from two places in
+    one tick will decrement docs twice.
+
+[CRIT] main_functions.py:672  `def can_hang(game_id: int) -> bool:` declares
+    bool return type but actually returns a 3-tuple `("yes"|"no", yes, no)`.
+    Callers (game_handler.py:419) unpack three values — works at runtime
+    but the signature is a lie and IDE warnings will hide the real bug.
+
+[HIGH] main_functions.py:1526  `hero_used = game.setdefault("hero_used", {})`
+    creates a NEW top-level key.  The legitimate hero structure is in
+    `game["hero"]["used"]` (a set, initialised in init_game).  Result: hero
+    self-protect tracking is split across two unrelated containers, so the
+    same hero can save themselves more than once.
+
+[HIGH] main_functions.py:1656, 1691  Visible-role / spy-role text is
+    formatted using the TARGET's language map, then put inside the message
+    that is sent to the COM / SPY.  -> com that speaks Russian sees role
+    labels in target's language.
+
+[HIGH] main_functions.py:1638  `role_label(protector_by, int(target_id))` —
+    role_label's 2nd arg is `chat_id`, not a target tg_id.  Lookup may
+    succeed accidentally because both call `get_lang(int)`, but the language
+    is then derived from the wrong entity (target's lang, not group lang).
+
+[HIGH] main_functions.py:2050-2053  After endgame, if `game_settings
+    .begin_after_end` is True, auto-starts a new game.  But the local
+    variable `game` (line 1951) may be None when the row was already wiped
+    by another worker.  Then `game.game_type` / `game.team_count` raise
+    AttributeError and the chat is left in an inconsistent state.
+
+[HIGH] main_functions.py:1953  `game.is_active = False` -- but `is_active`
+    is the SafeBaseModel "soft-delete" flag, not an in-game flag.  Because
+    soft-delete is broken (see CRIT above), the row is still queried
+    normally, but the *intent* — "soft delete this game" — is misleading;
+    a future refactor that fixes SafeManager will accidentally hide all
+    finished games from the admin.
+
+[HIGH] main_functions.py:1064-1085  `get_mafia_kill_target` adds the don's
+    target TWICE so it wins ties.  Then on actual tie it returns
+        don_target if don_target else mafia_votes[0] if mafia_votes else None
+    With `mafia_vote` order-dependent (list of clicks), the SECOND tie-
+    breaker returns whoever happened to click first — not deterministic for
+    UX, and the "don_target appended twice" comment ("# 2x") shows the dev
+    knew but didn't reconcile with apply_night_actions semantics elsewhere.
+
+[MED]  main_functions.py:1198-1213  promote_new_don_if_needed deterministically
+    picks `mafia_candidates[0]` (insertion order = registration order).
+    Trivially exploitable — players know who becomes don if current don dies.
+    Comment in the code already notes "xohlasangiz random ham qilsa bo'ladi".
+
+[MED]  main_functions.py:954-1009  shuffle_roles:
+    - Each iteration calls `User.objects.filter(...).first()` and
+      `UserRole.objects.filter(...)` separately (N+1 query problem).
+    - `chosen_ur` loop only picks the FIRST matching role_key; if a player
+      has roles [killer, doc] and `roles` only has doc, killer is preferred
+      only if it appears first in iteration order.  Non-deterministic
+      preference based on DB ordering.
+    - The `active_role_used` list is APPENDED to globally and only consumed
+      in send_roles -> can leak across games / restarts.
+
+[MED]  main_functions.py:1170-1176  `get_visible_role_for_com` returns
+    `"peace"` when role is None, but downstream
+    `get_role_labels_lang(...).get("peace", "Tinch axoli")` is fine — yet
+    the docstring/comment doesn't mention this "fallback to peace" rule and
+    the dev may not realise dead/unmapped players appear as "peace" to com.
+
+[MED]  main_functions.py:1545  `if role == "ghost" and not killer_by ==
+    "snyper":` — operator-precedence is correct (`not (a == b)`) but easy
+    to misread; use `!=` for readability.
+
+[MED]  main_functions.py:1559-1566  Same race-window read-modify-write on
+    User.protection without F() expression / transaction.
+
+[MED]  main_functions.py:2265-2286  get_lang queries the DB twice when
+    cache misses (User vs GroupTrials), but the cache is never invalidated
+    when set_user_lang updates the DB → "Til o'zgartirildi" but the bot
+    still answers in the old language until process restart.  Actually
+    set_user_lang DOES write to the cache (callback_handlers.py:4068, 4077)
+    so a process-local change works, but multiple workers will have stale
+    caches.  Add some pub/sub or simply skip the cache.
+
+[MED]  main_functions.py:1820  alive list iteration ignores `r in
+    PEACE_ROLES | MAFIA_ROLES_LAB | SOLO_ROLES`.  If a player's role is in
+    none of those (e.g. `suid`, `hero`, `nogiron` mid-game), `get_alive_teams`
+    silently drops them.  `suid` is in `peace` already (ROLE_TEAM), but
+    `hero` is missing from BOTH ROLE_TEAM and PEACE/MAFIA/SOLO sets —
+    win-condition checks therefore treat hero as "no team" and ignore them.
+
+[MED]  main_functions.py:1110-1119  `kill()` removes from alive but does NOT
+    clear pending_night/hang/confirm sets for that tg_id.  Next tick still
+    waits 45 s for them.
+
+[MED]  main_functions.py:311-443  init_game uses a threading.Lock (sync).
+    Inside async callbacks `with lock:` blocks the event loop while holding
+    a sync lock — drop in favour of asyncio.Lock per game.
+
+[LOW]  main_functions.py:445  BAD_GUYS = {"mafia","don"} is defined but
+    never used (compare with MAFIA_ROLES on line 69).
+
+
+================================================================================
+6.  CALLBACK HANDLERS  (mafia_bot/handlers/callback_handlers.py — 4198 lines)
+================================================================================
+
+[CRIT] callback_handlers.py:222  buy_callback uses `user.id` BEFORE its
+    None-check (line 230).  If user does not exist yet, AttributeError on
+    user.id inside MostActiveUser.objects.filter(user_id=user.id).
+
+[CRIT] callback_handlers.py:136  back_callback "case" path:
+        user = User.objects.filter(...).first()
+        if user.is_premium:                # crash if user None
+    No None check.
+
+[CRIT] callback_handlers.py:2860  case_callback same pattern (no None
+    check) before `user.is_premium`.
+
+[CRIT] callback_handlers.py:4119  toggle_profile_callback:
+        user = User.objects.filter(...).first()
+        if setting == "protection":
+            user.is_protected = not user.is_protected   # crash if None
+
+[CRIT] callback_handlers.py:1795  hang_callback after `user = user_map.get(
+    int(target_id))`, uses `user.get('first_name')` with no None check.
+    A target who isn't in users_map (e.g. left mid-game) -> AttributeError
+    + the message never updates.
+
+[CRIT] callback_handlers.py:1644  pirpay_callback:
+        pirate_player = User.objects.filter(...).first()
+        pirate_player.coin += 10            # crash if pirate has no User row
+
+[HIGH] callback_handlers.py:1447  duplicate function name `spy_callback` is
+    registered TWICE on different filters (spy_ and traitor_).  Works in
+    Python because the second binding only shadows the name; both handlers
+    are still wired to dp.  But searching by name yields the wrong handler
+    and any future `from ... import spy_callback` will silently get the
+    traitor handler.
+
+[HIGH] callback_handlers.py:1737-1749  professor target's "hero" branch:
+    - Calls `if user.is_hero: send hero buttons` — fine.
+    - Sets `chosen = "hero"` OUTSIDE the if-block, so a non-hero user who
+      somehow lands on the "hero" prize gets `chosen = "hero"` (= no death,
+      no hero ability).  Bypasses death just by picking that box.
+    - Comments imply intent was "if hero -> action, else -> die", but the
+      code does the opposite.
+
+[HIGH] callback_handlers.py:1955-1964  successful_payment_handler:
+    `if int(user_id) < 0` branches into "group purchase" but DOES NOT
+    validate that the payer is an admin of that group.  Any user who can
+    construct the payload sees their stars credited to that group's stones
+    balance.  At minimum check `is_group_admin` or signed payload.
+
+[HIGH] callback_handlers.py:1989, 1999, 2245, 2287, 2438-2444, 2479, 3203-3214,
+    3730-3743 …  Raw `user.coin += X; user.save()` /
+    `group.stones -= X; group.save()` without F() / transaction.  Two
+    simultaneous transactions overwrite each other -> money loss / gain.
+
+[HIGH] callback_handlers.py:2898 + 2973  Uses
+        datetime.datetime.utcnow()
+    which is deprecated in Python 3.12 and removed in 3.13.  Plus mixes
+    naive vs aware datetimes with Django's timezone.now elsewhere.
+
+[HIGH] callback_handlers.py:2901  "stone case once per month" uses
+    case_opened.modified_datetime  -- but modified_datetime is set on EVERY
+    `.save()` (auto_now=True).  Whenever the row is touched (login, profile
+    update through this object) the limit resets / extends.  Need a
+    dedicated `last_opened_at` field.
+
+[HIGH] callback_handlers.py:3722-3743  premium_manage_callback:
+        game_trial.premium_stones = amount       # OVERWRITES, not adds
+        game_trial.stones -= amount              # subtracts from same balance
+    If admin clicks twice the previous "premium_stones" is lost.
+
+[HIGH] callback_handlers.py:2350-2374  send_callback "no" branch (line 2369)
+    references `username` from a closure scope of the previous "confirm"
+    branch — `username` is undefined inside the "no" branch -> NameError
+    when admin clicks "Bekor qilish".
+
+[HIGH] callback_handlers.py:3548-3568  giveaway_join checks `if user_id in
+    gw["members"]` but ALSO modifies `gw["members"].add(user_id)`
+    without a lock.  Concurrent clicks during the same await yield possible
+    double-add.
+
+[MED]  callback_handlers.py:1448  `spy_callback` (for traitor) writes
+    `traitor_target` from the callback but does NOT verify the chooser
+    actually has role == "traitor".  Anyone whose callback lands here (the
+    button is only sent to traitor, but spoofed callback_data bypasses it).
+    Treat callback data as untrusted input.
+
+[MED]  callback_handlers.py:1797 turnir path uses `user.get('first_name')`
+    but earlier line `user = user_map.get(int(target_id))` may be None
+    (same as above).
+
+[MED]  callback_handlers.py:1880 `pre_checkout` always returns ok=True
+    regardless of validity — refunds happen but no rollback in DB.
+
+[MED]  callback_handlers.py:1955 group purchase path overwrites
+    `total_amount != star_amount` validation only AFTER the `<0` short-
+    circuit, so group payment skips price tamper-check.
+
+[MED]  callback_handlers.py:3318-3410 take_stone — `taken` is a list,
+    `if user_id in taken` is O(n) and the membership check is repeated
+    after the lock; replace with `set`.
+
+[MED]  callback_handlers.py:3713-3719  close_callback has admin_id check but
+    `callback.message.from_user.id` (line 2366) used elsewhere to track
+    creator — `callback.message` is the BOT's own message, so
+    `callback.message.from_user.id` == bot.id, NOT the admin who triggered
+    the dialog.  Existing stones_taken["creator"] therefore stores bot.id
+    inadvertently.
+
+[MED]  callback_handlers.py:1727-1749  Indentation: line 1749
+    `game["night_actions"]["professor"]['chosen'] = "hero"` is NOT inside
+    `if user and user.is_hero:` -> sets `chosen = "hero"` even when user is
+    None.
+
+[MED]  callback_handlers.py:1948  `int(parts[1])` etc. assume payload split
+    yields 4 parts; if parts[3] is `chat_id` (negative) and the user_id was
+    set to chat.id in `groups_buy_stars` the second branch (line 1955) is
+    reached.  But payload format string `f"olmos_{olmos}_{star}_{user_id}"`
+    can accidentally contain "_" in user_id when negative ids are stringified
+    ("-1001234").  `parts = payload.split("_")` then yields 5 parts and the
+    `len(parts) != 4` check rejects ALL group purchases.
+
+[LOW]  Many handlers don't `await callback.answer()` early -> Telegram shows
+    spinning loader until the whole handler finishes (e.g. geroy_callback
+    line 3946 first awaits, then DB).  Just convention.
+
+[LOW]  Three different functions are all named `process_send_money` /
+    `quizzes_page_callback` / `quiz_select` in the same file (e.g. lines 2216,
+    2409 + 2044, 3105, 3287 + 2066, 3137).  Latest binding wins for the
+    name-import; decorators still work but stack traces become confusing.
+
+
+================================================================================
+7.  COMMAND HANDLERS  (mafia_bot/handlers/command_handlers.py — 1847 lines)
+================================================================================
+
+[CRIT] command_handlers.py:553-554  /leave logic for un-started game:
+        game.get("players",[]).remove(tg_id)
+        game.get("alive",[]).remove(tg_id)
+    raises ValueError when tg_id is not in the list — and the caller above
+    didn't check membership.  Use list-comprehension or `if tg_id in …`.
+
+[CRIT] command_handlers.py:1677  finish_giveaway:
+        user.stones += amount
+        user.save(update_fields=["stones"])
+    No None check: if the winner deleted their bot conversation between the
+    join and the draw, `user` is None and the entire giveaway crashes mid-
+    payout (no other winner is picked, message edit is skipped, members
+    permanently locked out because giveaways[chat_id] still set on retry).
+
+[HIGH] command_handlers.py:1391  `delete_not_alive_messages` is registered
+    on `F.chat.type.in_({"group","supergroup"})` WITHOUT a Command filter.
+    It is the *fallback* group-message handler.  Because it appears AFTER
+    all other group commands in the file, ordering happens to work; but the
+    moment someone re-orders imports the catch-all may swallow /start.
+
+[HIGH] command_handlers.py:1399  `if message and message.text and
+    message.text.startswith('!'):` -> any message starting with `!` is left
+    untouched even when the user is dead.  Effectively a back-door for dead
+    players to talk in the chat by prefixing `!`.
+
+[HIGH] command_handlers.py:1457-1465  Code after `return` is DEAD: the
+    function returns at line 1456 (`return` immediately after the for loop)
+    so admin_parol / logout_admin / last-wish / team-chat blocks NEVER
+    execute. Private chat text handler is silently disabled.
+
+[HIGH] command_handlers.py:2245 + 2316  /money command read-modify-write
+    on sender/target coin without F() or transaction.  Two near-simultaneous
+    `/money @user X` messages double-credit / drop a payment.
+
+[HIGH] command_handlers.py:285-290 /money command commissioning:
+        if amount<10000: komission = 100
+        elif amount<100000: komission = 500
+        else: komission = 1000
+    `if sender_user.coin < amount+komission: return`  — silently returns,
+    no user feedback.  Looks like a feature, but lots of "/money" calls that
+    look ignored have already deducted the message-delete count, confusing.
+
+[HIGH] command_handlers.py:393 (function `money_command` again) is a SECOND
+    handler with the same Python name as the previous /money command.  Same
+    name shadowing risk as in callback file.
+
+[HIGH] command_handlers.py:1561-1623  process_admin_password "1 wrong -> 1
+    day; 2 wrong -> permanent" actually triggers PERMANENT BAN on the second
+    failed attempt (line 1599 `if attempts_obj.ban_until is not None:`).
+    Comment says "agar oldin 1 kun ban olgan bo'lsa".  Because ban_until
+    is left non-null even after the 1-day passes (line 1615 only resets on
+    success), the second EVER wrong password — even days later — is a
+    permaban.  Also there is no `attempts_obj.attempts += 1`, the field is
+    never used, only ban_until is consulted.
+
+[HIGH] command_handlers.py:830 /game handler creates / pins messages BEFORE
+    storing the registration_refresh_tasks; if the user calls /stop before
+    asyncio.create_task starts, the refresh task is orphaned.
+
+[HIGH] command_handlers.py:610-668 registration_timer mutates a SHARED list
+    `registration_timers[id] = [task, wait_time]` without a lock; /extend
+    on line 1004 modifies `[1]` from another coroutine.  Lost updates likely.
+
+[MED]  command_handlers.py:752 check_bot_rights returns the warning TEXT
+    instead of a structured value, then the caller `if result: send(result)`
+    relies on bool truthiness of strings.  An empty-string return would
+    skip the warning.  Add explicit `is None` / sentinel.
+
+[MED]  command_handlers.py:31 /start with single split on space:
+        args = message.text.split(' ')[1]
+    If user sends "/start " (trailing space) args == "" -> later
+    `args.startswith("instance_")` etc. all False, then `game = Game.objects
+    .filter(uuid=args, …)` queries with uuid="" -> empty queryset.  Cheap
+    bug, but produces "game_not_active" instead of greeting.
+
+[MED]  command_handlers.py:553  `game.get("players",[]).remove(tg_id)` may
+    additionally race with the parallel join (find_game) because no lock.
+
+[MED]  command_handlers.py:1641-1687  finish_giveaway does
+    `bot.edit_message_text(text, chat_id=..., message_id=...)` from a
+    Celery-style background task using the global `bot` (passed in arg).
+    If `bot` came from `message.bot` it shares the session — fine — but
+    elsewhere the global is used; the global Bot session may already be
+    closed if the dispatcher restarted.
+
+[MED]  command_handlers.py:1733-1746 olmos_star_handler signature mixes int
+    + str  (olmos_amount, star_amount, chat_id) — caller passes them as
+    strings (`olmos = args.split('_')[2]`) but the f-string in payload joins
+    them anyway, so it works.  Type hints lie.
+
+[MED]  command_handlers.py:1814-1841 claim_channel_olmos updates the
+    in-memory channel keyboard ONLY when `current_len % 2 == limit % 2`
+    (skips half the updates).  Intentional throttling, but confuses users
+    who don't see their pickup reflected until two more arrive.
+
+[LOW]  command_handlers.py:1162 `await message.delete()` before the
+    admin-check inside `send_top`.  Non-admins lose their command text but
+    get no error reply.
+
+
+================================================================================
+8.  INLINE BUTTONS  (mafia_bot/buttons/inline.py — 1815 lines)
+================================================================================
+
+[CRIT] inline.py:1248  `hang_inline_btn`:
+        for tg_id, first_name in players.values():
+    `players` is a *list of dicts* everywhere else in the codebase, not a
+    dict whose values are 2-tuples.  This function will raise TypeError on
+    first call — but it is currently uncalled (game_handler uses
+    `action_inline_btn(action="hang", …)`).  Dead-code time bomb.
+
+[CRIT] inline.py:1196  `icon_custom_emoji_id="105472030678633684592"` —
+    21-digit value, looks like a typo for "5472030678633684592" with an
+    extra "10".  Telegram will reject or ignore it.
+
+[CRIT] inline.py:1265-1290  `groups_inline_btn`:
+        if "@" in group.link:
+            url = ...
+        elif "http" in group.link or "https" in group.link:
+            url = group.link
+        button = InlineKeyboardButton(url=url, ...)
+    -> If link is e.g. "telegram.me/x" (no @, no http), `url` is unbound and
+    the loop raises UnboundLocalError. Also `group.delete()` is called while
+    iterating the queryset — destructive side-effect during keyboard build.
+
+[CRIT] inline.py:1709  `geroy_inline_btn`:
+        price = 100 + user.hero_level * 10 if user else 110
+    Operator precedence reads as `100 + (user.hero_level*10 if user else
+    110)`.  When user is None: price = 100 + 110 = 210, not the intended 110.
+
+[CRIT] inline.py:383 `cart_inline_btn`: no None-check on user — every f-
+    string `user.is_protected` crashes if the user was never registered.
+
+[HIGH] inline.py: every keyboard passes
+        style="success"/"danger"
+    and
+        icon_custom_emoji_id="..."
+    to aiogram's InlineKeyboardButton.  In stock aiogram 3.x / Telegram Bot
+    API these fields don't exist on InlineKeyboardButton.  Depending on the
+    pydantic config they're either silently dropped or fail validation with
+    "extra inputs not permitted".  If the bot ever upgrades aiogram, every
+    keyboard breaks.
+
+[HIGH] inline.py:912, 913, 945  Callback data uses curly-double-quoted f-
+    strings like
+        text=f"{team_emoji} {user.get("first_name")}"
+    Nested double quotes inside an f-string require Python 3.12+; on older
+    interpreters this is a SyntaxError.  Make sure runtime is 3.12+, or
+    replace inner quotes with single quotes.
+
+[HIGH] inline.py:945  The pattern `f"{action}_{tg_id}_{game_id}_{chat_id}_
+    {day}"` is broken when `action` contains an underscore (e.g.
+    "day_attack" from hero_callback line 3852).  Resulting callback_data is
+    "day_attack_<tg>_<game>_<chat>_<day>" which `day_attack_callback` parses
+    into 6 elements OK, but the "no" path (line 951) becomes "day_attack
+    _no_<game>_<chat>_<day>" → 7 elements → ValueError in the day_attack
+    parser → hero-attack "skip" button crashes silently.
+
+[HIGH] inline.py:880-881  com_inline_btn declares "shoot" + "protect" but
+    com_callback only branches on "shoot"/"back"/"no" — the "protect"
+    callback silently lands in the "check" else-branch.  Either the button
+    is misnamed or the handler is incomplete (probably the latter, since UI
+    text is just "-").
+
+[MED]  inline.py:1444 + 1464  money_case() / stone_case() generate REWARDS
+    on the SERVER and embed them in callback_data:
+        callback_data=f"open_money_{number}"
+    A malicious user can reply with `open_money_9999999` and the open_case
+    callback will accept it (callback_handlers.py:2934 `reward = int(parts
+    [2])`) — basically print-money exploit.  Must server-side validate.
+
+[MED]  inline.py:1583-1606  groups_buy_stars uses callback URL parameter
+    `chat_id={chat_id}` but no signature; a user can spoof a deep-link with
+    a chat_id they're not admin of.
+
+[MED]  inline.py:1267 `PremiumGroup.objects.all().order_by("-stones_for")`
+    runs DB query inside button builder; expensive on every menu render.
+
+[LOW]  inline.py:1212 `bulider` typo (should be `builder`).  Cosmetic.
+
+[LOW]  inline.py:79  `style="danger"` (not a Telegram field) is also passed
+    on the close button.
+
+[LOW]  inline.py:104, 105, 117, 122 etc.  Many keyboards inline emoji
+    inside the text AND set icon_custom_emoji_id with the same emoji —
+    duplicates render.
+
+
+================================================================================
+9.  CELERY / BACKGROUND  (mafia_bot/tasks.py, config/celery.py)
+================================================================================
+
+[HIGH] tasks.py:11-12  `@shared_task my_daily_task` uses
+    async_to_sync(send_top)().  send_top creates a NEW Bot() and closes its
+    session.  But Bot construction relies on `default=DefaultBotProperties`
+    which is missing here -> messages sent without HTML parse_mode unless
+    the bot.send_message call sets it explicitly (line 62 does, OK).  Still:
+    one extra Bot per task burns the rate-limit budget.
+
+[HIGH] tasks.py:36  `await sync_to_async(get_top, thread_sensitive=True)()`
+    is fine, but `chat_id="@MafiaRedDonOfficial"` is hard-coded.  Channel
+    rename = silent failure.
+
+[MED]  tasks.py:65-66  `bot.session.close()` is called in `finally` — good
+    — but if Bot() constructor itself raised, the variable doesn't exist
+    -> NameError shadows the original exception in worker logs.
+
+[LOW]  config/celery.py uses `namespace="CELERY"` but the settings file
+    defines the celery options WITHOUT CELERY_ prefix in some places:
+    CELERY_TIMEZONE / CELERY_BEAT_SCHEDULE — prefix exists, OK.
+
+
+================================================================================
+10. CROSS-CUTTING / ARCHITECTURE
+================================================================================
+
+[CRIT] EVERY in-memory dict in mafia_bot/utils.py
+    (games_state, last_wishes, team_chat_sessions, game_tasks, notify_users,
+     group_users, stones_taken, gsend_taken, giveaways, active_role_used,
+     writing_allowed_groups, USER_LANG_CACHE, game_locks, chat_id_game_id)
+    is mutable module state, single-process.  If the bot is restarted, all
+    in-flight games / pending rewards / channel olmos drops are LOST.  No
+    persistence layer.  Use Redis or restart-safe storage.
+
+[HIGH] Concurrency:
+    - threading.Lock used inside async (main_functions.py line 20, 312, 745
+      848, 922, 1013) blocks the event loop.
+    - game_locks dict is built lazily without its own lock (race in
+      get_game_lock) — two simultaneous /game commands can both miss the
+      key and create two locks.
+    - All Telegram payment / coin / stones updates use raw read-modify-
+      write.  Should use F() expressions inside .update() OR transaction
+      with select_for_update.
+
+[HIGH] Trusting callback_data as user input.  Many handlers use values from
+    callback.data (target_id, game_id, day, chat_id) without verifying the
+    presser is allowed.  Examples: traitor / spy callbacks (anyone with the
+    raw callback data can hijack the role action), com shoot / check, hero
+    attack on arbitrary target.  Spoof-able by anyone who copies a callback
+    string.
+
+[HIGH] Money-flow auditing:
+    - MoneySendHistory.amount is a free-form string with emoji prefix; cannot
+      compute totals or detect double-spends.
+    - case_buy_callback / open_case_callback grants stones based on integer
+      embedded in callback_data — must be replaced with a server-side draw.
+
+[MED]  i18n consistency:
+    - LANG_TEXTS imports uz_texts / ru_texts / en_texts / tr_texts / qz_texts
+      via wildcards from core/constants — partial-translation typos (e.g.
+      uz "com" emoji-id is "5886694236165773623" 🕵🏻‍♂️ vs DESCRIPTIONS uses
+      "5886694236165773623" 🕵🏻 — slight mismatch). Hard to keep aligned.
+    - DESCRIPTIONS["lucky"] is referenced but role "lucky" is not in
+      ROLES_BY_COUNT — dead description.
+    - DESCRIPTIONS adv / lab / kaldun / daydi all contain BROKEN UTF-8
+      replacement characters (` <tg-emoji emoji-id='…'>�</tg-emoji>`) —
+      indicates copy-paste through a non-utf8 editor.
+    - ROLE_EMOJIS["arrow"] ends with a stray "️" variant selector — fine,
+      but consistency.
+
+[MED]  ROLES_BY_COUNT (core/constants.py:1677-1714) never assigns the role
+    "hero" — yet ROLE_EMOJIS and DESCRIPTIONS have it, and game logic
+    branches on hero (callback_handlers.py:3823 hero_callback).  Hero is
+    purchased as an "ability" via geroy_inline_btn; clarify in the
+    documentation, otherwise readers think there's a missing assignment.
+
+[MED]  game_handler.py:48  `users_map = games_state[game_id].get("users_map",
+    {})` is captured at top of `start_game`, before any night reset.  If
+    new players were added via /start after registration close, they won't
+    be in users_map and their messages will all crash with KeyError.
+
+[MED]  send_safe_message swallows ALL exceptions and returns None; many
+    callers (game_handler.py:365 `msg_obj.message_id`) then access .message
+    _id on None -> AttributeError.  Either log + raise, or guard each
+    caller.
+
+[MED]  Logging: only `traceback.print_exc()` in game_handler and `print(...)`
+    in delete_not_alive_messages — production has no structured logging,
+    bot token in stdout, etc.  Add logging.basicConfig before start_polling.
+
+[LOW]  Many files lack `__init__.py`/`__future__` imports for older
+    Python (3.10+ syntax used like `User | None`).  Confirm runtime is 3.10+.
+
+[LOW]  Dockerfile / docker-compose / nginx.conf were not analysed in
+    detail; quick scan shows no glaring issues but no SECRET_KEY/BOT_TOKEN
+    injection contract is documented either.
+
+================================================================================
+11. QUICK-FIX PRIORITY LIST
+================================================================================
+
+Tier 1 — Fix before another release (game-breaking or unsafe):
+    1. game_handler.py:147 `is not []` -> `!= []`
+    2. game_handler.py day-counter incrementing 3× per loop
+    3. SafeBaseModel actually soft-delete (or rename to BaseModel)
+    4. settings.py SECRET_KEY/DEBUG/ALLOWED_HOSTS via env
+    5. dispatcher.py: remove print(TOKEN)
+    6. Money / stones updates: switch to F() + transaction
+    7. case_open: server-side draw, never trust callback-embedded reward
+    8. group purchase path requires admin verification
+    9. command_handlers.py:1457 dead-code return removed
+   10. callback_handlers.py BotCredentials/CasesOpened __str__
+   11. admin.py LoginAttempts ban_1_day timezone.timedelta bug
+   12. main_functions.py:1186 mutating "get_visible_role_for_com"
+   13. inline.py:1709 geroy price precedence
+   14. inline.py:1248 hang_inline_btn dict-iteration crash
+   15. inline.py:945 underscore-in-action callback explosion
+
+Tier 2 — Schedule for next sprint:
+   16. notify_new_com signature mismatch with notify_new_don
+   17. Replace threading.Lock with asyncio.Lock everywhere
+   18. Persist in-memory dicts in Redis
+   19. Replace `User.objects...` in async handlers with sync_to_async (or
+       Django async ORM)
+   20. Add explicit None-checks before user.is_premium / user.id
+   21. Stop-game cleanup of pending_night/hang/confirm for kicked players
+   22. Re-shape MoneySendHistory to numeric amount + currency code
+   23. Replace `datetime.datetime.utcnow()` with `timezone.now()` / aware
+       datetimes
+   24. duplicate function names per file (spy_callback, money_command,
+       quizzes_page_callback, quiz_select)
+   25. cart_inline_btn / case_callback / toggle_profile_callback None safety
+   26. fix Celery beat schedule (monthly vs daily)
+   27. Auto-begin after game-end: None-check on `game` before using
+       `.game_type`/`.team_count`
+   28. Remove cascading `style=...` and `icon_custom_emoji_id=...`
+       (not in Telegram API)
+   29. groups_inline_btn: don't .delete() inside iteration; guard url
+       variable
+   30. successful_payment_handler: numeric payload validation, signed
+       payload
+
+Tier 3 — Tech debt / hygiene:
+   31. Logging framework instead of print/traceback
+   32. Type hints actually matching return values (can_hang, etc.)
+   33. Dead imports/branches, dead BAD_GUYS set, dead "lucky" description
+   34. Standardise i18n table — automate a missing-key check across uz/
+       ru/en/tr/qz
+   35. SQLite -> Postgres before production load
+   36. Add Cloudinary config or remove DEFAULT_FILE_STORAGE setting
+   37. Tests! There is currently zero automated coverage in this repo.
+
+================================================================================
+END OF REPORT
+================================================================================

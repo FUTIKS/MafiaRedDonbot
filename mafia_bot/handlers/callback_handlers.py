@@ -20,7 +20,7 @@ from mafia_bot.utils import stones_taken,gsend_taken,giveaways,games_state,USER_
 from mafia_bot.models import Game, MoneySendHistory, User,PremiumGroup,MostActiveUser,CasesOpened,GameSettings,GroupTrials,PriceStones, UserRole,BotCredentials, default_end_date
 from mafia_bot.state import AddGroupState, BeginInstanceState,SendMoneyState,ChangeStoneCostState,ChangeMoneyCostState,ExtendGroupState,QuestionState,Register,CredentialsState,UserBlock
 from mafia_bot.handlers.main_functions import (add_visit, get_mafia_members,get_first_name_from_players, kill, remove_prefix,send_safe_message,get_description_lang,get_hero_level,
-                                               mark_confirm_done, mark_hang_done,mark_night_action_done,get_week_range,get_month_range,role_label,get_lang_text,get_role_labels_lang,get_actions_lang, strip_tags)
+                                               mark_confirm_done, mark_hang_done,mark_night_action_done,get_week_range,get_month_range,role_label,get_lang_text,get_role_labels_lang,get_actions_lang, strip_tags, get_user_stats)
 from mafia_bot.buttons.inline import (action_inline_btn,
     admin_inline_btn, answer_admin, back_btn, cart_inline_btn, change_money_cost, change_stones_cost, com_inline_btn, end_talk_keyboard, geroy_inline_btn,  giveaway_join_btn, group_profile_inline_btn,
     groupes_keyboard, groups_buy_stars, history_groupes_keyboard, language_keyboard, language_keyboard, money_case, pay_for_money_inline_btn, pay_using_stars_inline_btn, role_shop_inline_keyboard,
@@ -30,6 +30,35 @@ from mafia_bot.buttons.inline import (action_inline_btn,
 )
 
 
+
+
+def build_profile_text(callback: CallbackQuery, user, total_wins, total_played, roles_text=""):
+    """Render the user-profile card. Non-premium users get the tg-emoji tags
+    stripped. Used by profile / buy / toggle handlers (was copy-pasted 3x)."""
+    t = get_lang_text(callback.from_user.id)
+    main_text = t['user_profile'].format(
+        first_name=callback.from_user.first_name,
+        user_id=callback.from_user.id,
+        coin=user.coin,
+        stones=user.stones,
+        protection=user.protection,
+        hang_protect=user.hang_protect,
+        docs=user.docs,
+        geroy_protect=user.geroy_protection,
+        wins=total_wins,
+        all_played=total_played,
+        text=roles_text,
+    )
+    return main_text if user.is_premium else strip_tags(main_text)
+
+
+def user_roles_text(tg_id, user):
+    """Build the '<emoji> role - qty' list shown on the profile card."""
+    lines = ""
+    for user_r in UserRole.objects.filter(user_id=user.id):
+        role_name = dict(get_role_labels_lang(tg_id)).get(user_r.role_key, "Noma'lum rol")
+        lines += f"<tg-emoji emoji-id='5359441070201513074'>🎭</tg-emoji> {role_name} -  {user_r.quantity}\n"
+    return lines
 
 
 # Callbackdan kelganda
@@ -45,47 +74,9 @@ async def profile_callback(callback: CallbackQuery):
             first_name=callback.from_user.first_name,
             username=callback.from_user.username
         )
-    t = get_lang_text(int(tg_id))
-    user_role = UserRole.objects.filter(user_id=user.id)
-    text =""
-    for user_r in user_role:
-        role_name = dict(get_role_labels_lang(tg_id)).get(user_r.role_key, "Noma'lum rol")
-        text += f"<tg-emoji emoji-id='5359441070201513074'>🎭</tg-emoji> {role_name} -  {user_r.quantity}\n"
-    result = MostActiveUser.objects.filter(user_id=user.id).aggregate(
-    total_played=Sum('games_played'),
-    total_wins=Sum('games_win')
-    )
-
-    total_played = result['total_played'] or 0
-    total_wins = result['total_wins'] or 0
-    if user.is_premium:
-        main_text =t['user_profile'].format(
-            first_name=callback.from_user.first_name,
-            user_id=callback.from_user.id,
-            coin=user.coin,
-            stones=user.stones,
-            protection=user.protection,
-            hang_protect=user.hang_protect,
-            docs=user.docs,
-            geroy_protect=user.geroy_protection,
-            wins=total_wins,
-            all_played=total_played,
-            text=text
-        )
-    else:
-        main_text = strip_tags(t['user_profile'].format(
-            first_name=callback.from_user.first_name,
-            user_id=callback.from_user.id,
-            coin=user.coin,
-            stones=user.stones,
-            protection=user.protection,
-            hang_protect=user.hang_protect,
-            docs=user.docs,
-            geroy_protect=user.geroy_protection,
-            wins=total_wins,
-            all_played=total_played,
-            text=text
-        ),)
+    text = user_roles_text(tg_id, user)
+    total_wins, total_played = get_user_stats(user.id)
+    main_text = build_profile_text(callback, user, total_wins, total_played, text)
     await callback.message.edit_text(
         text=main_text,
         parse_mode="HTML",
@@ -227,13 +218,7 @@ async def buy_callback(callback: CallbackQuery):
             first_name=callback.from_user.first_name,
             username=callback.from_user.username
         )
-    result = MostActiveUser.objects.filter(user_id=user.id).aggregate(
-    total_played=Sum('games_played'),
-    total_wins=Sum('games_win')
-)
-
-    total_played = result['total_played'] or 0
-    total_wins = result['total_wins'] or 0
+    total_wins, total_played = get_user_stats(user.id)
 
     t = get_lang_text(tg_id)
     if thing_to_buy == "protection":
@@ -284,34 +269,7 @@ async def buy_callback(callback: CallbackQuery):
         else:
             await callback.answer(text=t['not_enough_money'], show_alert=True)
             return
-    if user.is_premium:
-        main_text =t['user_profile'].format(
-        first_name=callback.from_user.first_name,
-        user_id=callback.from_user.id,
-        coin=user.coin,
-        stones=user.stones,
-        protection=user.protection,
-        hang_protect=user.hang_protect,
-        docs=user.docs,
-        geroy_protect=user.geroy_protection,
-        wins=total_wins,
-        all_played=total_played,
-        text=""
-    )
-    else:
-        main_text = strip_tags(t['user_profile'].format(
-        first_name=callback.from_user.first_name,
-        user_id=callback.from_user.id,
-        coin=user.coin,
-        stones=user.stones,
-        protection=user.protection,
-        hang_protect=user.hang_protect,
-        docs=user.docs,
-        geroy_protect=user.geroy_protection,
-        wins=total_wins,
-        all_played=total_played,
-        text=""
-    ))
+    main_text = build_profile_text(callback, user, total_wins, total_played)
     await callback.message.edit_text(
             text=main_text,
         parse_mode="HTML",
@@ -596,9 +554,11 @@ async def com_callback(callback: CallbackQuery):
     if not day == str(game_day):
         await callback.message.edit_text(text=f"{get_actions_lang(callback.from_user.id).get('com_deside')}\n\n{t['late']}", parse_mode="HTML")
         return
-    mark_night_action_done(game, callback.from_user.id)
     if action == "no":
-        # hech narsa qilmaslik
+        # hech narsa qilmaslik — faqat shu yerda action tugadi deb belgilaymiz.
+        # (shoot/check tanlanganda hali nishon tanlanmagani uchun "done" qilmaymiz,
+        #  aks holda komissar oxirgi qolgan bo'lsa tun nishonsiz tugab qoladi)
+        mark_night_action_done(game, callback.from_user.id)
         await callback.message.edit_text(
             text=f"{get_actions_lang(callback.from_user.id).get('com_deside')}\n\n{t['action_no_choose']}",
             parse_mode="HTML"
@@ -660,8 +620,8 @@ async def com_shoot_callback(callback: CallbackQuery):
         return
     if not com_id in game["alive"]:
         return
-    
 
+    mark_night_action_done(game, com_id)
     game["night_actions"]["com_shoot_target"] = target_id
     add_visit(game, com_id, target_id, False)
 
@@ -693,8 +653,8 @@ async def com_protect_callback(callback: CallbackQuery):
         return
     if not com_id in game["alive"]:
         return
-   
 
+    mark_night_action_done(game, com_id)
     # <tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> Action saqlaymiz
     game["night_actions"]["com_check_target"] = target_id
     add_visit(game, com_id, target_id, False)
@@ -1035,17 +995,7 @@ async def don_callback(callback: CallbackQuery):
         f"🤵🏻 Don <a href='tg://user?id={don_id}'>{mafia_name}</a> - <a href='tg://user?id={target_id}'>{target_name}</a> uchun ovoz berdi"
     )
 
-    for member_id in mafia_members:
-        if member_id == don_id:
-            continue
-        try:
-            await send_safe_message(
-                chat_id=member_id,
-                text=text_for_mafia,
-                parse_mode="HTML"
-            )
-        except Exception as e:
-            pass
+    await notify_mafia_members(mafia_members, text_for_mafia, don_id)
     
     await callback.message.edit_text(text=f"{get_actions_lang(callback.from_user.id).get('don_kill')}\n\n<a href='tg://user?id={target_id}'>{target_name}</a> {t['action_choose']}")
     
@@ -1092,56 +1042,62 @@ async def mafia_callback(callback: CallbackQuery):
         f"<tg-emoji emoji-id='5897622767565543503'>🤵🏼</tg-emoji> Mafiya a'zosi <a href='tg://user?id={mafia_id}'>{mafia_name}</a> - <a href='tg://user?id={target_id}'>{target_name}</a> uchun ovoz berdi"
     )
 
-    for member_id in mafia_members:
-        if member_id == mafia_id:
-            continue
-
-        try:
-            await send_safe_message(
-                chat_id=member_id,
-                text=text_for_mafia,
-                parse_mode="HTML"
-            )
-        except Exception as e:
-            pass
+    await notify_mafia_members(mafia_members, text_for_mafia, mafia_id)
     
     await callback.message.edit_text(text=f"{get_actions_lang(callback.from_user.id).get('mafia_vote')}\n\n<a href='tg://user?id={target_id}'>{target_name}</a> {t['action_choose']}")
 
 
-@dp.callback_query(F.data.startswith("adv_"))
-async def adv_callback(callback: CallbackQuery):
+async def notify_mafia_members(members, text, skip_id):
+    """Send a HTML message to every mafia member except ``skip_id`` (errors ignored)."""
+    for member_id in members:
+        if member_id == skip_id:
+            continue
+        try:
+            await send_safe_message(chat_id=member_id, text=text, parse_mode="HTML")
+        except Exception:
+            pass
+
+
+async def _night_action_prologue(callback, action_key, no_go_key):
+    """Shared prologue for single-target night-action callbacks.
+
+    Handles answer, clearing the keyboard, parsing
+    ``<role>_<target>_<game>_<chat>_<day>``, game lookup, the day/alive checks and
+    the "no choice" branch.  Returns
+    ``(target_id, game_id, chat_id, day, own_id, game, t, tg)`` to continue, or
+    ``None`` if the action was already handled / should stop.
+    """
     await callback.answer()
     await callback.message.edit_reply_markup(None)
-    target_id = callback.data.split("_")[1]
-    game_id = int(callback.data.split("_")[2])
-    chat_id = int(callback.data.split("_")[3])
-    day = callback.data.split("_")[4]
-    adv_id = callback.from_user.id
-    
-    game = games_state.get(int(game_id))
+    parts = callback.data.split("_")
+    target_id, game_id, chat_id, day = parts[1], int(parts[2]), int(parts[3]), parts[4]
+    own_id = callback.from_user.id
+    game = games_state.get(game_id)
     if not game:
-        return
-    game_day = game['meta']['day']
-    t = get_lang_text(callback.from_user.id)
-    tg= get_lang_text(chat_id)
-    if not day == str(game_day):
-        await callback.message.edit_text(text=f"{get_actions_lang(callback.from_user.id).get('adv_mask')}\n {t['late']}", parse_mode="HTML")
-        return
-    
-    if not adv_id in game["alive"]:
-        return
-    mark_night_action_done(game, callback.from_user.id)
+        return None
+    t = get_lang_text(own_id)
+    tg = get_lang_text(chat_id)
+    label = get_actions_lang(own_id).get(action_key)
+    if day != str(game["meta"]["day"]):
+        await callback.message.edit_text(text=f"{label}\n\n{t['late']}", parse_mode="HTML")
+        return None
+    if own_id not in game["alive"]:
+        return None
+    mark_night_action_done(game, own_id)
     if target_id == "no":
-        # hech narsa qilmaslik
-        await callback.message.edit_text(
-            text=f"{get_actions_lang(callback.from_user.id).get('adv_mask')}\n\n{t['action_no_choose']}",
-            parse_mode="HTML"
-        )
-        await send_safe_message(
-            chat_id=int(chat_id),
-            text=tg['adv_no_go']
-        )
+        await callback.message.edit_text(text=f"{label}\n\n{t['action_no_choose']}", parse_mode="HTML")
+        await send_safe_message(chat_id=chat_id, text=tg[no_go_key])
+        return None
+    return target_id, game_id, chat_id, day, own_id, game, t, tg
+
+
+@dp.callback_query(F.data.startswith("adv_"))
+async def adv_callback(callback: CallbackQuery):
+    ctx = await _night_action_prologue(callback, "adv_mask", "adv_no_go")
+    if not ctx:
         return
+    target_id, game_id, chat_id, day, adv_id, game, t, tg = ctx
+
     # <tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> night action saqlash
     game["night_actions"]["advokat_target"] = int(target_id)
     add_visit(game=game, visitor_id=adv_id, house_id=target_id, invisible=False)
@@ -1160,18 +1116,7 @@ async def adv_callback(callback: CallbackQuery):
         f"👨🏼‍💼 Advokat {adv_name} tanlovi: <a href='tg://user?id={target_id}'>{target_name}</a>"
     )
 
-    for member_id in mafia_members:
-        if member_id == adv_id:
-            continue
-
-        try:
-            await send_safe_message(
-                chat_id=member_id,
-                text=text_for_mafia,
-                parse_mode="HTML"
-            )
-        except Exception as e:
-            pass
+    await notify_mafia_members(mafia_members, text_for_mafia, adv_id)
     
 
     await callback.message.edit_text(text=f"{get_actions_lang(callback.from_user.id).get('adv_mask')}\n\n<a href='tg://user?id={target_id}'>{target_name}</a> {t['action_choose']}")
@@ -1179,39 +1124,11 @@ async def adv_callback(callback: CallbackQuery):
 
 @dp.callback_query(F.data.startswith("spy_"))
 async def spy_callback(callback: CallbackQuery):
-    await callback.answer()
-    await callback.message.edit_reply_markup(None)
-    target_id = callback.data.split("_")[1]
-    game_id = callback.data.split("_")[2]
-    chat_id = int(callback.data.split("_")[3])
-    day = callback.data.split("_")[4]
-    spy_id = callback.from_user.id
-    
-    game = games_state.get(int(game_id))
-    if not game:
+    ctx = await _night_action_prologue(callback, "spy_check", "spy_no_go")
+    if not ctx:
         return
-    game_day = game['meta']['day']
-    t = get_lang_text(callback.from_user.id)
-    tg= get_lang_text(chat_id)
-    if not day == str(game_day):
-        await callback.message.edit_text(text=f"{get_actions_lang(callback.from_user.id).get('spy_check')}\n\n{t['late']}", parse_mode="HTML")
-        return
-    
-    if not spy_id in game["alive"]:
-        return
-    mark_night_action_done(game, callback.from_user.id)
-    if target_id == "no":
-        # hech narsa qilmaslik
-        await callback.message.edit_text(
-            text=f"{get_actions_lang(callback.from_user.id).get('spy_check')}\n\n{t['action_no_choose']}",
-            parse_mode="HTML"
-        )
-        await send_safe_message(
-            chat_id=int(chat_id),
-            text=tg['spy_no_go']
-        )
-        return
-    
+    target_id, game_id, chat_id, day, spy_id, game, t, tg = ctx
+
     # <tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> night action saqlash
     game["night_actions"]["spy_target"] = int(target_id)
     add_visit(game=game, visitor_id=spy_id, house_id=target_id, invisible=False)
@@ -1227,18 +1144,7 @@ async def spy_callback(callback: CallbackQuery):
     text_for_mafia = (
         f"<tg-emoji emoji-id='5442769745050871204'>🦇</tg-emoji> Ayg'oqchi {spy_name} tanlovi: <a href='tg://user?id={target_id}'>{target_name}</a>"
     )
-    for member_id in mafia_members:
-        if member_id == spy_id:
-            continue
-
-        try:
-            await send_safe_message(
-                chat_id=member_id,
-                text=text_for_mafia,
-                parse_mode="HTML"
-            )
-        except Exception as e:
-            pass
+    await notify_mafia_members(mafia_members, text_for_mafia, spy_id)
     
     
     await callback.message.edit_text(text=f"{get_actions_lang(callback.from_user.id).get('spy_check')}\n\n<a href='tg://user?id={target_id}'>{target_name}</a> {t['action_choose']}")
@@ -1246,40 +1152,11 @@ async def spy_callback(callback: CallbackQuery):
 
 @dp.callback_query(F.data.startswith("lab_"))
 async def lab_callback(callback: CallbackQuery):
-    await callback.answer()
-    await callback.message.edit_reply_markup(None)
-    target_id = callback.data.split("_")[1]
-    game_id = int(callback.data.split("_")[2])
-    chat_id = int(callback.data.split("_")[3])
-    day = callback.data.split("_")[4]
-    
-    lab_id = callback.from_user.id
-    
-    game = games_state.get(int(game_id))
-    if not game:
+    ctx = await _night_action_prologue(callback, "lab_action", "lab_no_go")
+    if not ctx:
         return
-    game_day = game['meta']['day']
-    t = get_lang_text(callback.from_user.id)
-    tg= get_lang_text(chat_id)
-    if not day == str(game_day):
-        await callback.message.edit_text(text=f"{get_actions_lang(callback.from_user.id).get('lab_action')}\n\n{t['late']}", parse_mode="HTML")
-        return
-    
-    if not lab_id in game["alive"]:
-        return
-    mark_night_action_done(game, callback.from_user.id)
-    if target_id == "no":
-        # hech narsa qilmaslik
-        await callback.message.edit_text(
-            text=f"{get_actions_lang(callback.from_user.id).get('lab_action')}\n\n{t['action_no_choose']}",
-            parse_mode="HTML"
-        )
-        await send_safe_message(
-            chat_id=int(chat_id),
-            text=tg['lab_no_go']
-        )
-        return
-    
+    target_id, game_id, chat_id, day, lab_id, game, t, tg = ctx
+
     # <tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> night action saqlash
     game["night_actions"]["lab_target"] = int(target_id)
     add_visit(game=game, visitor_id=lab_id, house_id=target_id, invisible=False)
@@ -1296,40 +1173,11 @@ async def lab_callback(callback: CallbackQuery):
 
 @dp.callback_query(F.data.startswith("arrow_"))
 async def arrow_callback(callback: CallbackQuery):
-    await callback.answer()
-    await callback.message.edit_reply_markup(None)
-    target_id = callback.data.split("_")[1]
-    game_id = callback.data.split("_")[2]
-    chat_id = int(callback.data.split("_")[3])
-    day = callback.data.split("_")[4]
-    
-    arrow_id = callback.from_user.id
-    
-    game = games_state.get(int(game_id))
-    if not game:
+    ctx = await _night_action_prologue(callback, "arrow_kill", "arrow_no_go")
+    if not ctx:
         return
-    game_day = game['meta']['day']
-    t = get_lang_text(callback.from_user.id)
-    tg= get_lang_text(chat_id)
-    if not day == str(game_day):
-        await callback.message.edit_text(text=f"{get_actions_lang(callback.from_user.id).get('arrow_kill')}\n\n{t['late']}", parse_mode="HTML")
-        return
-    
-    if not arrow_id in game["alive"]:
-        return
-    
-    mark_night_action_done(game, callback.from_user.id)
-    if target_id == "no":
-        # hech narsa qilmaslik
-        await callback.message.edit_text(
-            text=f"{get_actions_lang(callback.from_user.id).get('arrow_kill')}\n\n{t['action_no_choose']}",
-            parse_mode="HTML"
-        )
-        await send_safe_message(
-            chat_id=int(chat_id),
-            text=tg['arrow_no_go']
-        )   
-        return
+    target_id, game_id, chat_id, day, arrow_id, game, t, tg = ctx
+
     # <tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> night action saqlash
     game["night_actions"]["arrow_target"] = int(target_id)
     add_visit(game=game, visitor_id=arrow_id, house_id=target_id, invisible=True)
@@ -1346,40 +1194,11 @@ async def arrow_callback(callback: CallbackQuery):
 
 @dp.callback_query(F.data.startswith("trap_"))
 async def trap_callback(callback: CallbackQuery):
-    await callback.answer()
-    await callback.message.edit_reply_markup(None)
-    target_id = callback.data.split("_")[1]
-    game_id = callback.data.split("_")[2]
-    chat_id = int(callback.data.split("_")[3])
-    day = callback.data.split("_")[4]
-    
-    trap_id = callback.from_user.id
-    
-    game = games_state.get(int(game_id))
-    if not game:
+    ctx = await _night_action_prologue(callback, "trap_place", "trap_no_go")
+    if not ctx:
         return
-    game_day = game['meta']['day']
-    t = get_lang_text(callback.from_user.id)
-    tg= get_lang_text(chat_id)
-    if not day == str(game_day):
-        await callback.message.edit_text(text=f"{get_actions_lang(callback.from_user.id).get('trap_place')}\n\n{t['late']}", parse_mode="HTML")
-        return
-    
-    if not trap_id in game["alive"]:
-        return
-    mark_night_action_done(game, callback.from_user.id)
-    if target_id == "no":
-        # hech narsa qilmaslik
-        await callback.message.edit_text(
-            text=f"{get_actions_lang(callback.from_user.id).get('trap_place')}\n\n{t['action_no_choose']}",
-            parse_mode="HTML"
-        )
-        await send_safe_message(
-            chat_id=int(chat_id),
-            text=tg['trap_no_go']
-        )
-        return
-    
+    target_id, game_id, chat_id, day, trap_id, game, t, tg = ctx
+
     # <tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> night action saqlash
     game["night_actions"]["trap_house"] = int(target_id)
     
@@ -1395,41 +1214,11 @@ async def trap_callback(callback: CallbackQuery):
 
 @dp.callback_query(F.data.startswith("snyper_"))
 async def snyper_callback(callback: CallbackQuery):
-    await callback.answer()
-    await callback.message.edit_reply_markup(None)
-    target_id = callback.data.split("_")[1]
-    game_id = callback.data.split("_")[2]
-    chat_id = int(callback.data.split("_")[3])
-    day = callback.data.split("_")[4]
-    
-    snyper_id = callback.from_user.id
-    
-    game = games_state.get(int(game_id))
-    if not game:
+    ctx = await _night_action_prologue(callback, "snyper_kill", "snyper_no_go")
+    if not ctx:
         return
-    game_day = game['meta']['day']
-    t = get_lang_text(callback.from_user.id)
-    tg= get_lang_text(chat_id)
-    if not day == str(game_day):
-        await callback.message.edit_text(text=f"{get_actions_lang(callback.from_user.id).get('snyper_kill')}\n\n{t['late']}", parse_mode="HTML")
-        return
-    
-    if not snyper_id in game["alive"]:
-        return
-    
-    mark_night_action_done(game, callback.from_user.id)
-    if target_id == "no":
-        # hech narsa qilmaslik
-        await callback.message.edit_text(
-            text=f"{get_actions_lang(callback.from_user.id).get('snyper_kill')}\n\n{t['action_no_choose']}",
-            parse_mode="HTML"
-        )
-        await send_safe_message(
-            chat_id=int(chat_id),
-            text=tg['snyper_no_go']
-        )   
-        return
-    
+    target_id, game_id, chat_id, day, snyper_id, game, t, tg = ctx
+
     # <tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> night action saqlash
     game["night_actions"]["snyper_target"] = int(target_id)
     add_visit(game=game, visitor_id=snyper_id, house_id=target_id, invisible=True)
@@ -1446,40 +1235,12 @@ async def snyper_callback(callback: CallbackQuery):
 
 
 @dp.callback_query(F.data.startswith("traitor_"))
-async def spy_callback(callback: CallbackQuery):
-    await callback.answer()
-    await callback.message.edit_reply_markup(None)
-    target_id = callback.data.split("_")[1]
-    game_id = callback.data.split("_")[2]
-    chat_id = int(callback.data.split("_")[3])
-    day = callback.data.split("_")[4]
-    
-    traitor_id = callback.from_user.id
-    game = games_state.get(int(game_id))
-    if not game:
+async def traitor_callback(callback: CallbackQuery):
+    ctx = await _night_action_prologue(callback, "traitor_choose", "traitor_no_go")
+    if not ctx:
         return
-    game_day = game['meta']['day']
-    t = get_lang_text(callback.from_user.id)
-    tg= get_lang_text(chat_id)
-    if not day == str(game_day):
-        await callback.message.edit_text(text=f"{get_actions_lang(callback.from_user.id).get('traitor_choose')}\n\n{t['late']}", parse_mode="HTML")
-        return
-    if not traitor_id in game["alive"]:
-        return
-    
-    mark_night_action_done(game, callback.from_user.id)
-    if target_id == "no":
-        # hech narsa qilmaslik
-        await callback.message.edit_text(
-            text=f"{get_actions_lang(callback.from_user.id).get('traitor_choose')}\n\n{t['action_no_choose']}",
-            parse_mode="HTML"
-        )
-        await send_safe_message(
-            chat_id=int(chat_id),
-            text=tg['traitor_no_go']
-        )
-        return
-    
+    target_id, game_id, chat_id, day, traitor_id, game, t, tg = ctx
+
     # <tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> night action saqlash
     game["night_actions"]["traitor_target"] = int(target_id)
     add_visit(game=game, visitor_id=traitor_id, house_id=target_id, invisible=False)
@@ -1494,39 +1255,11 @@ async def spy_callback(callback: CallbackQuery):
 
 @dp.callback_query(F.data.startswith("snowball_"))
 async def snowball_callback(callback: CallbackQuery):
-    await callback.answer()
-    await callback.message.edit_reply_markup(None)
-    target_id = callback.data.split("_")[1]
-    game_id = callback.data.split("_")[2]
-    chat_id = int(callback.data.split("_")[3])
-    day = callback.data.split("_")[4]
-    
-    snowball_id = callback.from_user.id
-    game = games_state.get(int(game_id))
-    if not game:
+    ctx = await _night_action_prologue(callback, "snowball_kill", "snowball_no_go")
+    if not ctx:
         return
-    game_day = game['meta']['day']
-    t = get_lang_text(callback.from_user.id)
-    tg= get_lang_text(chat_id)
-    if not day == str(game_day):
-        await callback.message.edit_text(text=f"{get_actions_lang(callback.from_user.id).get('snowball_kill')}\n\n{t['late']}", parse_mode="HTML")
-        return
-    if not snowball_id in game["alive"]:
-        return
-    
-    mark_night_action_done(game, callback.from_user.id)
-    if target_id == "no":
-        # hech narsa qilmaslik
-        await callback.message.edit_text(
-            text=f"{get_actions_lang(callback.from_user.id).get('snowball_kill')}\n\n{t['action_no_choose']}",
-            parse_mode="HTML"
-        )
-        await send_safe_message(
-            chat_id=int(chat_id),
-            text=tg['snowball_no_go']
-        )
-        return
-    
+    target_id, game_id, chat_id, day, snowball_id, game, t, tg = ctx
+
     # <tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> night action saqlash
     game["night_actions"]["snowball_target"] = int(target_id)
     add_visit(game=game, visitor_id=snowball_id, house_id=target_id, invisible=False)
@@ -1541,38 +1274,11 @@ async def snowball_callback(callback: CallbackQuery):
 
 @dp.callback_query(F.data.startswith("pirate_"))
 async def pirate_callback(callback: CallbackQuery):
-    await callback.answer()
-    await callback.message.edit_reply_markup(None)
-    target_id = callback.data.split("_")[1]
-    game_id = callback.data.split("_")[2]
-    chat_id = int(callback.data.split("_")[3])
-    pirate_id = callback.from_user.id
-    day = callback.data.split("_")[4]
-    game = games_state.get(int(game_id))
-    if not game:
+    ctx = await _night_action_prologue(callback, "pirate_steal", "pirate_no_go")
+    if not ctx:
         return
-    game_day = game['meta']['day']
-    t = get_lang_text(callback.from_user.id)
-    tg= get_lang_text(chat_id)
-    if not day == str(game_day):
-        await callback.message.edit_text(text=f"{get_actions_lang(callback.from_user.id).get('pirate_steal')}\n\n{t['late']}", parse_mode="HTML")
-        return
-    if not pirate_id in game["alive"]:
-        return
-    
-    mark_night_action_done(game, callback.from_user.id)
-    if target_id == "no":
-        # hech narsa qilmaslik
-        await callback.message.edit_text(
-            text=f"{get_actions_lang(callback.from_user.id).get('pirate_steal')}\n\n{t['action_no_choose']}",
-            parse_mode="HTML"
-        )
-        await send_safe_message(
-            chat_id=int(chat_id),
-            text=tg['pirate_no_go']
-        )
-        return
-    
+    target_id, game_id, chat_id, day, pirate_id, game, t, tg = ctx
+
     # <tg-emoji emoji-id='5462919317832082236'>✅</tg-emoji> night action saqlash
     game["night_actions"]["pirate"]['target_id'] = int(target_id)
     game["night_actions"]["pirate"]['pirate_id'] = int(pirate_id)
@@ -2216,7 +1922,7 @@ async def remove_callback(callback: CallbackQuery,state: FSMContext) -> None:
         await state.set_state(SendMoneyState.waiting_olmos_to_remove)
         
 @dp.message(SendMoneyState.waiting_money_to_remove)
-async def process_send_money(message: Message, state: FSMContext) -> None:
+async def process_remove_money(message: Message, state: FSMContext) -> None:
     try:
         telegram_id, amount_str = message.text.strip().split()
         amount = int(amount_str)
@@ -2267,7 +1973,7 @@ async def process_send_money(message: Message, state: FSMContext) -> None:
     
 
 @dp.message(SendMoneyState.waiting_olmos_to_remove)
-async def process_send_olmos(message: Message, state: FSMContext) -> None:
+async def process_remove_olmos(message: Message, state: FSMContext) -> None:
     try:
         telegram_id, amount_str = message.text.strip().split()
         amount = int(amount_str)
@@ -3114,7 +2820,7 @@ async def trial_callback(callback: CallbackQuery):
 
 
 @dp.callback_query(F.data.startswith("olga_page:"))
-async def quizzes_page_callback(callback_query: CallbackQuery):
+async def olga_page_callback(callback_query: CallbackQuery):
     await callback_query.answer()
 
     page = int(callback_query.data.split(":")[1])
@@ -3145,7 +2851,7 @@ async def quizzes_page_callback(callback_query: CallbackQuery):
 
 
 @dp.callback_query(F.data.startswith("olga_select:"))
-async def quiz_select(callback):
+async def olga_select_callback(callback):
     await callback.answer()
     group_id = callback.data.split(":")[1]
     group = GroupTrials.objects.get(id=group_id)
@@ -3296,7 +3002,7 @@ async def transfer_history_callback(callback: CallbackQuery):
     
     
 @dp.callback_query(F.data.startswith("history_page:"))
-async def quizzes_page_callback(callback_query: CallbackQuery):
+async def history_page_callback(callback_query: CallbackQuery):
     await callback_query.answer()
     page = int(callback_query.data.split(":")[1])
     limit = 10
@@ -4145,34 +3851,11 @@ async def toggle_profile_callback(callback: CallbackQuery):
     elif setting == "premium":
         user.is_premium = not user.is_premium
     user.save()
-    text =""
-    user_role = UserRole.objects.filter(user_id=user.id)
-    for user_r in user_role:
-        role_name = dict(get_role_labels_lang(chat_id)).get(user_r.role_key, "Noma'lum rol")
-        text += f"<tg-emoji emoji-id='5359441070201513074'>🎭</tg-emoji> {role_name} -  {user_r.quantity}\n"
-    t = get_lang_text(chat_id)
-    result = MostActiveUser.objects.filter(user_id=user.id).aggregate(
-    total_played=Sum('games_played'),
-    total_wins=Sum('games_win')
-)
-
-    total_played = result['total_played'] or 0
-    total_wins = result['total_wins'] or 0
+    text = user_roles_text(chat_id, user)
+    total_wins, total_played = get_user_stats(user.id)
 
     await callback.message.edit_text(
-        text=t['user_profile'].format(
-            first_name=callback.from_user.first_name,
-            user_id=callback.from_user.id,
-            coin=user.coin,
-            stones=user.stones,
-            protection=user.protection,
-            hang_protect=user.hang_protect,
-            docs=user.docs,
-            geroy_protect=user.geroy_protection,
-            wins=total_wins,
-            all_played=total_played,
-            text=text
-        ),
+        text=build_profile_text(callback, user, total_wins, total_played, text),
         parse_mode="HTML",reply_markup=cart_inline_btn(chat_id)
     )
     

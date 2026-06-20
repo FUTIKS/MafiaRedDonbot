@@ -16,6 +16,14 @@ from mafia_bot.handlers.main_functions import (can_hang, games_state, get_most_v
 
 
 
+async def send_video_or_text(chat_id, video, caption):
+    """Send a video with caption; on rate-limit or any error fall back to text."""
+    try:
+        await bot.send_video(chat_id=chat_id, video=video, caption=caption, parse_mode="HTML")
+    except Exception:
+        await send_safe_message(chat_id=chat_id, text=caption, parse_mode="HTML")
+
+
 def run_game_in_background(game_id: int):
     if game_id in game_tasks and not game_tasks[int(game_id)].done():
         return False
@@ -76,29 +84,7 @@ async def start_game(game_id):
 
             
             caption = t['night_caption']
-            try:
-                await bot.send_video(
-                    chat_id=game.chat_id,
-                    video=sunset,
-                    caption=caption,
-                    parse_mode="HTML"
-                )
-
-            except TelegramRetryAfter as e:
-                # video limit — textga tushamiz
-                await send_safe_message(
-                    chat_id=game.chat_id,
-                    text=caption,
-                    parse_mode="HTML"
-                )
-
-            except Exception:
-                # boshqa xato bo‘lsa ham text yuboramiz
-                await send_safe_message(
-                    chat_id=game.chat_id,
-                    text=caption,
-                    parse_mode="HTML"
-                )
+            await send_video_or_text(game.chat_id, sunset, caption)
 
             asyncio.create_task(send_night_actions_to_all( game_id, game, alive_users_qs,game_day))
 
@@ -165,29 +151,7 @@ async def start_game(game_id):
 
             # ================= MORNING =================
             caption = t['day_start'].format(day=day)
-            try:
-                await bot.send_video(
-                    chat_id=game.chat_id,
-                    video=sunrise,
-                    caption=caption,
-                    parse_mode="HTML"
-                )
-
-            except TelegramRetryAfter as e:
-                # video limit — textga tushamiz
-                await send_safe_message(
-                    chat_id=game.chat_id,
-                    text=caption,
-                    parse_mode="HTML"
-                )
-
-            except Exception:
-                # boshqa xato bo‘lsa ham text yuboramiz
-                await send_safe_message(
-                    chat_id=game.chat_id,
-                    text=caption,
-                    parse_mode="HTML"
-                )
+            await send_video_or_text(game.chat_id, sunrise, caption)
 
             day += 1
             await asyncio.sleep(1)
